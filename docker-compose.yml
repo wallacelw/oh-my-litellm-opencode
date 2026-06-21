@@ -100,7 +100,7 @@ services:
 
   openlit:
     <<: *default
-    image: ghcr.io/openlit/openlit:latest
+    image: ghcr.io/openlit/openlit:1.22.0
     container_name: litellm_openlit
     environment:
       TELEMETRY_ENABLED: "true"
@@ -117,8 +117,6 @@ services:
       - "4317:4317"
       - "4318:4318"
     depends_on:
-      litellm:
-        condition: service_healthy
       clickhouse:
         condition: service_healthy
     volumes:

@@ -303,7 +303,7 @@ if [ "$LITELLM_ONLY" = false ]; then
     }
     check_provider \
       "LiteLLM provider defined" '.provider.LiteLLM' \
-      "LiteLLM baseURL is 0.0.0.0:4000" '.provider.LiteLLM.options.baseURL == "http://0.0.0.0:4000"' \
+      "LiteLLM baseURL is 127.0.0.1:4000" '.provider.LiteLLM.options.baseURL == "http://127.0.0.1:4000"' \
       "LiteLLM apiKey set" '.provider.LiteLLM.options.apiKey' \
       "LiteLLM apiKey starts with sk-" '(.provider.LiteLLM.options.apiKey | startswith("sk-"))' \
       "Huawei-MaaS provider defined" '.provider["Huawei-MaaS"]' \

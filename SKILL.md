@@ -47,7 +47,7 @@ bun, jq, Docker + Compose V2, git, python3, `HUAWEI_MAAS_API_KEY` env var.
 - **Proxy is sole egress** for MaaS traffic (centralized budgets/rate limits/audit).
 - **LiteLLM provider uses `@ai-sdk/openai-compatible`** (not `openai`).
 - **Model keys: `openai/<model>`** in LiteLLM provider. **Presets: `LiteLLM/openai/<model>`** (3-part).
-- **LiteLLM baseURL: `http://0.0.0.0:4000`** (no `/v1` — SDK adds it; scripts use `127.0.0.1:4000`).
+- **LiteLLM baseURL: `http://127.0.0.1:4000`** (no `/v1` — SDK adds it).
 - **Disable `explore` and `general` agents.** Enable LSP. Use virtual keys (not master key) for opencode.
 - **`jq --arg` for JSON substitution** — never `sed`.
 - **Same-host only.**
@@ -200,7 +200,7 @@ Council: single `councillor` per preset (deepseek-v4-pro/high).
 | litellm | `ghcr.io/berriai/litellm:v1.89.3` | 4000 | 2g RAM, 2 CPU |
 | db | `postgres:16-alpine` | (5432) | 512m RAM, 1 CPU |
 | clickhouse | `clickhouse/clickhouse-server:24.4.1` | 8123, 9000 | 512m RAM, 1 CPU |
-| openlit | `ghcr.io/openlit/openlit:latest` | 3000, 4317, 4318 | 512m RAM, 1 CPU |
+| openlit | `ghcr.io/openlit/openlit:1.22.0` | 3000, 4317, 4318 | 512m RAM, 1 CPU |
 
 ## Metrics
 
@@ -227,14 +227,6 @@ Council: single `councillor` per preset (deepseek-v4-pro/high).
 SELECT model, sum(cost) FROM otel_traces WHERE timestamp > now() - INTERVAL 1 DAY GROUP BY model
 ```
 
-**PromQL examples:**
-```promql
-rate(litellm_proxy_total_requests_metric[5m]) * 60
-histogram_quantile(0.99, rate(litellm_request_total_latency_metric_bucket[5m]))
-rate(litellm_spend_metric[1d])
-histogram_quantile(0.95, rate(litellm_custom_ttft_seconds_bucket[5m]))
-```
-
 ## Operations
 
 | Service | URL | Auth |
@@ -248,6 +240,44 @@ histogram_quantile(0.95, rate(litellm_custom_ttft_seconds_bucket[5m]))
 **Reset:** `docker compose down -v && docker compose up -d`
 **Logs:** `docker compose logs litellm --tail 50`
 **Traces:** `docker compose logs openlit --tail 50`
+
+## Upgrade Path
+
+### Upgrade LiteLLM
+
+1. Check [releases](https://github.com/BerriAI/litellm/releases) for breaking changes
+2. Edit `docker-compose.yml`: change `ghcr.io/berriai/litellm:v1.89.3` → new version
+3. `docker compose pull litellm && docker compose up -d litellm`
+4. `./scripts/validate.sh --litellm-only`
+
+### Upgrade OpenLit
+
+1. Check [releases](https://github.com/openlit/openlit/releases) for breaking changes
+2. Edit `docker-compose.yml`: change `ghcr.io/openlit/openlit:1.22.0` → new version
+3. `docker compose pull openlit && docker compose up -d openlit`
+4. Verify OpenLit UI at `http://127.0.0.1:3000`
+
+### Upgrade ClickHouse
+
+1. Check [releases](https://github.com/ClickHouse/ClickHouse/releases) for backward compatibility
+2. Edit `docker-compose.yml`: change `clickhouse/clickhouse-server:24.4.1` → new version
+3. `docker compose pull clickhouse && docker compose up -d clickhouse`
+4. Verify: `curl http://127.0.0.1:8123/ping`
+
+### Upgrade oh-my-opencode-slim
+
+1. Check [releases](https://github.com/nicepkg/oh-my-opencode-slim/releases) for config format changes
+2. Edit `scripts/install.sh`: change `SLIM_VERSION="2.0.4"` → new version
+3. Edit `assets/config/opencode/oh-my-opencode-slim.json.example`: update `$schema` URL
+4. `bunx oh-my-opencode-slim@<new-version> install`
+5. `./scripts/install.sh` (re-writes config with diff-before-write)
+
+### Upgrade opencode
+
+opencode is always installed via `curl -fsSL https://opencode.ai/install | bash` (latest). To force upgrade:
+```bash
+curl -fsSL https://opencode.ai/install | bash
+```
 
 ## Repair Playbook
 
@@ -298,6 +328,8 @@ histogram_quantile(0.95, rate(litellm_custom_ttft_seconds_bucket[5m]))
 | mint-virtual-key.sh | Reuses existing key by alias; mints only if missing or invalid |
 | install.sh configs | Diff-before-write — skip if unchanged |
 | LiteLLM image pinned | `v1.89.3` (no `latest`) |
+| OpenLit image pinned | `1.22.0` (no `latest`) |
+| ClickHouse image pinned | `24.4.1` (no `latest`) |
 | Timeouts consistent | `request_timeout: 600`, `stream_timeout: 60` |
 | Resource limits | All 4 services have memory + CPU limits |
 | Port conflicts detected | `bootstrap.sh` checks 4000/4317/4318/8123/9000/3000 |

@@ -122,17 +122,11 @@ wait_for_litellm() {
   exit 1
 }
 
-# ── Error handler ──
-STEP_NAME="(startup)"
-error_handler() { echo ""; echo "ERROR: Bootstrap failed at step: ${STEP_NAME}"; exit 1; }
-trap error_handler ERR
-
 print_step() { echo ""; echo "─── Step ${1}: ${2} ───"; }
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Step 1: Banner
 # ──────────────────────────────────────────────────────────────────────────────
-STEP_NAME="Banner"
 echo ""
 echo "=== oh-my-litellm-opencode Bootstrap ==="
 echo "   Project dir: $PROJECT_DIR"
@@ -141,7 +135,6 @@ echo "   Project dir: $PROJECT_DIR"
 # ──────────────────────────────────────────────────────────────────────────────
 # Step 2: Check prerequisites
 # ──────────────────────────────────────────────────────────────────────────────
-STEP_NAME="Check prerequisites"
 print_step "2" "Check prerequisites"
 
 PREREQ_OK=true
@@ -185,11 +178,6 @@ export HUAWEI_MAAS_API_KEY="$MAAS_KEY"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Step 3: Deploy LiteLLM
-# ──────────────────────────────────────────────────────────────────────────────
-# docker compose up -d is idempotent — no-op if services already running.
-# Just ensure .env exists first, then always up.
-# ──────────────────────────────────────────────────────────────────────────────
-STEP_NAME="Deploy LiteLLM"
 print_step "3" "Deploy LiteLLM"
 
 # ── Port conflict check ──
@@ -218,7 +206,12 @@ if [ "$DRY_RUN" = true ]; then
 else
   echo "  Starting Docker Compose (idempotent — no-op if already running)..."
   docker compose -f "$PROJECT_DIR/docker-compose.yml" up -d
-  wait_for_litellm
+  # Only wait if not already healthy
+  if curl -sf -m "$CURL_TIMEOUT" "$LITELLM_URL/health/liveliness" &>/dev/null; then
+    echo "  LiteLLM already healthy."
+  else
+    wait_for_litellm
+  fi
 fi
 
 # ── 3c. Resolve master key ──
@@ -233,7 +226,6 @@ export LITELLM_MASTER_KEY="${LITELLM_MASTER_KEY:-}"
 # ──────────────────────────────────────────────────────────────────────────────
 # Step 4: Install opencode + plugin + configure
 # ──────────────────────────────────────────────────────────────────────────────
-STEP_NAME="Install opencode + plugin + configure"
 print_step "4" "Install opencode, plugin, and configure"
 
 INSTALL_CMD=("$SCRIPT_DIR/install.sh")
@@ -250,7 +242,6 @@ fi
 # ──────────────────────────────────────────────────────────────────────────────
 # Step 5: Validate
 # ──────────────────────────────────────────────────────────────────────────────
-STEP_NAME="Validate"
 print_step "5" "Validate"
 
 VALIDATE_CMD=("$SCRIPT_DIR/validate.sh")
@@ -266,7 +257,6 @@ fi
 # ──────────────────────────────────────────────────────────────────────────────
 # Step 6: Summary
 # ──────────────────────────────────────────────────────────────────────────────
-STEP_NAME="Summary"
 print_step "6" "Summary"
 
 if [ "$DRY_RUN" = true ]; then

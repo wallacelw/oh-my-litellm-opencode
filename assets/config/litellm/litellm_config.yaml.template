@@ -10,6 +10,7 @@
 #   2. Run scripts/generate_config.sh to generate the actual config
 #
 # Generated config will use: os.environ/HUAWEI_MAAS_API_KEY_0, _1, _2, etc.
+# The _0 suffix matches the .env format written by init_env.sh.
 # ─────────────────────────────────────────────────────────────────────────────
 
 model_list:
@@ -20,7 +21,7 @@ model_list:
     litellm_params:
       model: openai/glm-5.1
       api_base: os.environ/HUAWEI_MAAS_API_BASE
-      api_key: os.environ/HUAWEI_MAAS_API_KEY
+      api_key: os.environ/HUAWEI_MAAS_API_KEY_0
       tpm: 500000
       rpm: 30
     model_info:
@@ -34,7 +35,7 @@ model_list:
     litellm_params:
       model: openai/glm-5
       api_base: os.environ/HUAWEI_MAAS_API_BASE
-      api_key: os.environ/HUAWEI_MAAS_API_KEY
+      api_key: os.environ/HUAWEI_MAAS_API_KEY_0
       tpm: 500000
       rpm: 30
     model_info:
@@ -48,7 +49,7 @@ model_list:
     litellm_params:
       model: openai/deepseek-v4-pro
       api_base: os.environ/HUAWEI_MAAS_API_BASE
-      api_key: os.environ/HUAWEI_MAAS_API_KEY
+      api_key: os.environ/HUAWEI_MAAS_API_KEY_0
       tpm: 30000
       rpm: 3
     model_info:
@@ -62,7 +63,7 @@ model_list:
     litellm_params:
       model: openai/deepseek-v4-flash
       api_base: os.environ/HUAWEI_MAAS_API_BASE
-      api_key: os.environ/HUAWEI_MAAS_API_KEY
+      api_key: os.environ/HUAWEI_MAAS_API_KEY_0
       tpm: 30000
       rpm: 3  
     model_info:
@@ -76,7 +77,7 @@ model_list:
     litellm_params:
       model: openai/deepseek-v3.2
       api_base: os.environ/HUAWEI_MAAS_API_BASE
-      api_key: os.environ/HUAWEI_MAAS_API_KEY
+      api_key: os.environ/HUAWEI_MAAS_API_KEY_0
       tpm: 500000
       rpm: 700
     model_info:

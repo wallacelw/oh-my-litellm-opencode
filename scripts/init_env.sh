@@ -228,11 +228,8 @@ chmod 600 "$ENV_FILE"
 # ── Generate litellm_config.yaml ─────────────────────────────────
 echo ""
 echo "Generating litellm_config.yaml..."
-if "$SCRIPT_DIR/generate_config.sh" 2>&1; then
-  echo "Config generation successful."
-else
-  echo "WARNING: Config generation failed. Run scripts/generate_config.sh manually after fixing .env."
-fi
+"$SCRIPT_DIR/generate_config.sh"
+echo "Config generation successful."
 
 # ── Summary ───────────────────────────────────────────────────────
 echo ""
@@ -257,5 +254,5 @@ echo "    GRAFANA_PASSWORD    = ${GRAFANA_PASSWORD:0:6}...${GRAFANA_PASSWORD: -4
 echo ""
 echo "  Next steps:"
 echo "    docker compose up -d"
-echo "    ./scripts/validate_litellm.sh"
+echo "    ./scripts/validate.sh --litellm-only"
 echo "══════════════════════════════════════════════════════"

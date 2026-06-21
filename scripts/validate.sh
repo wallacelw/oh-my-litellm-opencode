@@ -19,8 +19,8 @@ DRY_RUN=false
 LITELLM_ONLY=false
 OPENCODE_ONLY=false
 LITELLM_URL="http://127.0.0.1:4000"
-PROMETHEUS_URL="${PROMETHEUS_URL:-http://localhost:9090}"
-GRAFANA_URL="${GRAFANA_URL:-http://localhost:3000}"
+PROMETHEUS_URL="${PROMETHEUS_URL:-http://127.0.0.1:9090}"
+GRAFANA_URL="${GRAFANA_URL:-http://127.0.0.1:3000}"
 
 for arg in "$@"; do
   case "$arg" in

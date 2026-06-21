@@ -206,7 +206,7 @@ if [ "$LITELLM_ONLY" = false ]; then
   if command -v opencode &>/dev/null; then
     pass "opencode installed: $(opencode --version 2>/dev/null || echo 'unknown')"
   else
-    fail "opencode not found — run: bun install -g opencode"
+    fail "opencode not found — run: curl -fsSL https://opencode.ai/install | bash"
   fi
 
   # B2. Config files

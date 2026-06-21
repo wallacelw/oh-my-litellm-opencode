@@ -22,7 +22,7 @@ OPENCODE_CONFIG="$OPENCODE_DIR/opencode.jsonc"
 
 # ── Constants ──
 SLIM_VERSION="2.0.4"
-OPENCODE_VERSION="0.4.6"  # pinned for determinism; update manually when upgrading
+OPENCODE_INSTALL_URL="https://opencode.ai/install"
 CURL_TIMEOUT=15
 
 # ── Helper: retry curl with backoff ──
@@ -92,7 +92,7 @@ else
 fi
 
 if ! command -v opencode &>/dev/null; then
-  echo "   opencode: not found — will install via bun"
+  echo "   opencode: not found — will install via curl"
 else
   echo "   opencode: $(opencode --version 2>/dev/null || echo 'installed')"
 fi
@@ -110,17 +110,13 @@ echo ""
 echo "2. Installing opencode..."
 if ! command -v opencode &>/dev/null; then
   if [ "$DRY_RUN" = true ]; then
-    echo "   Would run: bun install -g opencode@${OPENCODE_VERSION}"
+    echo "   Would run: curl -fsSL $OPENCODE_INSTALL_URL | bash"
   else
-    bun install -g "opencode@${OPENCODE_VERSION}"
+    curl -fsSL "$OPENCODE_INSTALL_URL" | bash
     echo "   Installed: $(opencode --version 2>/dev/null)"
   fi
 else
   INSTALLED_VERSION="$(opencode --version 2>/dev/null || echo 'unknown')"
-  if [ "$INSTALLED_VERSION" != "$OPENCODE_VERSION" ] && [ "$INSTALLED_VERSION" != "v$OPENCODE_VERSION" ]; then
-    echo "   WARNING: Installed opencode ($INSTALLED_VERSION) differs from pinned version ($OPENCODE_VERSION)."
-    echo "   To upgrade: bun install -g opencode@${OPENCODE_VERSION}"
-  fi
   echo "   Already installed: $INSTALLED_VERSION"
 fi
 echo ""

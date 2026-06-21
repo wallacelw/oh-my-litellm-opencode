@@ -58,7 +58,8 @@ resolve_master_key() {
 
   # 2. .master-key file
   if [ -f "$PROJECT_DIR/.master-key" ]; then
-    local found_key="$(cat "$PROJECT_DIR/.master-key")"
+    local found_key
+    found_key="$(cat "$PROJECT_DIR/.master-key")"
     if [ -n "$found_key" ]; then
       echo "  Found LITELLM_MASTER_KEY in $PROJECT_DIR/.master-key"
       echo "$found_key"
@@ -68,7 +69,8 @@ resolve_master_key() {
 
   # 3. .env file
   if [ -f "$PROJECT_DIR/.env" ]; then
-    local found_key="$(grep -oP '^LITELLM_MASTER_KEY="?\K[^"]+' "$PROJECT_DIR/.env" 2>/dev/null || true)"
+    local found_key
+    found_key="$(grep -oP '^LITELLM_MASTER_KEY="?\K[^"]+' "$PROJECT_DIR/.env" 2>/dev/null || true)"
     if [ -n "$found_key" ]; then
       echo "  Found LITELLM_MASTER_KEY in $PROJECT_DIR/.env"
       # Cache to .master-key for faster future resolution
@@ -194,7 +196,16 @@ export HUAWEI_MAAS_API_KEY="$MAAS_KEY"
 # ──────────────────────────────────────────────────────────────────────────────
 STEP_NAME="Deploy LiteLLM"
 print_step "3" "Deploy LiteLLM"
-LITELLM_MASTER_KEY=""
+
+# ── Port conflict check ──
+for port in 4000 9090 3000; do
+  if command -v ss &>/dev/null && ss -tlnp 2>/dev/null | grep -q ":${port} "; then
+    echo "  WARNING: Port $port is already in use. Docker Compose may fail."
+  fi
+done
+
+# Do NOT clear LITELLM_MASTER_KEY — it may already be set from the environment.
+# The resolve_master_key function checks env first, then .master-key, then .env.
 
 # Helper: check if LiteLLM Docker container exists (running or stopped)
 litellm_container_exists() {
@@ -215,23 +226,9 @@ if curl -sf -m "$CURL_TIMEOUT" "$LITELLM_URL/health/liveliness" &>/dev/null; the
     try_resolve_master_key || prompt_master_key
   fi
 
-elif litellm_container_exists; then
-  # ── Scenario 2a: Container exists but stopped ──
-  echo "  LiteLLM container exists but is not running."
-  echo "  Starting existing deployment..."
-  if [ "$DRY_RUN" = true ]; then
-    echo "  Would run: docker compose up -d"
-    LITELLM_MASTER_KEY="<LITELLM_MASTER_KEY>"
-  else
-    docker compose -f "$PROJECT_DIR/docker-compose.yml" up -d
-    wait_for_litellm
-    try_resolve_master_key || prompt_master_key
-  fi
-
-elif litellm_files_exist; then
-  # ── Scenario 2b: Files exist but containers removed (compose down) ──
-  echo "  LiteLLM deployment files found but no containers."
-  echo "  Recreating and starting..."
+elif litellm_container_exists || litellm_files_exist; then
+  # ── Deployed but not running ──
+  echo "  Starting existing LiteLLM deployment..."
   if [ "$DRY_RUN" = true ]; then
     echo "  Would run: docker compose up -d"
     LITELLM_MASTER_KEY="<LITELLM_MASTER_KEY>"

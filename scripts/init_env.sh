@@ -64,14 +64,8 @@ prompt_value() {
   fi
 
   if [[ -t 0 ]]; then
-    # Terminal: use read
-    if [[ "$is_secret" == "yes" ]]; then
-      read -r -p "$prompt_text" input < /dev/tty
-    else
-      read -r -p "$prompt_text" input < /dev/tty
-    fi
+    read -r -p "$prompt_text" input < /dev/tty
   else
-    # Piped/agent: read from stdin
     read -r input
   fi
 
@@ -93,7 +87,12 @@ fi
 # ── Check if .env already exists ─────────────────────────────────
 if [[ -f "$ENV_FILE" ]]; then
   if [[ "$MODE" == "ci" ]]; then
-    echo "WARNING: .env already exists. Overwriting in CI mode."
+    # In CI mode, preserve LITELLM_SALT_KEY from existing .env to avoid
+    # invalidating existing virtual keys. Overwrite everything else.
+    EXISTING_SALT_KEY="$(grep -oP '^LITELLM_SALT_KEY="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
+    echo "WARNING: .env already exists. Overwriting in CI mode (preserving LITELLM_SALT_KEY if set)."
+  elif [[ "$MODE" == "auto" ]]; then
+    echo "WARNING: .env already exists. Overwriting in auto mode."
   else
     echo "WARNING: .env already exists."
     read -r -p "  Overwrite? [y/N]: " overwrite < /dev/tty
@@ -110,6 +109,14 @@ DEFAULT_DB_PASSWORD=$(generate_secret)
 DEFAULT_GRAFANA_PASSWORD=$(generate_secret)
 DEFAULT_MAAS_BASE="https://api-ap-southeast-1.modelarts-maas.com/openai/v1"
 DEFAULT_RETENTION="15d"
+
+# ── Idempotency: preserve SALT_KEY in CI mode ────────────────────
+# Changing SALT_KEY invalidates all existing virtual keys.
+# In CI mode with an existing .env, reuse the old SALT_KEY.
+if [[ "$MODE" == "ci" && -n "${EXISTING_SALT_KEY:-}" ]]; then
+  DEFAULT_SALT_KEY="$EXISTING_SALT_KEY"
+  echo "  Reusing existing LITELLM_SALT_KEY (idempotent — preserves virtual keys)"
+fi
 
 # ── Collect values ────────────────────────────────────────────────
 echo "Configuring secrets and endpoints..."
@@ -131,29 +138,19 @@ if [[ "$MODE" == "ci" ]]; then
     IFS=',' read -ra EXTRA_KEYS <<< "$HUAWEI_MAAS_EXTRA_API_KEYS"
   fi
 else
-  # Interactive / auto: ask for count, then prompt for each
-  local_count_prompt="  Number of additional MaaS API keys [0]: "
-  if [[ -t 0 ]]; then
-    read -r -p "$local_count_prompt" extra_count < /dev/tty
+  # Interactive / auto: read comma-separated extra keys
+  if [[ "$MODE" == "auto" ]]; then
+    EXTRA_KEYS=()  # auto mode: no extra keys by default
   else
-    read -r extra_count
-  fi
-  extra_count="${extra_count:-0}"
-
-  if [[ "$extra_count" -gt 0 ]] 2>/dev/null; then
-    for i in $(seq 1 "$extra_count"); do
-      local_key_prompt="  Additional MaaS API key $i: "
-      if [[ -t 0 ]]; then
-        read -r -p "$local_key_prompt" extra_key < /dev/tty
-      else
-        read -r extra_key
-      fi
-      if [[ -n "$extra_key" ]]; then
-        EXTRA_KEYS+=("$extra_key")
-      else
-        echo "  WARNING: Key $i was empty — skipping."
-      fi
-    done
+    echo "  Enter additional MaaS API keys (comma-separated, or press Enter for none):"
+    if [[ -t 0 ]]; then
+      read -r extra_input < /dev/tty
+    else
+      read -r extra_input
+    fi
+    if [[ -n "${extra_input:-}" ]]; then
+      IFS=',' read -ra EXTRA_KEYS <<< "$extra_input"
+    fi
   fi
 fi
 
@@ -258,7 +255,7 @@ echo "    HUAWEI_MAAS_API_BASE= $MAAS_API_BASE"
 echo "    PROMETHEUS_RETENTION= $RETENTION"
 echo "    GRAFANA_PASSWORD    = ${GRAFANA_PASSWORD:0:6}...${GRAFANA_PASSWORD: -4}"
 echo ""
-echo "  Next steps:"
-echo "    docker compose up -d"
-echo "    ./scripts/validate_e2e.sh"
+  echo "  Next steps:"
+  echo "    docker compose up -d"
+  echo "    ./scripts/validate_litellm.sh"
 echo "══════════════════════════════════════════════════════"

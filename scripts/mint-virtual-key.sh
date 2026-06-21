@@ -32,50 +32,51 @@ if [ -z "${LITELLM_MASTER_KEY:-}" ]; then
   exit 1
 fi
 
-# ── Build request body using jq for JSON safety ──
-BODY_ARGS=()
-
-# Always include key_alias
-BODY_ARGS+=("--argjson" "alias" "\"$ALIAS\"")
-
-# Add models if specified
+# ── Build request body ──
+JQ_ARGS=(--arg alias "$ALIAS")
+JQ_FILTER='{key_alias: $alias'
 if [ -n "$MODELS" ]; then
   MODELS_JSON=$(echo "$MODELS" | tr ',' '\n' | jq -R . | jq -s .)
-  BODY_ARGS+=("--argjson" "models" "$MODELS_JSON")
-fi
-
-# Build the jq expression
-JQ_EXPR='{key_alias: $alias'
-if [ -n "$MODELS" ]; then
-  JQ_EXPR="${JQ_EXPR}, models: \$models"
+  JQ_ARGS+=(--argjson models "$MODELS_JSON")
+  JQ_FILTER+=', models: $models'
 fi
 if [ "$NO_BUDGET" = false ] && [ -n "$BUDGET" ]; then
-  JQ_EXPR="${JQ_EXPR}, max_budget: ${BUDGET}"
+  JQ_ARGS+=(--argjson budget "$BUDGET")
+  JQ_FILTER+=', max_budget: $budget'
 fi
 if [ -n "$DURATION" ]; then
-  JQ_EXPR="${JQ_EXPR}, duration: \"${DURATION}\""
+  JQ_ARGS+=(--arg duration "$DURATION")
+  JQ_FILTER+=', duration: $duration'
 fi
-JQ_EXPR="${JQ_EXPR}}"
-
-# Generate the body
-BODY=$(jq -n "${BODY_ARGS[@]}" "$JQ_EXPR")
+JQ_FILTER+='}'
+BODY=$(jq -n "${JQ_ARGS[@]}" "$JQ_FILTER")
 
 # ── Mint the key ──
 echo "Minting virtual key from LiteLLM..."
 echo "  Alias:   $ALIAS"
 echo "  Models:  ${MODELS:-all}"
-if [ "$NO_BUDGET" = true ]; then
-  echo "  Budget:  unlimited"
-else
-  echo "  Budget:  \$${BUDGET}"
-fi
+echo "  Budget:  $([ "$NO_BUDGET" = true ] && echo 'unlimited' || echo "\$${BUDGET}")"
 echo "  Duration: ${DURATION}"
 echo ""
 
-RESPONSE=$(curl -sf -X POST http://127.0.0.1:4000/key/generate \
-  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
-  -H "Content-Type: application/json" \
-  -d "$BODY")
+# Retry curl with backoff (3 attempts, 5s/10s/15s delay)
+MAX_ATTEMPTS=3
+RESPONSE=""
+for attempt in $(seq 1 $MAX_ATTEMPTS); do
+  RESPONSE=$(curl -sf --connect-timeout 10 --max-time 30 -X POST http://127.0.0.1:4000/key/generate \
+    -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+    -H "Content-Type: application/json" \
+    -d "$BODY" 2>/dev/null) && break
+  if [ $attempt -lt $MAX_ATTEMPTS ]; then
+    DELAY=$((attempt * 5))
+    echo "  Attempt $attempt failed. Retrying in ${DELAY}s..."
+    sleep $DELAY
+  else
+    echo "ERROR: Failed to mint virtual key after $MAX_ATTEMPTS attempts."
+    echo "  Check that LiteLLM is healthy and LITELLM_MASTER_KEY is correct."
+    exit 1
+  fi
+done
 
 KEY=$(echo "$RESPONSE" | jq -r '.key')
 KEY_ID=$(echo "$RESPONSE" | jq -r '.key_id // empty')

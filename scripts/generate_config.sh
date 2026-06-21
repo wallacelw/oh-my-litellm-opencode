@@ -36,6 +36,7 @@ if [ ! -f "$ENV_FILE" ]; then
   echo "ERROR: .env not found. Run scripts/init_env.sh first." >&2
   exit 1
 fi
+# shellcheck source=/dev/null
 set -a; source "$ENV_FILE"; set +a
 
 # ── Determine key count ──────────────────────────────────────────

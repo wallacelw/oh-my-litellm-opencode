@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -uo pipefail
+set -euo pipefail
 
 # ─── Unified Validation: LiteLLM proxy + opencode + oh-my-opencode-slim ───
 #
@@ -45,41 +45,7 @@ jqc() {
 
 # ── Helper: strip JSONC comments for jq ──
 strip_jsonc() {
-  local file="$1"
-  if command -v python3 &>/dev/null; then
-    python3 -c "
-import sys
-def strip_jsonc(s):
-    out = []; i = 0; n = len(s)
-    while i < n:
-        if s[i] == '\"':
-            j = i + 1
-            while j < n:
-                if s[j] == '\\\\': j += 2; continue
-                if s[j] == '\"': break
-                j += 1
-            out.append(s[i:j+1]); i = j + 1; continue
-        if i+1 < n and s[i] == '/' and s[i+1] == '*':
-            j = s.find('*/', i+2)
-            if j == -1: j = n-2
-            out.append(' '); i = j + 2; continue
-        if i+1 < n and s[i] == '/' and s[i+1] == '/':
-            j = s.find('\n', i+2)
-            if j == -1: i = n
-            else: i = j
-            continue
-        out.append(s[i]); i += 1
-    return ''.join(out)
-sys.stdout.write(strip_jsonc(sys.stdin.read()))
-" < "$file"
-  elif command -v node &>/dev/null; then
-    node -e "const fs=require('fs'); const s=fs.readFileSync('$file','utf8'); const r=s.replace(/\\/\\/.*$/gm,'').replace(/\\/\\*[\\s\\S]*?\\*\\//g,''); process.stdout.write(r);" 2>/dev/null
-  elif jq -e . "$file" &>/dev/null; then
-    cat "$file"
-  else
-    echo "ERROR: Cannot parse JSONC file '$file'" >&2
-    return 1
-  fi
+  python3 -c "import sys,re; sys.stdout.write(re.sub(r'//.*?$|/\*.*?\*/', '', sys.stdin.read(), flags=re.S|re.M))" < "$1" 2>/dev/null || cat "$1"
 }
 
 # ── Resolve project dir ──
@@ -92,7 +58,6 @@ if [ -f "$PROJECT_DIR/.env" ]; then
 fi
 
 KEY_COUNT="${HUAWEI_MAAS_API_KEY_COUNT:-1}"
-MAAS_API_BASE="${HUAWEI_MAAS_API_BASE:-https://api-ap-southeast-1.modelarts-maas.com/openai/v1}"
 
 printf "${YELLOW}╔══════════════════════════════════════════════════════╗\n"
 printf "║  oh-my-litellm-opencode — Unified Validation          ║\n"
@@ -266,23 +231,26 @@ if [ "$LITELLM_ONLY" = false ]; then
   echo "B3. Provider configuration"
   if [ -n "$CONFIG_FILE" ]; then
     CLEAN_CONFIG=$(strip_jsonc "$CONFIG_FILE")
-    check_jq() {
-      local desc="$1" expr="$2"
-      if jqc "$CLEAN_CONFIG" "$expr"; then pass "$desc"; else fail "$desc"; fi
+    check_provider() {
+      while [ $# -gt 0 ]; do
+        local desc="$1" expr="$2"; shift 2
+        if jqc "$CLEAN_CONFIG" "$expr"; then pass "$desc"; else fail "$desc"; fi
+      done
     }
-    check_jq "LiteLLM provider defined" '.provider.LiteLLM'
-    check_jq "LiteLLM baseURL is 0.0.0.0:4000" '.provider.LiteLLM.options.baseURL == "http://0.0.0.0:4000"'
-    check_jq "LiteLLM apiKey set" '.provider.LiteLLM.options.apiKey'
-    check_jq "LiteLLM apiKey starts with sk-" '(.provider.LiteLLM.options.apiKey | startswith("sk-"))'
-    check_jq "Huawei-MaaS provider defined" '.provider["Huawei-MaaS"]'
-    check_jq "Huawei-MaaS has 5+ models" '.provider["Huawei-MaaS"].models | keys | length >= 5'
-    check_jq "LiteLLM has 5+ models" '.provider.LiteLLM.models | keys | length >= 5'
-    check_jq "provider key is singular" 'if .provider then true else false end'
-    check_jq "agent key is singular" 'if .agent then true else false end'
-    check_jq "oh-my-opencode-slim plugin" '.plugin | index("oh-my-opencode-slim")'
-    check_jq "explore agent disabled" '.agent.explore.disable == true'
-    check_jq "general agent disabled" '.agent.general.disable == true'
-    check_jq "LSP enabled" '.lsp == true'
+    check_provider \
+      "LiteLLM provider defined" '.provider.LiteLLM' \
+      "LiteLLM baseURL is 0.0.0.0:4000" '.provider.LiteLLM.options.baseURL == "http://0.0.0.0:4000"' \
+      "LiteLLM apiKey set" '.provider.LiteLLM.options.apiKey' \
+      "LiteLLM apiKey starts with sk-" '(.provider.LiteLLM.options.apiKey | startswith("sk-"))' \
+      "Huawei-MaaS provider defined" '.provider["Huawei-MaaS"]' \
+      "Huawei-MaaS has 5+ models" '.provider["Huawei-MaaS"].models | keys | length >= 5' \
+      "LiteLLM has 5+ models" '.provider.LiteLLM.models | keys | length >= 5' \
+      "provider key is singular" 'if .provider then true else false end' \
+      "agent key is singular" 'if .agent then true else false end' \
+      "oh-my-opencode-slim plugin" '.plugin | index("oh-my-opencode-slim")' \
+      "explore agent disabled" '.agent.explore.disable == true' \
+      "general agent disabled" '.agent.general.disable == true' \
+      "LSP enabled" '.lsp == true'
 
     PERMS=$(stat -c '%a' "$CONFIG_FILE" 2>/dev/null || stat -f '%Lp' "$CONFIG_FILE" 2>/dev/null)
     if [ "$PERMS" = "600" ]; then
@@ -307,27 +275,30 @@ if [ "$LITELLM_ONLY" = false ]; then
 
   if [ -n "$SLIM_CONFIG" ]; then
     CLEAN_SLIM=$(strip_jsonc "$SLIM_CONFIG")
-    check_slim() {
-      local desc="$1" expr="$2"
-      if jqc "$CLEAN_SLIM" "$expr"; then pass "$desc"; else fail "$desc"; fi
+    check_slim_pair() {
+      while [ $# -gt 0 ]; do
+        local desc="$1" expr="$2"; shift 2
+        if jqc "$CLEAN_SLIM" "$expr"; then pass "$desc"; else fail "$desc"; fi
+      done
     }
-    check_slim "LiteLLM-Huawei-MaaS preset" '.presets["LiteLLM-Huawei-MaaS"]'
-    check_slim "LiteLLM-Huawei-MaaS-Lite preset" '.presets["LiteLLM-Huawei-MaaS-Lite"]'
-    check_slim "Huawei-MaaS direct preset" '.presets["Huawei-MaaS"]'
-    check_slim "Huawei-MaaS-Lite direct preset" '.presets["Huawei-MaaS-Lite"]'
-    check_slim "Default is LiteLLM-Huawei-MaaS" '.preset == "LiteLLM-Huawei-MaaS"'
-    check_slim "Orchestrator model set" '.presets["LiteLLM-Huawei-MaaS"].orchestrator.model'
-    check_slim "Oracle model set" '.presets["LiteLLM-Huawei-MaaS"].oracle.model'
-    check_slim "Council model set" '.presets["LiteLLM-Huawei-MaaS"].council.model'
-    check_slim "Librarian model set" '.presets["LiteLLM-Huawei-MaaS"].librarian.model'
-    check_slim "Explorer model set" '.presets["LiteLLM-Huawei-MaaS"].explorer.model'
-    check_slim "Designer model set" '.presets["LiteLLM-Huawei-MaaS"].designer.model'
-    check_slim "Fixer model set" '.presets["LiteLLM-Huawei-MaaS"].fixer.model'
-    check_slim "Observer disabled" '.disabled_agents | index("observer")'
-    check_slim "Fallback enabled" '.fallback.enabled == true'
-    check_slim "Fallback chains defined" '.fallback.chains | length > 0'
-    check_slim "Council presets defined" '.council.presets'
-    check_slim "Council has alpha/beta/gamma" '.council.presets.default | .alpha and .beta and .gamma'
+    check_slim_pair \
+      "LiteLLM-Huawei-MaaS preset" '.presets["LiteLLM-Huawei-MaaS"]' \
+      "LiteLLM-Huawei-MaaS-Lite preset" '.presets["LiteLLM-Huawei-MaaS-Lite"]' \
+      "Huawei-MaaS direct preset" '.presets["Huawei-MaaS"]' \
+      "Huawei-MaaS-Lite direct preset" '.presets["Huawei-MaaS-Lite"]' \
+      "Default is LiteLLM-Huawei-MaaS" '.preset == "LiteLLM-Huawei-MaaS"' \
+      "Orchestrator model set" '.presets["LiteLLM-Huawei-MaaS"].orchestrator.model' \
+      "Oracle model set (array for fallback)" '.presets["LiteLLM-Huawei-MaaS"].oracle.model' \
+      "Council model set (array for fallback)" '.presets["LiteLLM-Huawei-MaaS"].council.model' \
+      "Librarian model set" '.presets["LiteLLM-Huawei-MaaS"].librarian.model' \
+      "Explorer model set" '.presets["LiteLLM-Huawei-MaaS"].explorer.model' \
+      "Designer model set" '.presets["LiteLLM-Huawei-MaaS"].designer.model' \
+      "Fixer model set (array for fallback)" '.presets["LiteLLM-Huawei-MaaS"].fixer.model' \
+      "Observer disabled" '.disabled_agents | index("observer")' \
+      "Fallback enabled" '.fallback.enabled == true' \
+      "Fallback has no chains (v2 format)" '(.fallback.chains // null) == null' \
+      "Council presets defined" '.council.presets' \
+      "Council has councillor (v2 format)" '.council.presets.default.councillor'
 
     PERMS=$(stat -c '%a' "$SLIM_CONFIG" 2>/dev/null || stat -f '%Lp' "$SLIM_CONFIG" 2>/dev/null)
     if [ "$PERMS" = "600" ]; then

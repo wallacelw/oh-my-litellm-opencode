@@ -145,7 +145,7 @@ check_prereq() {
   fi
 }
 
-check_prereq "bun"     bun     "install from https://bun.sh"
+check_prereq "bun"     bun     "install from https://bun.sh (needed for oh-my-opencode-slim plugin)"
 check_prereq "jq"      jq      "install from https://stedolan.github.io/jq/"
 check_prereq "docker"  docker  "install from https://docs.docker.com/engine/install/"
 check_prereq "git"     git     "install git"

@@ -19,6 +19,10 @@ services:
     environment:
       DATABASE_URL: "postgresql://llmproxy:${DB_PASSWORD}@db:5432/litellm"
       STORE_MODEL_IN_DB: "True"
+    # env_file passes all .env vars to the container, including some that
+    # only other services need (GRAFANA_PASSWORD, PROMETHEUS_RETENTION).
+    # This is acceptable — vars are container-local and not exposed.
+    # A separate .env.litellm would be cleaner but adds maintenance burden.
     env_file:
       - .env
     depends_on:

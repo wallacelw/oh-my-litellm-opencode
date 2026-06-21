@@ -26,23 +26,18 @@ OPENCODE_INSTALL_URL="https://opencode.ai/install"
 CURL_TIMEOUT=15
 
 # ── Helper: retry curl with backoff ──
+# Usage: retry_curl [-o] curl_args...
+#   -o  capture and echo response body (otherwise just check exit code)
 retry_curl() {
-  local max_attempts=3 delay=2 attempt=1
-  while [ $attempt -le $max_attempts ]; do
-    if curl "$@" &>/dev/null; then
-      return 0
-    fi
-    [ $attempt -lt $max_attempts ] && sleep $delay
-    ((attempt++))
-  done
-  return 1
-}
-
-# ── Helper: retry curl with output ──
-retry_curl_output() {
+  local capture=false
+  if [ "$1" = "-o" ]; then capture=true; shift; fi
   local max_attempts=3 delay=2 attempt=1 response=""
   while [ $attempt -le $max_attempts ]; do
-    response=$(curl "$@" 2>/dev/null) && [ -n "$response" ] && echo "$response" && return 0
+    if [ "$capture" = true ]; then
+      response=$(curl "$@" 2>/dev/null) && [ -n "$response" ] && echo "$response" && return 0
+    else
+      curl "$@" &>/dev/null && return 0
+    fi
     [ $attempt -lt $max_attempts ] && sleep $delay
     ((attempt++))
   done
@@ -201,7 +196,7 @@ if [ -z "$VIRTUAL_KEY" ]; then
     echo "   Would mint new virtual key with alias 'opencode', unlimited budget & duration, all models"
   else
     echo "   Minting virtual key from LiteLLM..."
-    RESPONSE=$(retry_curl_output -sf -X POST "http://127.0.0.1:4000/key/generate" \
+    RESPONSE=$(retry_curl -o -sf -X POST "http://127.0.0.1:4000/key/generate" \
       -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
       -H "Content-Type: application/json" \
       -d '{"key_alias": "opencode", "duration": null}')

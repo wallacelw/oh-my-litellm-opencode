@@ -19,8 +19,8 @@ DRY_RUN=false
 LITELLM_ONLY=false
 OPENCODE_ONLY=false
 LITELLM_URL="http://127.0.0.1:4000"
-PROMETHEUS_URL="${PROMETHEUS_URL:-http://127.0.0.1:9090}"
-GRAFANA_URL="${GRAFANA_URL:-http://127.0.0.1:3000}"
+OPENLIT_URL="${OPENLIT_URL:-http://127.0.0.1:3000}"
+CLICKHOUSE_URL="${CLICKHOUSE_URL:-http://127.0.0.1:8123}"
 
 for arg in "$@"; do
   case "$arg" in
@@ -84,7 +84,7 @@ if [ "$OPENCODE_ONLY" = false ]; then
     else
       warn ".env permissions are $PERMS (expected 0600)"
     fi
-    for VAR in LITELLM_MASTER_KEY LITELLM_SALT_KEY DB_PASSWORD HUAWEI_MAAS_API_KEY; do
+    for VAR in LITELLM_MASTER_KEY LITELLM_SALT_KEY DB_PASSWORD HUAWEI_MAAS_API_KEY OPENLIT_DB_PASSWORD; do
       VAL="${!VAR:-}"
       if [ -z "$VAL" ] || echo "$VAL" | grep -qi 'change-me\|replace\|xxx'; then
         fail "$VAR is not set or still has a placeholder value"
@@ -108,10 +108,10 @@ if [ "$OPENCODE_ONLY" = false ]; then
     skip "Docker service health"
   else
     RUNNING=$(docker compose -f "$PROJECT_DIR/docker-compose.yml" ps --services --filter "status=running" 2>/dev/null | wc -l)
-    if [ "$RUNNING" -ge 5 ]; then
+    if [ "$RUNNING" -ge 4 ]; then
       pass "$RUNNING services running"
     else
-      fail "Only $RUNNING services running (expected 5)"
+      fail "Only $RUNNING services running (expected 4)"
     fi
   fi
 
@@ -143,34 +143,33 @@ if [ "$OPENCODE_ONLY" = false ]; then
     fi
   fi
 
-  # A4. Prometheus, Grafana, OTel Collector
+  # A4. OpenLit + ClickHouse
   echo ""
-  echo "A4. Observability"
+  echo "A4. Observability (OpenLit)"
   if [ "$DRY_RUN" = true ]; then
-    skip "Prometheus target"
-    skip "Grafana reachable"
-    skip "OTel Collector reachable"
+    skip "OpenLit UI reachable"
+    skip "ClickHouse reachable"
+    skip "OTLP endpoint reachable"
   else
-    PROM_HEALTH=$(curl -s --connect-timeout 5 "$PROMETHEUS_URL/api/v1/targets" 2>/dev/null | \
-      python3 -c "import sys,json; d=json.load(sys.stdin); ts=d['data']['activeTargets']; print(ts[0]['health'] if ts else 'none')" 2>/dev/null || echo "error")
-    if [ "$PROM_HEALTH" = "up" ]; then
-      pass "Prometheus target litellm is up"
+    OPENLIT_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 "$OPENLIT_URL" 2>/dev/null)
+    if [ "$OPENLIT_CODE" = "200" ]; then
+      pass "OpenLit UI reachable (HTTP 200)"
     else
-      fail "Prometheus target health: $PROM_HEALTH (expected up)"
+      fail "OpenLit UI returned HTTP $OPENLIT_CODE"
     fi
 
-    GRAFANA_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 "$GRAFANA_URL" 2>/dev/null)
-    if [ "$GRAFANA_CODE" = "200" ] || [ "$GRAFANA_CODE" = "302" ]; then
-      pass "Grafana reachable (HTTP $GRAFANA_CODE)"
+    CH_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 "$CLICKHOUSE_URL/ping" 2>/dev/null)
+    if [ "$CH_CODE" = "200" ]; then
+      pass "ClickHouse reachable (HTTP 200)"
     else
-      fail "Grafana returned HTTP $GRAFANA_CODE"
+      fail "ClickHouse returned HTTP $CH_CODE"
     fi
 
-    OTEL_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 "http://127.0.0.1:13133/" 2>/dev/null)
-    if [ "$OTEL_CODE" = "200" ]; then
-      pass "OTel Collector health endpoint reachable"
+    OTLP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 "http://127.0.0.1:4318/" 2>/dev/null)
+    if [ -n "$OTLP_CODE" ]; then
+      pass "OTLP HTTP endpoint reachable on port 4318"
     else
-      warn "OTel Collector health endpoint returned HTTP $OTEL_CODE (may still be starting)"
+      warn "OTLP HTTP endpoint not responding on port 4318 (may still be starting)"
     fi
   fi
 

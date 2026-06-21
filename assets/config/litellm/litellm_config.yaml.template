@@ -95,9 +95,7 @@ litellm_settings:
   drop_params: True
   set_verbose: False
   callbacks:
-    - "prometheus"
     - "otel"
-    - custom_callbacks.my_prometheus_logger
   ui_theme_config:
     logo_url: "https://upload.wikimedia.org/wikipedia/en/thumb/0/04/Huawei_Standard_logo.svg/3840px-Huawei_Standard_logo.svg.png"
     favicon_url: "https://upload.wikimedia.org/wikipedia/en/thumb/0/04/Huawei_Standard_logo.svg/3840px-Huawei_Standard_logo.svg.png"

@@ -1,0 +1,8 @@
+<clickhouse>
+    <logger>
+        <level>warning</level>
+    </logger>
+    <query_log>
+        <flush_interval_milliseconds>7500</flush_interval_milliseconds>
+    </query_log>
+</clickhouse>

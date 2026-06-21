@@ -1,6 +1,6 @@
 # oh-my-litellm-opencode
 
-Docker Compose deployment of [LiteLLM](https://github.com/BerriAI/litellm) as an OpenAI-compatible API proxy routing through **Huawei ModelArts MaaS** (ap-southeast-1) with PostgreSQL, Prometheus, Grafana, plus opencode + oh-my-opencode-slim bootstrap with virtual keys, dual providers, and 4 presets.
+Docker Compose deployment of [LiteLLM](https://github.com/BerriAI/litellm) as an OpenAI-compatible API proxy routing through **Huawei ModelArts MaaS** (ap-southeast-1) with PostgreSQL, [OpenLit](https://github.com/openlit/openlit) + ClickHouse for LLM observability, plus opencode + oh-my-opencode-slim bootstrap with virtual keys, dual providers, and 4 presets.
 
 See [SKILL.md](./SKILL.md) for the agent-facing workflow and exit criteria.
 
@@ -47,8 +47,8 @@ Switch: `/preset LiteLLM-Huawei-MaaS-Lite`
 |---------|-----|------|
 | LiteLLM Proxy | `http://127.0.0.1:4000` | Virtual key (in opencode.jsonc) |
 | LiteLLM Admin UI | `http://127.0.0.1:4000/ui` | Master key (from `.master-key`) |
-| Prometheus | `http://127.0.0.1:9090` | None |
-| Grafana | `http://127.0.0.1:3000` | admin / (from `.env`) |
+| OpenLit UI | `http://127.0.0.1:3000` | None (local) |
+| ClickHouse | `http://127.0.0.1:8123` | `default / OPENLIT_DB_PASSWORD` |
 
 ## Environment Variables
 
@@ -60,5 +60,4 @@ Switch: `/preset LiteLLM-Huawei-MaaS-Lite`
 | `HUAWEI_MAAS_API_KEY` | Yes | Main MaaS API key (ap-southeast-1) |
 | `HUAWEI_MAAS_API_BASE` | Yes | `https://api-ap-southeast-1.modelarts-maas.com/openai/v1` |
 | `HUAWEI_MAAS_API_KEY_COUNT` | Auto | Number of MaaS keys (set by init_env.sh) |
-| `PROMETHEUS_RETENTION` | No | `15d` |
-| `GRAFANA_PASSWORD` | No | `admin` |
+| `OPENLIT_DB_PASSWORD` | Yes | ClickHouse database password |

@@ -1,6 +1,6 @@
 ---
 name: oh-my-litellm-opencode
-description: Deploy LiteLLM proxy (Docker Compose: litellm + postgres + prometheus + grafana) routing through Huawei ModelArts MaaS with multi-key load balancing, then bootstrap opencode + oh-my-opencode-slim with virtual key, dual providers, and 4 presets. TRIGGER when the task involves: LiteLLM proxy deployment, Huawei MaaS model routing, opencode + MaaS setup, full-stack AI coding bootstrap, oh-my-litellm-opencode, virtual key management, Prometheus/Grafana observability, custom_callbacks.py metrics, multi-key load balancing, docker compose with this stack, or any reference to LITELLM_MASTER_KEY, HUAWEI_MAAS_API_KEY.
+description: Deploy LiteLLM proxy (Docker Compose: litellm + postgres + openlit + clickhouse) routing through Huawei ModelArts MaaS with multi-key load balancing, then bootstrap opencode + oh-my-opencode-slim with virtual key, dual providers, and 4 presets. TRIGGER when the task involves: LiteLLM proxy deployment, Huawei MaaS model routing, opencode + MaaS setup, full-stack AI coding bootstrap, oh-my-litellm-opencode, virtual key management, OpenLit observability, OTel/OTLP telemetry, multi-key load balancing, docker compose with this stack, or any reference to LITELLM_MASTER_KEY, HUAWEI_MAAS_API_KEY.
 ---
 
 # oh-my-litellm-opencode
@@ -62,15 +62,12 @@ Client → LiteLLM (:4000) → Huawei MaaS (ap-southeast-1)
                 │          │ keys    │  LiteLLM load-balances N deployments
                 │          └────────┘
                 ├── PostgreSQL (:5432)  — keys, usage, spend
-                ├── OTel Collector (:4317/:4318) — single telemetry pipeline
-                │     ├── receives OTLP (traces + OTel metrics)
-                │     ├── scrapes /metrics (built-in + custom Prometheus metrics)
-                │     └── exports → Prometheus (remote write)
-                ├── Prometheus (:9090)  — TSDB, receives from OTel Collector
-                └── Grafana   (:3000)  — dashboards
+                └── OpenLit (:3000)    — LLM observability (traces + metrics + dashboards)
+                      ├── OTLP receiver (:4317/:4318) — from LiteLLM "otel" callback
+                      └── ClickHouse (:8123/:9000)    — 30-day storage, SQL analytics
 ```
 
-Startup: PostgreSQL → LiteLLM → OTel Collector → Prometheus → Grafana (all healthcheck-gated).
+Startup: PostgreSQL → LiteLLM → ClickHouse → OpenLit (all healthcheck-gated).
 
 ## Deployment Workflow
 
@@ -202,19 +199,33 @@ Council: single `councillor` per preset (deepseek-v4-pro/high).
 |---|---|---|---|
 | litellm | `ghcr.io/berriai/litellm:v1.89.3` | 4000 | 2g RAM, 2 CPU |
 | db | `postgres:16-alpine` | (5432) | 512m RAM, 1 CPU |
-| otel-collector | `otel/opentelemetry-collector-contrib:0.128.0` | 4317, 4318 | 256m RAM, 0.5 CPU |
-| prometheus | `prom/prometheus:v3.3.1` | 9090 | 512m RAM, 1 CPU |
-| grafana | `grafana/grafana:11.5.2` | 3000 | 256m RAM, 0.5 CPU |
+| clickhouse | `clickhouse/clickhouse-server:24.4.1` | 8123, 9000 | 512m RAM, 1 CPU |
+| openlit | `ghcr.io/openlit/openlit:latest` | 3000, 4317, 4318 | 512m RAM, 1 CPU |
 
 ## Metrics
 
-**Telemetry pipeline:** LiteLLM → OTel Collector → Prometheus → Grafana
+**Telemetry pipeline:** LiteLLM → OpenLit (OTLP) → ClickHouse
 
-**OTel (via `"otel"` callback):** `gen_ai.client.operation.duration`, `gen_ai.client.token.usage`, `gen_ai.client.token.cost`, `time_to_first_token`, `time_per_output_token`. Plus distributed traces (logged to OTel Collector stdout).
+**OTel GenAI metrics** (via `"otel"` callback):
+- `gen_ai.client.operation.duration` — end-to-end request latency
+- `gen_ai.client.token.usage` — input/output token counts
+- `gen_ai.client.token.cost` — per-request cost with provider pricing
+- `gen_ai.server.time_to_first_token` — TTFT (streaming)
+- `gen_ai.client.operation.time_per_output_chunk` — TPOT
 
-**Built-in Prometheus** (scraped by OTel Collector from `/metrics`): `litellm_proxy_total_requests_metric`, `litellm_request_total_latency_metric`, `litellm_spend_metric`, `litellm_input_tokens_metric`, `litellm_output_tokens_metric`, `litellm_deployment_state`.
+**Distributed traces:** Every request traced end-to-end (opencode → LiteLLM → MaaS). Click any trace in OpenLit UI to inspect timing, model selection, retries, and errors.
 
-**Custom** (`custom_callbacks.py`, on `/metrics`): `litellm_custom_ttft_seconds` (streaming), `litellm_custom_tpot_seconds` (always), `litellm_custom_itl_seconds` (streaming). Labeled: `model`, `model_group`, `api_provider`.
+**OpenLit dashboards** (pre-built):
+- Cost per model, per day, per key
+- Token usage breakdown (input/output/cache)
+- Latency comparison across models
+- Error rates and failure drilldown
+- Request-level trace inspection
+
+**ClickHouse SQL** for custom analytics (30-day retention):
+```sql
+SELECT model, sum(cost) FROM otel_traces WHERE timestamp > now() - INTERVAL 1 DAY GROUP BY model
+```
 
 **PromQL examples:**
 ```promql
@@ -230,12 +241,13 @@ histogram_quantile(0.95, rate(litellm_custom_ttft_seconds_bucket[5m]))
 |---|---|---|
 | LiteLLM API | `http://localhost:4000` | `Bearer <key>` |
 | LiteLLM Admin UI | `http://localhost:4000/ui` | Master key |
-| Prometheus | `http://localhost:9090` | None |
-| Grafana | `http://localhost:3000` | admin / `GRAFANA_PASSWORD` |
+| OpenLit UI | `http://localhost:3000` | None (local) |
+| ClickHouse | `http://localhost:8123` | `default / OPENLIT_DB_PASSWORD` |
 
 **Backup:** `docker compose exec db pg_dump -U llmproxy litellm > backup.sql`
 **Reset:** `docker compose down -v && docker compose up -d`
 **Logs:** `docker compose logs litellm --tail 50`
+**Traces:** `docker compose logs openlit --tail 50`
 
 ## Repair Playbook
 
@@ -261,7 +273,9 @@ histogram_quantile(0.95, rate(litellm_custom_ttft_seconds_bucket[5m]))
 | Virtual key 403 | Check key with `/key/info` |
 | Plugin not loaded | Re-run `bunx oh-my-opencode-slim@2.0.4 install` |
 | Fallback not triggering | Set `fallback.enabled: true`, use model arrays |
-| Port conflict | Check `ss -tlnp | grep -E ':4000|:4317|:4318|:9090|:3000'` |
+| Port conflict | Check `ss -tlnp | grep -E ':4000|:4317|:4318|:8123|:3000'` |
+| OpenLit not receiving data | Check `docker compose logs openlit`, verify OTEL_EXPORTER_OTLP_ENDPOINT |
+| ClickHouse down | Check `curl http://127.0.0.1:8123/ping` |
 
 ### Bootstrap Rollback
 
@@ -278,16 +292,15 @@ histogram_quantile(0.95, rate(litellm_custom_ttft_seconds_bucket[5m]))
 
 | Property | Mechanism |
 |---|---|
-| `init_env.sh --auto` non-interactive | Preserves all secrets on re-run (MASTER_KEY, SALT_KEY, DB_PASSWORD, GRAFANA_PASSWORD) — true no-op |
+| `init_env.sh --auto` non-interactive | Preserves all secrets on re-run (MASTER_KEY, SALT_KEY, DB_PASSWORD, OPENLIT_DB_PASSWORD) — true no-op |
 | opencode latest | `curl -fsSL https://opencode.ai/install \| bash` (no pinning — always latest) |
 | docker compose up -d | Idempotent — always run, no-op if services already up |
 | mint-virtual-key.sh | Reuses existing key by alias; mints only if missing or invalid |
 | install.sh configs | Diff-before-write — skip if unchanged |
 | LiteLLM image pinned | `v1.89.3` (no `latest`) |
-| OTel Collector pinned | `0.128.0` |
 | Timeouts consistent | `request_timeout: 600`, `stream_timeout: 60` |
 | Resource limits | All 4 services have memory + CPU limits |
-| Port conflicts detected | `bootstrap.sh` checks 4000/4317/4318/9090/3000 |
+| Port conflicts detected | `bootstrap.sh` checks 4000/4317/4318/8123/9000/3000 |
 | `mint-virtual-key.sh` resilient | 3 retries with backoff; `--max-time 30` |
 | Config substitution safe | `jq --arg` only, never `sed` |
 
@@ -301,10 +314,11 @@ histogram_quantile(0.95, rate(litellm_custom_ttft_seconds_bucket[5m]))
 
 - [ ] `.env` exists with all required variables (no placeholders), `0600` permissions
 - [ ] `litellm_config.yaml` generated with `5 × N` deployments
-- [ ] All 5 Docker services healthy
+- [ ] All 4 Docker services healthy
 - [ ] LiteLLM liveness 200, `unhealthy_count: 0`
 - [ ] Chat completion + streaming succeed
-- [ ] Prometheus target `up`, Grafana 200
+- [ ] OpenLit UI reachable, ClickHouse healthy
+- [ ] OTLP endpoint responding on port 4318
 - [ ] Virtual key minting succeeds
 - [ ] opencode.jsonc: both providers, valid virtual key, 5 models each, chmod 600
 - [ ] oh-my-opencode-slim.json: 4 presets, default LiteLLM-Huawei-MaaS, council configured

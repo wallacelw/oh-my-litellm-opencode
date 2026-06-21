@@ -60,8 +60,18 @@ if [ -n "${LITELLM_MASTER_KEY:-}" ]; then
   KEY_LIST=$(curl -sf -m 10 "$LITELLM_URL/key/list" \
     -H "Authorization: Bearer $LITELLM_MASTER_KEY" 2>/dev/null || true)
   if [ -n "$KEY_LIST" ]; then
-    # /key/list may not exist in all LiteLLM versions; jq failure is non-fatal
-    EXISTING_KEY=$(echo "$KEY_LIST" | jq -r ".keys[] | select(.key_alias == \"$ALIAS\") | .key" 2>/dev/null | head -1 || true)
+    # /key/list returns key IDs; check /key/info for each to find matching alias
+    for KEY_ID in $(echo "$KEY_LIST" | jq -r '.keys[]' 2>/dev/null); do
+      KEY_INFO=$(curl -sf -m 10 "$LITELLM_URL/key/info?key=$KEY_ID" \
+        -H "Authorization: Bearer $LITELLM_MASTER_KEY" 2>/dev/null || true)
+      if [ -n "$KEY_INFO" ]; then
+        FOUND_ALIAS=$(echo "$KEY_INFO" | jq -r '.info.key_alias // empty' 2>/dev/null)
+        if [ "$FOUND_ALIAS" = "$ALIAS" ]; then
+          EXISTING_KEY=$(echo "$KEY_INFO" | jq -r '.info.key_name // empty' 2>/dev/null)
+          break
+        fi
+      fi
+    done
   fi
 fi
 

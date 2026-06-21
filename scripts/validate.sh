@@ -44,8 +44,52 @@ jqc() {
 }
 
 # ── Helper: strip JSONC comments for jq ──
+# Only removes // comments outside of quoted strings
 strip_jsonc() {
-  python3 -c "import sys,re; sys.stdout.write(re.sub(r'//.*?$|/\*.*?\*/', '', sys.stdin.read(), flags=re.S|re.M))" < "$1" 2>/dev/null || cat "$1"
+  python3 -c "
+import sys, re
+text = sys.stdin.read()
+result = []
+in_string = False
+escape = False
+i = 0
+while i < len(text):
+    c = text[i]
+    if escape:
+        result.append(c)
+        escape = False
+        i += 1
+        continue
+    if in_string:
+        result.append(c)
+        if c == '\\\\':
+            escape = True
+        elif c == '\"':
+            in_string = False
+        i += 1
+        continue
+    if c == '\"':
+        in_string = True
+        result.append(c)
+        i += 1
+        continue
+    if c == '/' and i + 1 < len(text):
+        if text[i+1] == '/':
+            # Skip until end of line
+            while i < len(text) and text[i] != '\\n':
+                i += 1
+            continue
+        elif text[i+1] == '*':
+            # Skip until */
+            i += 2
+            while i + 1 < len(text) and not (text[i] == '*' and text[i+1] == '/'):
+                i += 1
+            i += 2
+            continue
+    result.append(c)
+    i += 1
+sys.stdout.write(''.join(result))
+" < "$1" 2>/dev/null || cat "$1"
 }
 
 # ── Resolve project dir ──
@@ -151,21 +195,21 @@ if [ "$OPENCODE_ONLY" = false ]; then
     skip "ClickHouse reachable"
     skip "OTLP endpoint reachable"
   else
-    OPENLIT_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 "$OPENLIT_URL" 2>/dev/null)
+    OPENLIT_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 10 "$OPENLIT_URL" 2>/dev/null || echo "000")
     if [ "$OPENLIT_CODE" = "200" ]; then
       pass "OpenLit UI reachable (HTTP 200)"
     else
       fail "OpenLit UI returned HTTP $OPENLIT_CODE"
     fi
 
-    CH_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 "$CLICKHOUSE_URL/ping" 2>/dev/null)
+    CH_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 10 "$CLICKHOUSE_URL/ping" 2>/dev/null || echo "000")
     if [ "$CH_CODE" = "200" ]; then
       pass "ClickHouse reachable (HTTP 200)"
     else
       fail "ClickHouse returned HTTP $CH_CODE"
     fi
 
-    OTLP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 "http://127.0.0.1:4318/" 2>/dev/null)
+    OTLP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 10 "http://127.0.0.1:4318/" 2>/dev/null || echo "000")
     if [ -n "$OTLP_CODE" ]; then
       pass "OTLP HTTP endpoint reachable on port 4318"
     else

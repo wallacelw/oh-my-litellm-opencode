@@ -203,20 +203,6 @@ fi
 
 mkdir -p "$OPENCODE_DIR"
 
-# Warn if existing config has non-LiteLLM providers
-if [ -f "$OPENCODE_CONFIG" ]; then
-  EXISTING_PROVIDERS=$(jq -r '.provider | keys[]' "$OPENCODE_CONFIG" 2>/dev/null | grep -v '^LiteLLM$' | grep -v '^Huawei-MaaS$' || true)
-  if [ -n "$EXISTING_PROVIDERS" ]; then
-    echo "   WARNING: Existing config has non-LiteLLM/Huawei-MaaS providers: $EXISTING_PROVIDERS"
-    echo "   These will be overwritten. Backing up."
-  fi
-fi
-
-if [ -f "$OPENCODE_CONFIG" ]; then
-  echo "   Backing up existing config."
-  cp "$OPENCODE_CONFIG" "$OPENCODE_CONFIG.bak.$(date +%Y%m%d%H%M%S)"
-fi
-
 # Get Huawei MaaS API key
 HUAWEI_MAAS_API_KEY="${HUAWEI_MAAS_API_KEY:-}"
 if [ -z "$HUAWEI_MAAS_API_KEY" ]; then
@@ -228,27 +214,56 @@ fi
 TEMPLATE="$PROJECT_DIR/assets/config/opencode/opencode.jsonc.example"
 TARGET="$OPENCODE_CONFIG"
 
-jq --arg vk "$VIRTUAL_KEY" --arg mk "${HUAWEI_MAAS_API_KEY:-<HUAWEI_MAAS_API_KEY>}" \
+NEW_CONFIG=$(jq --arg vk "$VIRTUAL_KEY" --arg mk "${HUAWEI_MAAS_API_KEY:-<HUAWEI_MAAS_API_KEY>}" \
   '.provider.LiteLLM.options.apiKey = $vk |
    .provider["Huawei-MaaS"].options.apiKey = $mk' \
-  "$TEMPLATE" > "$TARGET"
+  "$TEMPLATE")
 
-chmod 600 "$TARGET"
-echo "   Written: $TARGET"
+if [ -f "$TARGET" ]; then
+  EXISTING_CONFIG=$(cat "$TARGET")
+  if [ "$NEW_CONFIG" = "$EXISTING_CONFIG" ]; then
+    echo "   Config unchanged — skipping write"
+  else
+    # Warn if existing config has non-LiteLLM providers
+    EXISTING_PROVIDERS=$(jq -r '.provider | keys[]' "$TARGET" 2>/dev/null | grep -v '^LiteLLM$' | grep -v '^Huawei-MaaS$' || true)
+    if [ -n "$EXISTING_PROVIDERS" ]; then
+      echo "   WARNING: Existing config has non-LiteLLM/Huawei-MaaS providers: $EXISTING_PROVIDERS"
+      echo "   These will be overwritten. Backing up."
+    fi
+    cp "$TARGET" "$TARGET.bak.$(date +%Y%m%d%H%M%S)"
+    echo "$NEW_CONFIG" > "$TARGET"
+    chmod 600 "$TARGET"
+    echo "   Updated: $TARGET (backup saved)"
+  fi
+else
+  echo "$NEW_CONFIG" > "$TARGET"
+  chmod 600 "$TARGET"
+  echo "   Written: $TARGET"
+fi
 echo ""
 
 # ── 6. Write oh-my-opencode-slim.json ──
 echo "6. Writing oh-my-opencode-slim config..."
 SLIM_CONFIG="$OPENCODE_DIR/oh-my-opencode-slim.json"
+SLIM_TEMPLATE="$PROJECT_DIR/assets/config/opencode/oh-my-opencode-slim.json.example"
+
+NEW_SLIM=$(cat "$SLIM_TEMPLATE")
 
 if [ -f "$SLIM_CONFIG" ]; then
-  echo "   Backing up existing config."
-  cp "$SLIM_CONFIG" "$SLIM_CONFIG.bak.$(date +%Y%m%d%H%M%S)"
+  EXISTING_SLIM=$(cat "$SLIM_CONFIG")
+  if [ "$NEW_SLIM" = "$EXISTING_SLIM" ]; then
+    echo "   Config unchanged — skipping write"
+  else
+    cp "$SLIM_CONFIG" "$SLIM_CONFIG.bak.$(date +%Y%m%d%H%M%S)"
+    echo "$NEW_SLIM" > "$SLIM_CONFIG"
+    chmod 600 "$SLIM_CONFIG"
+    echo "   Updated: $SLIM_CONFIG (backup saved)"
+  fi
+else
+  echo "$NEW_SLIM" > "$SLIM_CONFIG"
+  chmod 600 "$SLIM_CONFIG"
+  echo "   Written: $SLIM_CONFIG"
 fi
-
-cp "$PROJECT_DIR/assets/config/opencode/oh-my-opencode-slim.json.example" "$SLIM_CONFIG"
-chmod 600 "$SLIM_CONFIG"
-echo "   Written: $SLIM_CONFIG"
 echo ""
 
 # ── 7. Summary ──

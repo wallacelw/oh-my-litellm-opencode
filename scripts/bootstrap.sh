@@ -184,13 +184,10 @@ export HUAWEI_MAAS_API_KEY="$MAAS_KEY"
 [ "$PREREQ_OK" = false ] && { echo ""; echo "ERROR: Prerequisites missing. Install them and re-run."; exit 1; }
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Step 3: Deploy LiteLLM — 3 scenarios
+# Step 3: Deploy LiteLLM
 # ──────────────────────────────────────────────────────────────────────────────
-# 1. LiteLLM running       → resolve master key, skip deploy
-# 2. LiteLLM deployed but offline → docker compose up -d, resolve master key
-# 3. No LiteLLM            → init_env.sh, docker compose up -d
-#
-# All within this single repo — no monorepo extraction needed.
+# docker compose up -d is idempotent — no-op if services already running.
+# Just ensure .env exists first, then always up.
 # ──────────────────────────────────────────────────────────────────────────────
 STEP_NAME="Deploy LiteLLM"
 print_step "3" "Deploy LiteLLM"
@@ -202,63 +199,33 @@ for port in 4000 9090 3000; do
   fi
 done
 
-# Do NOT clear LITELLM_MASTER_KEY — it may already be set from the environment.
-# The resolve_master_key function checks env first, then .master-key, then .env.
-
-# Helper: check if LiteLLM Docker container exists (running or stopped)
-litellm_container_exists() {
-  docker ps -a --filter "name=litellm_proxy" --format '{{.Names}}' 2>/dev/null | grep -q 'litellm_proxy'
-}
-
-# Helper: check if LiteLLM deployment files exist
-litellm_files_exist() {
-  [ -f "$PROJECT_DIR/docker-compose.yml" ] && [ -f "$PROJECT_DIR/.env" ]
-}
-
-if curl -sf -m "$CURL_TIMEOUT" "$LITELLM_URL/health/liveliness" &>/dev/null; then
-  # ── Scenario 1: LiteLLM already running ──
-  echo "  LiteLLM proxy already running at $LITELLM_URL — skipping deployment."
-  if [ "$DRY_RUN" = true ]; then
-    LITELLM_MASTER_KEY="<LITELLM_MASTER_KEY>"
-  else
-    try_resolve_master_key || prompt_master_key
-  fi
-
-elif litellm_container_exists || litellm_files_exist; then
-  # ── Deployed but not running ──
-  echo "  Starting existing LiteLLM deployment..."
-  if [ "$DRY_RUN" = true ]; then
-    echo "  Would run: docker compose up -d"
-    LITELLM_MASTER_KEY="<LITELLM_MASTER_KEY>"
-  else
-    docker compose -f "$PROJECT_DIR/docker-compose.yml" up -d
-    wait_for_litellm
-    try_resolve_master_key || prompt_master_key
-  fi
-
-else
-  # ── Scenario 3: Fresh deploy ──
+# ── 3a. Ensure .env exists ──
+if [ ! -f "$PROJECT_DIR/.env" ]; then
   if [ "$DRY_RUN" = true ]; then
     echo "  Would run: scripts/init_env.sh --auto"
-    echo "  Would run: docker compose up -d"
-    LITELLM_MASTER_KEY="<LITELLM_MASTER_KEY>"
   else
-    echo "  No LiteLLM deployment found. Initializing..."
-
-    # Configure .env via init_env.sh
-    if [ ! -f "$PROJECT_DIR/.env" ]; then
-      echo "  Running init_env.sh --auto ..."
-      (cd "$PROJECT_DIR" && ./scripts/init_env.sh --auto)
-    else
-      echo "  .env already exists — skipping init_env.sh"
-    fi
-
-    # Start Docker Compose
-    echo "  Starting Docker Compose..."
-    docker compose -f "$PROJECT_DIR/docker-compose.yml" up -d
-    wait_for_litellm
-    try_resolve_master_key || prompt_master_key
+    echo "  .env not found. Running init_env.sh --auto ..."
+    (cd "$PROJECT_DIR" && ./scripts/init_env.sh --auto)
   fi
+else
+  echo "  .env exists — skipping init_env.sh"
+fi
+
+# ── 3b. Start Docker Compose (idempotent) ──
+if [ "$DRY_RUN" = true ]; then
+  echo "  Would run: docker compose up -d"
+  LITELLM_MASTER_KEY="<LITELLM_MASTER_KEY>"
+else
+  echo "  Starting Docker Compose (idempotent — no-op if already running)..."
+  docker compose -f "$PROJECT_DIR/docker-compose.yml" up -d
+  wait_for_litellm
+fi
+
+# ── 3c. Resolve master key ──
+if [ "$DRY_RUN" = true ]; then
+  LITELLM_MASTER_KEY="<LITELLM_MASTER_KEY>"
+else
+  try_resolve_master_key || prompt_master_key
 fi
 
 export LITELLM_MASTER_KEY="${LITELLM_MASTER_KEY:-}"

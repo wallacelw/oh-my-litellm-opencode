@@ -269,8 +269,11 @@ histogram_quantile(0.95, rate(litellm_custom_ttft_seconds_bucket[5m]))
 
 | Property | Mechanism |
 |---|---|
-| `init_env.sh --auto` non-interactive | Reads HUAWEI_MAAS_API_KEY from env, auto-generates rest, never prompts |
+| `init_env.sh --auto` non-interactive | Preserves all secrets on re-run (MASTER_KEY, SALT_KEY, DB_PASSWORD, GRAFANA_PASSWORD) — true no-op |
 | opencode latest | `curl -fsSL https://opencode.ai/install \| bash` (no pinning — always latest) |
+| docker compose up -d | Idempotent — always run, no-op if services already up |
+| mint-virtual-key.sh | Reuses existing key by alias; mints only if missing or invalid |
+| install.sh configs | Diff-before-write — skip if unchanged |
 | LiteLLM image pinned | `v1.83.14-stable.patch.3` (no `latest`) |
 | Timeouts consistent | `request_timeout: 600`, `stream_timeout: 60` |
 | Resource limits | All 4 services have memory + CPU limits |

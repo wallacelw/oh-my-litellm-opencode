@@ -79,10 +79,13 @@ fi
 # ── Check if .env already exists ─────────────────────────────────
 if [[ -f "$ENV_FILE" ]]; then
   if [[ "$MODE" == "auto" ]]; then
-    # In auto mode, preserve LITELLM_SALT_KEY from existing .env to avoid
-    # invalidating existing virtual keys. Overwrite everything else.
+    # In auto mode, preserve immutable secrets from existing .env to avoid
+    # breaking existing deployments (LiteLLM started with old MASTER_KEY, etc.)
+    EXISTING_MASTER_KEY="$(grep -oP '^LITELLM_MASTER_KEY="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
     EXISTING_SALT_KEY="$(grep -oP '^LITELLM_SALT_KEY="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
-    echo "WARNING: .env already exists. Overwriting in auto mode (preserving LITELLM_SALT_KEY if set)."
+    EXISTING_DB_PASSWORD="$(grep -oP '^DB_PASSWORD="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
+    EXISTING_GRAFANA_PASSWORD="$(grep -oP '^GRAFANA_PASSWORD="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
+    echo "WARNING: .env already exists. Overwriting in auto mode (preserving secrets if set)."
   else
     echo "WARNING: .env already exists."
     read -r -p "  Overwrite? [y/N]: " overwrite < /dev/tty
@@ -100,12 +103,29 @@ DEFAULT_GRAFANA_PASSWORD=$(generate_secret)
 DEFAULT_MAAS_BASE="https://api-ap-southeast-1.modelarts-maas.com/openai/v1"
 DEFAULT_RETENTION="15d"
 
-# ── Idempotency: preserve SALT_KEY in auto mode ──────────────────
-# Changing SALT_KEY invalidates all existing virtual keys.
-# In auto mode with an existing .env, reuse the old SALT_KEY.
-if [[ "$MODE" == "auto" && -n "${EXISTING_SALT_KEY:-}" ]]; then
-  DEFAULT_SALT_KEY="$EXISTING_SALT_KEY"
-  echo "  Reusing existing LITELLM_SALT_KEY (idempotent — preserves virtual keys)"
+# ── Idempotency: preserve secrets in auto mode ────────────────────
+# Changing these breaks existing deployments:
+#   MASTER_KEY → admin access to LiteLLM
+#   SALT_KEY   → invalidates all virtual keys
+#   DB_PASSWORD → PostgreSQL auth
+#   GRAFANA_PASSWORD → Grafana login
+if [[ "$MODE" == "auto" ]]; then
+  if [[ -n "${EXISTING_MASTER_KEY:-}" ]]; then
+    DEFAULT_MASTER_KEY="$EXISTING_MASTER_KEY"
+    echo "  Reusing existing LITELLM_MASTER_KEY (idempotent)"
+  fi
+  if [[ -n "${EXISTING_SALT_KEY:-}" ]]; then
+    DEFAULT_SALT_KEY="$EXISTING_SALT_KEY"
+    echo "  Reusing existing LITELLM_SALT_KEY (idempotent — preserves virtual keys)"
+  fi
+  if [[ -n "${EXISTING_DB_PASSWORD:-}" ]]; then
+    DEFAULT_DB_PASSWORD="$EXISTING_DB_PASSWORD"
+    echo "  Reusing existing DB_PASSWORD (idempotent)"
+  fi
+  if [[ -n "${EXISTING_GRAFANA_PASSWORD:-}" ]]; then
+    DEFAULT_GRAFANA_PASSWORD="$EXISTING_GRAFANA_PASSWORD"
+    echo "  Reusing existing GRAFANA_PASSWORD (idempotent)"
+  fi
 fi
 
 # ── Collect values ────────────────────────────────────────────────

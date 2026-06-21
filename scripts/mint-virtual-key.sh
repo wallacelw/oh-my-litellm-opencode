@@ -51,6 +51,37 @@ fi
 JQ_FILTER+='}'
 BODY=$(jq -n "${JQ_ARGS[@]}" "$JQ_FILTER")
 
+# ── Try to reuse existing key with same alias ──
+LITELLM_URL="http://127.0.0.1:4000"
+EXISTING_KEY=""
+if [ -n "${LITELLM_MASTER_KEY:-}" ]; then
+  KEY_LIST=$(curl -sf -m 10 "$LITELLM_URL/key/list" \
+    -H "Authorization: Bearer $LITELLM_MASTER_KEY" 2>/dev/null || true)
+  if [ -n "$KEY_LIST" ]; then
+    EXISTING_KEY=$(echo "$KEY_LIST" | jq -r ".keys[] | select(.key_alias == \"$ALIAS\") | .key" 2>/dev/null | head -1 || true)
+  fi
+fi
+
+if [ -n "$EXISTING_KEY" ] && [[ "$EXISTING_KEY" == sk-* ]]; then
+  # Validate the existing key still works
+  if curl -sf -m 10 "$LITELLM_URL/v1/chat/completions" \
+     -H "Authorization: Bearer $EXISTING_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{"model":"glm-5.1","messages":[{"role":"user","content":"ok"}],"max_tokens":1}' &>/dev/null; then
+    echo "Existing virtual key with alias '$ALIAS' is valid. Reusing:"
+    echo "  Key:    ${EXISTING_KEY:0:8}...${EXISTING_KEY: -4}"
+    echo ""
+    echo "To use this key, set it in opencode.jsonc:"
+    echo "  .provider.LiteLLM.options.apiKey = \"$EXISTING_KEY\""
+    echo ""
+    echo "Or re-run install.sh:"
+    echo "  ./install.sh --virtual-key=$EXISTING_KEY"
+    exit 0
+  else
+    echo "Existing key with alias '$ALIAS' is invalid or expired. Minting new key."
+  fi
+fi
+
 # ── Mint the key ──
 echo "Minting virtual key from LiteLLM..."
 echo "  Alias:   $ALIAS"

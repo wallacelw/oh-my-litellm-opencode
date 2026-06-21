@@ -15,7 +15,7 @@ set -euo pipefail
 #
 # Usage:
 #   ./bootstrap.sh                                    # interactive — prompts for keys
-#   ./bootstrap.sh --maas-key=KEY                     # non-interactive MaaS key
+#   ./bootstrap.sh --maas-key=KEY                     # non-interactive (agent mode)
 #   ./bootstrap.sh --virtual-key=sk-...               # use existing virtual key (skip minting)
 #   ./bootstrap.sh --dry-run                          # preview changes
 # ──────────────────────────────────────────────────────────────────────────────
@@ -28,7 +28,6 @@ CURL_TIMEOUT=15
 
 # ── Defaults ──
 MAAS_KEY=""
-MAAS_EXTRA_KEYS=""
 VIRTUAL_KEY=""
 DRY_RUN=false
 
@@ -36,12 +35,11 @@ DRY_RUN=false
 for arg in "$@"; do
   case "$arg" in
     --maas-key=*)       MAAS_KEY="${arg#--maas-key=}" ;;
-    --maas-keys=*)      MAAS_EXTRA_KEYS="${arg#--maas-keys=}" ;;
     --virtual-key=*)    VIRTUAL_KEY="${arg#--virtual-key=}" ;;
     --dry-run)          DRY_RUN=true ;;
     *)
       echo "ERROR: Unknown argument: $arg"
-      echo "Usage: $0 [--maas-key=KEY] [--maas-keys=key2,key3,...] [--virtual-key=sk-...] [--dry-run]"
+      echo "Usage: $0 [--maas-key=KEY] [--virtual-key=sk-...] [--dry-run]"
       exit 1
       ;;
   esac
@@ -241,7 +239,7 @@ elif litellm_container_exists || litellm_files_exist; then
 else
   # ── Scenario 3: Fresh deploy ──
   if [ "$DRY_RUN" = true ]; then
-    echo "  Would run: scripts/init_env.sh --ci"
+    echo "  Would run: scripts/init_env.sh --auto"
     echo "  Would run: docker compose up -d"
     LITELLM_MASTER_KEY="<LITELLM_MASTER_KEY>"
   else
@@ -249,9 +247,8 @@ else
 
     # Configure .env via init_env.sh
     if [ ! -f "$PROJECT_DIR/.env" ]; then
-      echo "  Running init_env.sh --ci ..."
-      export HUAWEI_MAAS_EXTRA_API_KEYS="${MAAS_EXTRA_KEYS:-}"
-      (cd "$PROJECT_DIR" && ./scripts/init_env.sh --ci)
+      echo "  Running init_env.sh --auto ..."
+      (cd "$PROJECT_DIR" && ./scripts/init_env.sh --auto)
     else
       echo "  .env already exists — skipping init_env.sh"
     fi

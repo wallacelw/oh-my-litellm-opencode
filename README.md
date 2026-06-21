@@ -23,10 +23,11 @@ docker compose up -d
 ./scripts/install.sh
 ```
 
-### CI/CD
+### Agent install (non-interactive)
 
 ```bash
-./scripts/bootstrap.sh --maas-key="$MAAS_KEY" --maas-keys="key2,key3" --virtual-key="sk-..."
+export HUAWEI_MAAS_API_KEY="your-key"
+./scripts/bootstrap.sh --maas-key="$HUAWEI_MAAS_API_KEY"
 ```
 
 ## Presets
@@ -59,6 +60,5 @@ Switch: `/preset LiteLLM-Huawei-MaaS-Lite`
 | `HUAWEI_MAAS_API_KEY` | Yes | Main MaaS API key (ap-southeast-1) |
 | `HUAWEI_MAAS_API_BASE` | Yes | `https://api-ap-southeast-1.modelarts-maas.com/openai/v1` |
 | `HUAWEI_MAAS_API_KEY_COUNT` | Auto | Number of MaaS keys (set by init_env.sh) |
-| `HUAWEI_MAAS_EXTRA_API_KEYS` | No | Comma-separated extra keys for CI mode |
 | `PROMETHEUS_RETENTION` | No | `15d` |
 | `GRAFANA_PASSWORD` | No | `admin` |

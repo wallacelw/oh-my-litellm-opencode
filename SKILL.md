@@ -28,7 +28,7 @@ Deploy LiteLLM proxy → bootstrap opencode + oh-my-opencode-slim → mint virtu
 - **Model IDs** — verify in MaaS console, do not guess (case-sensitive).
 - **LITELLM_SALT_KEY** — immutable after first virtual key.
 
-All collected by `./scripts/init_env.sh` (interactive / `--auto` / `--ci`).
+All collected by `./scripts/init_env.sh` (interactive or `--auto`).
 
 ## Prerequisites
 
@@ -70,33 +70,38 @@ Startup: PostgreSQL → LiteLLM → Prometheus → Grafana (all healthcheck-gate
 
 ## Deployment Workflow
 
+**For AI agents (non-interactive):**
 ```bash
-# 1. Clone
 git clone https://github.com/wallacelw/oh-my-litellm-opencode /home/oh-my-litellm-opencode
 cd /home/oh-my-litellm-opencode
-
-# 2. Configure .env (choose one)
-./scripts/init_env.sh              # interactive
-./scripts/init_env.sh --auto       # agent mode
-./scripts/init_env.sh --ci         # CI mode (all from env vars)
-
-# 3. Generate config + start
-./scripts/generate_config.sh
-docker compose up -d
-
-# 4. Validate
-./scripts/validate.sh
+export HUAWEI_MAAS_API_KEY="<your-key>"
+./scripts/bootstrap.sh --maas-key="$HUAWEI_MAAS_API_KEY"
 ```
 
-Or single command: `./scripts/bootstrap.sh`
+That's it. `bootstrap.sh --maas-key=KEY` is fully non-interactive — it uses `init_env.sh --auto` internally, auto-generates all secrets, starts Docker, mints a virtual key, writes configs, and validates.
+
+**For humans (interactive):**
+```bash
+git clone https://github.com/wallacelw/oh-my-litellm-opencode /home/oh-my-litellm-opencode
+cd /home/oh-my-litellm-opencode
+./scripts/bootstrap.sh          # prompts for MaaS key + any missing values
+```
+
+**Step-by-step (if not using bootstrap.sh):**
+```bash
+./scripts/init_env.sh --auto    # agent mode: reads HUAWEI_MAAS_API_KEY from env
+./scripts/generate_config.sh
+docker compose up -d
+./scripts/install.sh            # reads LITELLM_MASTER_KEY from .env
+./scripts/validate.sh
+```
 
 ### init_env.sh modes
 
 | Mode | Secrets | MaaS keys | Use case |
 |------|---------|-----------|----------|
-| interactive | Prompt each | Prompt each | First-time, manual |
-| `--auto` | Auto-generate | Prompt only | Agent-guided |
-| `--ci` | All from env vars | `HUAWEI_MAAS_EXTRA_API_KEYS` | CI/CD |
+| interactive | Prompt each | Prompt each | Human, first-time |
+| `--auto` | Auto-generate | From env var | AI agent, non-interactive |
 
 ### Master Key Resolution (bootstrap.sh)
 
@@ -111,7 +116,6 @@ With N MaaS API keys, each model has N deployments. LiteLLM load-balances across
 | `HUAWEI_MAAS_API_KEY` | Manual / init_env.sh | Main key (mandatory) |
 | `HUAWEI_MAAS_API_KEY_COUNT` | init_env.sh | Total keys (1 + extra) |
 | `HUAWEI_MAAS_API_KEY_N` | init_env.sh | Indexed keys (_0, _1, ...) |
-| `HUAWEI_MAAS_EXTRA_API_KEYS` | Manual (CI) | Comma-separated extra keys |
 
 **Add a key:** Add `HUAWEI_MAAS_API_KEY_N=<key>` to `.env`, increment COUNT, `generate_config.sh`, `docker compose restart litellm`.
 
@@ -265,8 +269,7 @@ histogram_quantile(0.95, rate(litellm_custom_ttft_seconds_bucket[5m]))
 
 | Property | Mechanism |
 |---|---|
-| `init_env.sh --ci` idempotent | Reuses existing `LITELLM_SALT_KEY` from `.env` |
-| `init_env.sh --auto` non-interactive | Overwrites `.env` without prompting |
+| `init_env.sh --auto` non-interactive | Reads HUAWEI_MAAS_API_KEY from env, auto-generates rest, never prompts |
 | opencode pinned | `opencode@0.4.6`, `oh-my-opencode-slim@2.0.4` |
 | LiteLLM image pinned | `v1.83.14-stable.patch.3` (no `latest`) |
 | Timeouts consistent | `request_timeout: 600`, `stream_timeout: 60` |

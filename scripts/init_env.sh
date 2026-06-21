@@ -1,17 +1,15 @@
 #!/usr/bin/env bash
 # init_env.sh — Initialize .env for deployment
 #
-# Three modes:
+# Two modes:
 #   interactive  (default)  — prompt for each secret, offer generated defaults
-#   --auto                  — generate all secrets, prompt only for HUAWEI_MAAS_API_KEY + extras
-#   --ci                   — generate all secrets non-interactively;
-#                            requires HUAWEI_MAAS_API_KEY env var pre-set
-#                            optional HUAWEI_MAAS_EXTRA_API_KEYS (comma-separated)
+#   --auto                  — non-interactive agent mode; reads HUAWEI_MAAS_API_KEY
+#                            from env var, auto-generates all other secrets,
+#                            never prompts. Errors if HUAWEI_MAAS_API_KEY not set.
 #
 # Usage:
 #   ./scripts/init_env.sh              # interactive — you choose every value
-#   ./scripts/init_env.sh --auto       # agent mode — auto-generate, prompt for MaaS keys only
-#   ./scripts/init_env.sh --ci         # CI mode — all from env vars, no prompts
+#   ./scripts/init_env.sh --auto       # agent mode — all from env vars, no prompts
 
 set -euo pipefail
 
@@ -24,9 +22,8 @@ ENV_FILE="$PROJECT_ROOT/.env"
 # ── Parse mode ────────────────────────────────────────────────────
 MODE="interactive"
 if [[ "${1:-}" == "--auto" ]]; then MODE="auto"
-elif [[ "${1:-}" == "--ci" ]]; then MODE="ci"
 elif [[ -n "${1:-}" ]]; then
-  echo "Usage: $0 [--auto|--ci]" >&2; exit 1
+  echo "Usage: $0 [--auto]" >&2; exit 1
 fi
 
 # ── Helpers ───────────────────────────────────────────────────────
@@ -35,13 +32,15 @@ generate_master_key() { echo "sk-$(generate_secret)"; }
 
 prompt_value() {
   local varname="$1" description="$2" default="$3" is_secret="${4:-yes}"
-  if [[ "$MODE" == "ci" ]]; then
-    # CI mode: use env var or default, never prompt
+
+  if [[ "$MODE" == "auto" ]]; then
+    # Auto mode: use env var or default, never prompt
     local val="${!varname:-$default}"
     echo "$val"
     return
   fi
 
+  # Interactive: prompt the user
   local display_default
   if [[ "$is_secret" == "yes" && ${#default} -gt 8 ]]; then
     display_default="${default:0:6}...${default: -4}"
@@ -49,13 +48,6 @@ prompt_value() {
     display_default="$default"
   fi
 
-  if [[ "$MODE" == "auto" && "$varname" != "HUAWEI_MAAS_API_KEY" ]]; then
-    # Auto mode: accept default for everything except MaaS key
-    echo "$default"
-    return
-  fi
-
-  # Interactive or auto+MaaS key: prompt the user
   local prompt_text
   if [[ -n "$default" ]]; then
     prompt_text="  $description [$display_default]: "
@@ -86,13 +78,11 @@ fi
 
 # ── Check if .env already exists ─────────────────────────────────
 if [[ -f "$ENV_FILE" ]]; then
-  if [[ "$MODE" == "ci" ]]; then
-    # In CI mode, preserve LITELLM_SALT_KEY from existing .env to avoid
+  if [[ "$MODE" == "auto" ]]; then
+    # In auto mode, preserve LITELLM_SALT_KEY from existing .env to avoid
     # invalidating existing virtual keys. Overwrite everything else.
     EXISTING_SALT_KEY="$(grep -oP '^LITELLM_SALT_KEY="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
-    echo "WARNING: .env already exists. Overwriting in CI mode (preserving LITELLM_SALT_KEY if set)."
-  elif [[ "$MODE" == "auto" ]]; then
-    echo "WARNING: .env already exists. Overwriting in auto mode."
+    echo "WARNING: .env already exists. Overwriting in auto mode (preserving LITELLM_SALT_KEY if set)."
   else
     echo "WARNING: .env already exists."
     read -r -p "  Overwrite? [y/N]: " overwrite < /dev/tty
@@ -110,10 +100,10 @@ DEFAULT_GRAFANA_PASSWORD=$(generate_secret)
 DEFAULT_MAAS_BASE="https://api-ap-southeast-1.modelarts-maas.com/openai/v1"
 DEFAULT_RETENTION="15d"
 
-# ── Idempotency: preserve SALT_KEY in CI mode ────────────────────
+# ── Idempotency: preserve SALT_KEY in auto mode ──────────────────
 # Changing SALT_KEY invalidates all existing virtual keys.
-# In CI mode with an existing .env, reuse the old SALT_KEY.
-if [[ "$MODE" == "ci" && -n "${EXISTING_SALT_KEY:-}" ]]; then
+# In auto mode with an existing .env, reuse the old SALT_KEY.
+if [[ "$MODE" == "auto" && -n "${EXISTING_SALT_KEY:-}" ]]; then
   DEFAULT_SALT_KEY="$EXISTING_SALT_KEY"
   echo "  Reusing existing LITELLM_SALT_KEY (idempotent — preserves virtual keys)"
 fi
@@ -130,27 +120,17 @@ MAAS_API_BASE=$(prompt_value "HUAWEI_MAAS_API_BASE" "HUAWEI_MAAS_API_BASE (MaaS 
 RETENTION=$(prompt_value "PROMETHEUS_RETENTION" "PROMETHEUS_RETENTION (TSDB retention)" "$DEFAULT_RETENTION" "no")
 GRAFANA_PASSWORD=$(prompt_value "GRAFANA_PASSWORD" "GRAFANA_PASSWORD (Grafana admin)" "$DEFAULT_GRAFANA_PASSWORD" "yes")
 
-# ── Collect additional MaaS API keys ─────────────────────────────
+# ── Collect additional MaaS API keys (interactive only) ───────────
 EXTRA_KEYS=()
-if [[ "$MODE" == "ci" ]]; then
-  # CI mode: read from HUAWEI_MAAS_EXTRA_API_KEYS (comma-separated)
-  if [[ -n "${HUAWEI_MAAS_EXTRA_API_KEYS:-}" ]]; then
-    IFS=',' read -ra EXTRA_KEYS <<< "$HUAWEI_MAAS_EXTRA_API_KEYS"
-  fi
-else
-  # Interactive / auto: read comma-separated extra keys
-  if [[ "$MODE" == "auto" ]]; then
-    EXTRA_KEYS=()  # auto mode: no extra keys by default
+if [[ "$MODE" == "interactive" ]]; then
+  echo "  Enter additional MaaS API keys (comma-separated, or press Enter for none):"
+  if [[ -t 0 ]]; then
+    read -r extra_input < /dev/tty
   else
-    echo "  Enter additional MaaS API keys (comma-separated, or press Enter for none):"
-    if [[ -t 0 ]]; then
-      read -r extra_input < /dev/tty
-    else
-      read -r extra_input
-    fi
-    if [[ -n "${extra_input:-}" ]]; then
-      IFS=',' read -ra EXTRA_KEYS <<< "$extra_input"
-    fi
+    read -r extra_input
+  fi
+  if [[ -n "${extra_input:-}" ]]; then
+    IFS=',' read -ra EXTRA_KEYS <<< "$extra_input"
   fi
 fi
 
@@ -255,7 +235,7 @@ echo "    HUAWEI_MAAS_API_BASE= $MAAS_API_BASE"
 echo "    PROMETHEUS_RETENTION= $RETENTION"
 echo "    GRAFANA_PASSWORD    = ${GRAFANA_PASSWORD:0:6}...${GRAFANA_PASSWORD: -4}"
 echo ""
-  echo "  Next steps:"
-  echo "    docker compose up -d"
-  echo "    ./scripts/validate_litellm.sh"
+echo "  Next steps:"
+echo "    docker compose up -d"
+echo "    ./scripts/validate_litellm.sh"
 echo "══════════════════════════════════════════════════════"

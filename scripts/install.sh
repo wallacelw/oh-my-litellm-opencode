@@ -21,7 +21,7 @@ OPENCODE_DIR="$HOME/.config/opencode"
 OPENCODE_CONFIG="$OPENCODE_DIR/opencode.jsonc"
 
 # ── Constants ──
-SLIM_VERSION="1.1.1"
+SLIM_VERSION="2.0.4"
 OPENCODE_VERSION="0.4.6"  # pinned for determinism; update manually when upgrading
 CURL_TIMEOUT=15
 

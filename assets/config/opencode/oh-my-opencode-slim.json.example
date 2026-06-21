@@ -1,78 +1,81 @@
 {
-  "$schema": "https://unpkg.com/oh-my-opencode-slim@latest/oh-my-opencode-slim.schema.json",
+  "$schema": "https://unpkg.com/oh-my-opencode-slim@2.0.4/oh-my-opencode-slim.schema.json",
   "preset": "LiteLLM-Huawei-MaaS",
   "disabled_agents": ["observer"],
+  "disabled_tools": [],
+  "disabled_skills": [],
   "presets": {
     "LiteLLM-Huawei-MaaS": {
       "orchestrator": { "model": "LiteLLM/openai/glm-5.1", "variant": "high", "skills": ["*"], "mcps": ["*", "!context7"] },
-      "oracle":       { "model": "LiteLLM/openai/deepseek-v4-pro", "variant": "max", "skills": ["simplify"], "mcps": [] },
-      "council":      { "model": "LiteLLM/openai/deepseek-v4-pro", "variant": "high", "skills": [], "mcps": [] },
+      "oracle":       { "model": ["LiteLLM/openai/deepseek-v4-pro", "LiteLLM/openai/glm-5.1"], "variant": "max", "skills": ["simplify"], "mcps": [] },
+      "council":      { "model": ["LiteLLM/openai/deepseek-v4-pro", "LiteLLM/openai/glm-5.1"], "variant": "high", "skills": [], "mcps": [] },
       "librarian":    { "model": "LiteLLM/openai/deepseek-v3.2", "variant": "low", "skills": [], "mcps": ["websearch", "context7", "grep_app"] },
-      "explorer":     { "model": "LiteLLM/openai/deepseek-v4-flash", "variant": "low", "skills": [], "mcps": [] },
+      "explorer":     { "model": ["LiteLLM/openai/deepseek-v4-flash", "LiteLLM/openai/deepseek-v3.2"], "variant": "low", "skills": [], "mcps": [] },
       "designer":     { "model": "LiteLLM/openai/glm-5", "variant": "medium", "skills": [], "mcps": [] },
-      "fixer":        { "model": "LiteLLM/openai/deepseek-v4-flash", "variant": "high", "skills": [], "mcps": [] }
+      "fixer":        { "model": ["LiteLLM/openai/deepseek-v4-flash", "LiteLLM/openai/glm-5"], "variant": "high", "skills": [], "mcps": [] }
     },
     "LiteLLM-Huawei-MaaS-Lite": {
       "orchestrator": { "model": "LiteLLM/openai/glm-5.1", "variant": "high", "skills": ["*"], "mcps": ["*", "!context7"] },
-      "oracle":       { "model": "LiteLLM/openai/glm-5.1", "variant": "high", "skills": ["simplify"], "mcps": [] },
-      "council":      { "model": "LiteLLM/openai/glm-5.1", "variant": "high", "skills": [], "mcps": [] },
+      "oracle":       { "model": ["LiteLLM/openai/glm-5.1", "LiteLLM/openai/deepseek-v3.2"], "variant": "high", "skills": ["simplify"], "mcps": [] },
+      "council":      { "model": ["LiteLLM/openai/glm-5.1", "LiteLLM/openai/deepseek-v3.2"], "variant": "high", "skills": [], "mcps": [] },
       "librarian":    { "model": "LiteLLM/openai/deepseek-v3.2", "variant": "low", "skills": [], "mcps": ["websearch", "context7", "grep_app"] },
       "explorer":     { "model": "LiteLLM/openai/deepseek-v3.2", "variant": "medium", "skills": [], "mcps": [] },
       "designer":     { "model": "LiteLLM/openai/glm-5", "variant": "medium", "skills": [], "mcps": [] },
-      "fixer":        { "model": "LiteLLM/openai/glm-5", "variant": "high", "skills": [], "mcps": [] }
+      "fixer":        { "model": ["LiteLLM/openai/glm-5", "LiteLLM/openai/deepseek-v3.2"], "variant": "high", "skills": [], "mcps": [] }
     },
     "Huawei-MaaS": {
       "orchestrator": { "model": "Huawei-MaaS/glm-5.1", "variant": "high", "skills": ["*"], "mcps": ["*", "!context7"] },
-      "oracle":       { "model": "Huawei-MaaS/deepseek-v4-pro", "variant": "max", "skills": ["simplify"], "mcps": [] },
-      "council":      { "model": "Huawei-MaaS/deepseek-v4-pro", "variant": "high", "skills": [], "mcps": [] },
+      "oracle":       { "model": ["Huawei-MaaS/deepseek-v4-pro", "Huawei-MaaS/glm-5.1"], "variant": "max", "skills": ["simplify"], "mcps": [] },
+      "council":      { "model": ["Huawei-MaaS/deepseek-v4-pro", "Huawei-MaaS/glm-5.1"], "variant": "high", "skills": [], "mcps": [] },
       "librarian":    { "model": "Huawei-MaaS/deepseek-v3.2", "variant": "low", "skills": [], "mcps": ["websearch", "context7", "grep_app"] },
-      "explorer":     { "model": "Huawei-MaaS/deepseek-v4-flash", "variant": "low", "skills": [], "mcps": [] },
+      "explorer":     { "model": ["Huawei-MaaS/deepseek-v4-flash", "Huawei-MaaS/deepseek-v3.2"], "variant": "low", "skills": [], "mcps": [] },
       "designer":     { "model": "Huawei-MaaS/glm-5", "variant": "medium", "skills": [], "mcps": [] },
-      "fixer":        { "model": "Huawei-MaaS/deepseek-v4-flash", "variant": "high", "skills": [], "mcps": [] }
+      "fixer":        { "model": ["Huawei-MaaS/deepseek-v4-flash", "Huawei-MaaS/glm-5"], "variant": "high", "skills": [], "mcps": [] }
     },
     "Huawei-MaaS-Lite": {
       "orchestrator": { "model": "Huawei-MaaS/glm-5.1", "variant": "high", "skills": ["*"], "mcps": ["*", "!context7"] },
-      "oracle":       { "model": "Huawei-MaaS/glm-5.1", "variant": "high", "skills": ["simplify"], "mcps": [] },
-      "council":      { "model": "Huawei-MaaS/glm-5.1", "variant": "high", "skills": [], "mcps": [] },
+      "oracle":       { "model": ["Huawei-MaaS/glm-5.1", "Huawei-MaaS/deepseek-v3.2"], "variant": "high", "skills": ["simplify"], "mcps": [] },
+      "council":      { "model": ["Huawei-MaaS/glm-5.1", "Huawei-MaaS/deepseek-v3.2"], "variant": "high", "skills": [], "mcps": [] },
       "librarian":    { "model": "Huawei-MaaS/deepseek-v3.2", "variant": "low", "skills": [], "mcps": ["websearch", "context7", "grep_app"] },
       "explorer":     { "model": "Huawei-MaaS/deepseek-v3.2", "variant": "medium", "skills": [], "mcps": [] },
       "designer":     { "model": "Huawei-MaaS/glm-5", "variant": "medium", "skills": [], "mcps": [] },
-      "fixer":        { "model": "Huawei-MaaS/glm-5", "variant": "high", "skills": [], "mcps": [] }
+      "fixer":        { "model": ["Huawei-MaaS/glm-5", "Huawei-MaaS/deepseek-v3.2"], "variant": "high", "skills": [], "mcps": [] }
     }
   },
   "fallback": {
     "enabled": true,
     "timeoutMs": 15000,
     "retryDelayMs": 500,
-    "chains": {
-      "oracle": ["LiteLLM/openai/deepseek-v4-pro", "LiteLLM/openai/glm-5.1"],
-      "council": ["LiteLLM/openai/deepseek-v4-pro", "LiteLLM/openai/glm-5.1"],
-      "explorer": ["LiteLLM/openai/deepseek-v4-flash", "LiteLLM/openai/deepseek-v3.2"],
-      "fixer": ["LiteLLM/openai/deepseek-v4-flash", "LiteLLM/openai/glm-5"]
-    }
+    "retry_on_empty": true
   },
   "council": {
-      "presets": {
-        "default": {
-          "alpha": { "model": "LiteLLM/openai/deepseek-v4-pro", "variant": "high" },
-          "beta":  { "model": "LiteLLM/openai/glm-5.1", "variant": "high" },
-          "gamma": { "model": "LiteLLM/openai/deepseek-v3.2", "variant": "high" }
-        }
-      },
-      "timeout": 180000,
-      "default_preset": "default",
-      "councillor_execution_mode": "parallel",
-      "councillor_retries": 3
+    "presets": {
+      "default": {
+        "councillor": { "model": "LiteLLM/openai/deepseek-v4-pro", "variant": "high" }
+      }
+    },
+    "timeout": 180000,
+    "default_preset": "default",
+    "councillor_execution_mode": "parallel",
+    "councillor_retries": 3
   },
-  "todoContinuation": {
-    "maxContinuations": 5,
-    "cooldownMs": 3000,
-    "autoEnable": false,
-    "autoEnableThreshold": 4
+  "multiplexer": {
+    "type": "auto",
+    "layout": "main-vertical",
+    "main_pane_size": 60,
+    "zellij_pane_mode": "agent-tab"
   },
-  "sessionManager": {
+  "backgroundJobs": {
     "maxSessionsPerAgent": 2,
     "readContextMinLines": 10,
     "readContextMaxFiles": 8
+  },
+  "companion": {
+    "enabled": true,
+    "position": "bottom-right",
+    "size": "medium",
+    "gifPack": "default",
+    "loopStyle": "classic",
+    "speed": 1
   }
 }

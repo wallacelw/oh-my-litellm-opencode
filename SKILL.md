@@ -356,7 +356,7 @@ Expect a virtual key starting with `sk-`.
 
 ### Step 4: Install oh-my-opencode-slim plugin
 - **Guard**: `~/.config/opencode/oh-my-opencode-slim.json` exists
-- **Action**: `bunx oh-my-opencode-slim@1.1.1 install`
+- **Action**: `bunx oh-my-opencode-slim@2.0.4 install`
 
 ### Step 5: Acquire virtual key
 - **Guard**: Existing opencode.jsonc has a LiteLLM apiKey starting with `sk-` that passes a test completion
@@ -423,6 +423,8 @@ Switch at runtime: `/preset LiteLLM-Huawei-MaaS-Lite`
 
 ### Fallback Chains
 
+In v2, fallback is configured via **model arrays** in agent definitions, not `fallback.chains`. The first model in the array is primary; subsequent models are tried on failure.
+
 | Agent | Primary | Fallback |
 |-------|---------|----------|
 | oracle | deepseek-v4-pro | glm-5.1 |
@@ -430,13 +432,18 @@ Switch at runtime: `/preset LiteLLM-Huawei-MaaS-Lite`
 | explorer | deepseek-v4-flash | deepseek-v3.2 |
 | fixer | deepseek-v4-flash | glm-5 |
 
+Example config:
+```json
+"oracle": { "model": ["LiteLLM/openai/deepseek-v4-pro", "LiteLLM/openai/glm-5.1"], "variant": "max" }
+```
+
 ### Council
 
 | Councillor | Model | Variant |
 |------------|-------|---------|
-| alpha | LiteLLM/openai/deepseek-v4-pro | high |
-| beta | LiteLLM/openai/glm-5.1 | high |
-| gamma | LiteLLM/openai/deepseek-v3.2 | high |
+| default | LiteLLM/openai/deepseek-v4-pro | high |
+
+In v2, council uses a single `councillor` key per preset (not separate alpha/beta/gamma). The councillor model is reused for all parallel councillors.
 
 ## Models
 
@@ -854,9 +861,9 @@ docker compose exec litellm env | grep -E '^(LITELLM|DB_|HUAWEI|STORE_)'
 | Grafana shows no data | Prometheus not scraping or wrong datasource | Check targets; verify datasource URL is `http://prometheus:9090` |
 | Virtual key 403 | Key expired, over budget, or model not in allow-list | Check key with `/key/info` |
 | opencode won't start | Wrong provider npm package | Use `@ai-sdk/openai-compatible`, not `openai` |
-| Plugin not loaded | oh-my-opencode-slim not in plugin array | Re-run `bunx oh-my-opencode-slim@1.1.1 install` |
+| Plugin not loaded | oh-my-opencode-slim not in plugin array | Re-run `bunx oh-my-opencode-slim@2.0.4 install` |
 | Wrong preset | Not using LiteLLM route | Run `/preset LiteLLM-Huawei-MaaS` |
-| Fallback not triggering | fallback.enabled not true | Set `fallback.enabled: true`, add chains |
+| Fallback not triggering | fallback.enabled not true | Set `fallback.enabled: true`, use model arrays in agent config |
 | Partial degradation (multi-key) | One MaaS API key expired | Monitor cooldown events; rotate failed key |
 | Uneven request distribution | Routing strategy not optimal | Try `--routing-strategy=least-busy` |
 | Config file overwritten | Edited `litellm_config.yaml` directly | Edit `litellm_config.yaml.template` instead; run `generate_config.sh` |
@@ -893,7 +900,7 @@ rm -f ~/.config/opencode/oh-my-opencode-slim.json*
 | `init_env.sh --auto` is non-interactive | Overwrites `.env` without prompting (auto mode) |
 | `LITELLM_MASTER_KEY` not cleared on bootstrap | Resolved from env → `.master-key` → `.env` → prompt (never unconditionally cleared) |
 | opencode version pinned | `install.sh` installs `opencode@0.4.6` (constant); warns if installed version differs |
-| oh-my-opencode-slim version pinned | `install.sh` installs `oh-my-opencode-slim@1.1.1` (constant) |
+| oh-my-opencode-slim version pinned | `install.sh` installs `oh-my-opencode-slim@2.0.4` (constant) |
 | LiteLLM image pinned | `ghcr.io/berriai/litellm:v1.83.14-stable.patch.3` (no `latest` tag) |
 | `request_timeout` consistent | Template and generated config both use `600`; `stream_timeout: 60` |
 | Docker resource limits set | All 4 services have `deploy.resources.limits` (memory + CPU) |

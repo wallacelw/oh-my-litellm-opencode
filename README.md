@@ -75,7 +75,7 @@ Single-host AI gateway for centralized key management, spend tracking, rate limi
 | Grafana | 11.5.2 | Pre-built latency/spend/token dashboard |
 | Huawei MaaS API | ap-southeast-1 | Upstream LLM inference |
 | opencode | v0.4.6 | AI coding CLI (pinned for determinism) |
-| oh-my-opencode-slim | v1.1.1 | Agent orchestration plugin |
+| oh-my-opencode-slim | v2.0.4 | Agent orchestration plugin |
 | bun | latest | JavaScript runtime for opencode |
 | jq | latest | JSON-safe config substitution |
 | Docker | 20.10+ with Compose V2 | Container orchestration |
@@ -86,7 +86,7 @@ Single-host AI gateway for centralized key management, spend tracking, rate limi
 2. **Configure** — `./scripts/init_env.sh` (guided) or manual `.env` setup
 3. **Deploy LiteLLM** — `docker compose up -d`. Healthcheck-gated chain: PostgreSQL → LiteLLM → Prometheus → Grafana.
 4. **Install opencode** — `bun install -g opencode`
-5. **Install plugin** — `bunx oh-my-opencode-slim@1.1.1 install`
+5. **Install plugin** — `bunx oh-my-opencode-slim@2.0.4 install`
 6. **Mint virtual key** — `./scripts/mint-virtual-key.sh --no-budget`
 7. **Configure** — opencode.jsonc + oh-my-opencode-slim.json with dual providers and 4 presets
 8. **Validate** — `./scripts/validate.sh`
@@ -156,7 +156,7 @@ See [SKILL.md](./SKILL.md) **Verification Exit Criteria** — combined checklist
 | Config change without restart | New settings not applied | `docker compose restart litellm` after edits |
 | One MaaS API key expired (multi-key) | Partial degradation | Monitor cooldown events in Grafana; rotate expired key |
 | opencode won't start | Wrong provider npm package | Use `@ai-sdk/openai-compatible`, not `openai` |
-| Plugin not loaded | No presets available | Re-run: `bunx oh-my-opencode-slim@1.1.1 install` |
+| Plugin not loaded | No presets available | Re-run: `bunx oh-my-opencode-slim@2.0.4 install` |
 | Virtual key expired | 401 errors | Mint new key with `--no-budget` |
 
 ## Quick Start

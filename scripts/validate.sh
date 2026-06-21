@@ -317,17 +317,17 @@ if [ "$LITELLM_ONLY" = false ]; then
     check_slim "Huawei-MaaS-Lite direct preset" '.presets["Huawei-MaaS-Lite"]'
     check_slim "Default is LiteLLM-Huawei-MaaS" '.preset == "LiteLLM-Huawei-MaaS"'
     check_slim "Orchestrator model set" '.presets["LiteLLM-Huawei-MaaS"].orchestrator.model'
-    check_slim "Oracle model set" '.presets["LiteLLM-Huawei-MaaS"].oracle.model'
-    check_slim "Council model set" '.presets["LiteLLM-Huawei-MaaS"].council.model'
+    check_slim "Oracle model set (array for fallback)" '.presets["LiteLLM-Huawei-MaaS"].oracle.model'
+    check_slim "Council model set (array for fallback)" '.presets["LiteLLM-Huawei-MaaS"].council.model'
     check_slim "Librarian model set" '.presets["LiteLLM-Huawei-MaaS"].librarian.model'
     check_slim "Explorer model set" '.presets["LiteLLM-Huawei-MaaS"].explorer.model'
     check_slim "Designer model set" '.presets["LiteLLM-Huawei-MaaS"].designer.model'
-    check_slim "Fixer model set" '.presets["LiteLLM-Huawei-MaaS"].fixer.model'
+    check_slim "Fixer model set (array for fallback)" '.presets["LiteLLM-Huawei-MaaS"].fixer.model'
     check_slim "Observer disabled" '.disabled_agents | index("observer")'
     check_slim "Fallback enabled" '.fallback.enabled == true'
-    check_slim "Fallback chains defined" '.fallback.chains | length > 0'
+    check_slim "Fallback has no chains (v2 format)" '(.fallback.chains // null) == null'
     check_slim "Council presets defined" '.council.presets'
-    check_slim "Council has alpha/beta/gamma" '.council.presets.default | .alpha and .beta and .gamma'
+    check_slim "Council has councillor (v2 format)" '.council.presets.default.councillor'
 
     PERMS=$(stat -c '%a' "$SLIM_CONFIG" 2>/dev/null || stat -f '%Lp' "$SLIM_CONFIG" 2>/dev/null)
     if [ "$PERMS" = "600" ]; then

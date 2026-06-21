@@ -46,10 +46,11 @@ for arg in "$@"; do
 done
 
 # ── Resolve LITELLM_MASTER_KEY from multiple sources ──
+# Returns the key on stdout; log messages go to stderr.
 resolve_master_key() {
   # 1. Environment variable
   if [ -n "${LITELLM_MASTER_KEY:-}" ]; then
-    echo "  Found LITELLM_MASTER_KEY in environment"
+    echo "  Found LITELLM_MASTER_KEY in environment" >&2
     echo "$LITELLM_MASTER_KEY"
     return 0
   fi
@@ -59,7 +60,7 @@ resolve_master_key() {
     local found_key
     found_key="$(cat "$PROJECT_DIR/.master-key")"
     if [ -n "$found_key" ]; then
-      echo "  Found LITELLM_MASTER_KEY in $PROJECT_DIR/.master-key"
+      echo "  Found LITELLM_MASTER_KEY in $PROJECT_DIR/.master-key" >&2
       echo "$found_key"
       return 0
     fi
@@ -70,7 +71,7 @@ resolve_master_key() {
     local found_key
     found_key="$(grep -oP '^LITELLM_MASTER_KEY="?\K[^"]+' "$PROJECT_DIR/.env" 2>/dev/null || true)"
     if [ -n "$found_key" ]; then
-      echo "  Found LITELLM_MASTER_KEY in $PROJECT_DIR/.env"
+      echo "  Found LITELLM_MASTER_KEY in $PROJECT_DIR/.env" >&2
       # Cache to .master-key for faster future resolution
       echo "$found_key" > "$PROJECT_DIR/.master-key"
       chmod 600 "$PROJECT_DIR/.master-key"
@@ -97,13 +98,8 @@ prompt_master_key() {
 
 # ── Try to resolve master key from files/env, set LITELLM_MASTER_KEY ──
 try_resolve_master_key() {
-  resolve_output="$(resolve_master_key 2>&1)" || true
-  LITELLM_MASTER_KEY="$(echo "$resolve_output" | tail -1)"
-  if [ -n "$LITELLM_MASTER_KEY" ]; then
-    echo "$resolve_output" | head -n -1
-    return 0
-  fi
-  return 1
+  LITELLM_MASTER_KEY="$(resolve_master_key)" || return 1
+  return 0
 }
 
 # ── Wait for LiteLLM to become healthy (up to 90s) ──
@@ -183,6 +179,8 @@ print_step "3" "Deploy LiteLLM"
 # ── Port conflict check ──
 for port in 4000 9090 3000; do
   if command -v ss &>/dev/null && ss -tlnp 2>/dev/null | grep -q ":${port} "; then
+    echo "  WARNING: Port $port is already in use. Docker Compose may fail."
+  elif command -v netstat &>/dev/null && netstat -tlnp 2>/dev/null | grep -q ":${port} "; then
     echo "  WARNING: Port $port is already in use. Docker Compose may fail."
   fi
 done

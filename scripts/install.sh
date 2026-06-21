@@ -112,8 +112,16 @@ if ! command -v opencode &>/dev/null; then
   if [ "$DRY_RUN" = true ]; then
     echo "   Would run: curl -fsSL $OPENCODE_INSTALL_URL | bash"
   else
-    curl -fsSL "$OPENCODE_INSTALL_URL" | bash
-    echo "   Installed: $(opencode --version 2>/dev/null)"
+    TMPFILE=$(mktemp /tmp/opencode_install.XXXXXX.sh)
+    if curl -fsSL "$OPENCODE_INSTALL_URL" -o "$TMPFILE"; then
+      bash "$TMPFILE"
+      echo "   Installed: $(opencode --version 2>/dev/null)"
+    else
+      echo "ERROR: Failed to download opencode install script."
+      rm -f "$TMPFILE"
+      exit 1
+    fi
+    rm -f "$TMPFILE"
   fi
 else
   INSTALLED_VERSION="$(opencode --version 2>/dev/null || echo 'unknown')"
@@ -123,11 +131,15 @@ echo ""
 
 # ── 3. Install oh-my-opencode-slim plugin ──
 echo "3. Installing oh-my-opencode-slim plugin (v${SLIM_VERSION})..."
-if [ "$DRY_RUN" = true ]; then
-  echo "   Would run: bunx oh-my-opencode-slim@${SLIM_VERSION} install"
+if [ -f "$OPENCODE_DIR/oh-my-opencode-slim.json" ] || [ -f "$OPENCODE_DIR/oh-my-opencode-slim.jsonc" ]; then
+  echo "   Plugin already installed — skipping"
 else
-  bunx "oh-my-opencode-slim@${SLIM_VERSION}" install
-  echo "   Plugin installed."
+  if [ "$DRY_RUN" = true ]; then
+    echo "   Would run: bunx oh-my-opencode-slim@${SLIM_VERSION} install"
+  else
+    bunx "oh-my-opencode-slim@${SLIM_VERSION}" install
+    echo "   Plugin installed."
+  fi
 fi
 echo ""
 

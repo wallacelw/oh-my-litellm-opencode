@@ -52,12 +52,15 @@ JQ_FILTER+='}'
 BODY=$(jq -n "${JQ_ARGS[@]}" "$JQ_FILTER")
 
 # ── Try to reuse existing key with same alias ──
+# Falls back to minting if /key/list is unavailable or returns no match.
+# This is intentional — the reuse is best-effort, not required.
 LITELLM_URL="http://127.0.0.1:4000"
 EXISTING_KEY=""
 if [ -n "${LITELLM_MASTER_KEY:-}" ]; then
   KEY_LIST=$(curl -sf -m 10 "$LITELLM_URL/key/list" \
     -H "Authorization: Bearer $LITELLM_MASTER_KEY" 2>/dev/null || true)
   if [ -n "$KEY_LIST" ]; then
+    # /key/list may not exist in all LiteLLM versions; jq failure is non-fatal
     EXISTING_KEY=$(echo "$KEY_LIST" | jq -r ".keys[] | select(.key_alias == \"$ALIAS\") | .key" 2>/dev/null | head -1 || true)
   fi
 fi

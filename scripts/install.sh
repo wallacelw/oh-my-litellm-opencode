@@ -5,7 +5,7 @@ set -euo pipefail
 #
 # Prerequisites:
 #   - Docker + Docker Compose V2 installed (for LiteLLM proxy)
-#   - LiteLLM proxy running on 127.0.0.1:4000 (from LiteLLM-Huawei-MaaS-Proxy skill)
+#   - LiteLLM proxy running on 127.0.0.1:4000 (deployed by bootstrap.sh or docker compose up -d)
 #   - bun installed (https://bun.sh)
 #   - jq installed (https://stedolan.github.io/jq/)
 #   - LITELLM_MASTER_KEY set in environment
@@ -22,6 +22,7 @@ OPENCODE_CONFIG="$OPENCODE_DIR/opencode.jsonc"
 
 # ── Constants ──
 SLIM_VERSION="1.1.1"
+OPENCODE_VERSION="0.4.6"  # pinned for determinism; update manually when upgrading
 CURL_TIMEOUT=15
 
 # ── Helper: retry curl with backoff ──
@@ -100,7 +101,7 @@ fi
 if curl -sf -m $CURL_TIMEOUT "http://127.0.0.1:4000/health/liveliness" &>/dev/null; then
   echo "   LiteLLM proxy: reachable at http://127.0.0.1:4000"
 else
-  echo "WARNING: LiteLLM proxy not reachable at http://127.0.0.1:4000. Start it first with the LiteLLM-Huawei-MaaS-Proxy skill."
+    echo "WARNING: LiteLLM proxy not reachable at http://127.0.0.1:4000. Start it first with: docker compose up -d"
 fi
 
 echo ""
@@ -109,13 +110,18 @@ echo ""
 echo "2. Installing opencode..."
 if ! command -v opencode &>/dev/null; then
   if [ "$DRY_RUN" = true ]; then
-    echo "   Would run: bun install -g opencode"
+    echo "   Would run: bun install -g opencode@${OPENCODE_VERSION}"
   else
-    bun install -g opencode
+    bun install -g "opencode@${OPENCODE_VERSION}"
     echo "   Installed: $(opencode --version 2>/dev/null)"
   fi
 else
-  echo "   Already installed."
+  INSTALLED_VERSION="$(opencode --version 2>/dev/null || echo 'unknown')"
+  if [ "$INSTALLED_VERSION" != "$OPENCODE_VERSION" ] && [ "$INSTALLED_VERSION" != "v$OPENCODE_VERSION" ]; then
+    echo "   WARNING: Installed opencode ($INSTALLED_VERSION) differs from pinned version ($OPENCODE_VERSION)."
+    echo "   To upgrade: bun install -g opencode@${OPENCODE_VERSION}"
+  fi
+  echo "   Already installed: $INSTALLED_VERSION"
 fi
 echo ""
 

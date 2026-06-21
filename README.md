@@ -74,7 +74,7 @@ Single-host AI gateway for centralized key management, spend tracking, rate limi
 | Prometheus | v3.3.1 | LLM metrics scraping and TSDB |
 | Grafana | 11.5.2 | Pre-built latency/spend/token dashboard |
 | Huawei MaaS API | ap-southeast-1 | Upstream LLM inference |
-| opencode | latest | AI coding CLI |
+| opencode | v0.4.6 | AI coding CLI (pinned for determinism) |
 | oh-my-opencode-slim | v1.1.1 | Agent orchestration plugin |
 | bun | latest | JavaScript runtime for opencode |
 | jq | latest | JSON-safe config substitution |

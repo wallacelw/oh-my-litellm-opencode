@@ -194,7 +194,35 @@ export HUAWEI_MAAS_API_KEY="$MAAS_KEY"
 # ──────────────────────────────────────────────────────────────────────────────
 STEP_NAME="Deploy LiteLLM"
 print_step "3" "Deploy LiteLLM"
-LITELLM_MASTER_KEY=""
+
+# ── Port conflict check ──
+check_port_free() {
+  local port="$1"
+  if command -v ss &>/dev/null; then
+    ss -tlnp 2>/dev/null | grep -q ":${port} " && return 1 || return 0
+  elif command -v lsof &>/dev/null; then
+    lsof -i :"$port" &>/dev/null && return 1 || return 0
+  else
+    # Cannot check — assume free
+    return 0
+  fi
+}
+
+PORTS_TO_CHECK=(4000 9090 3000)
+PORT_CONFLICT=false
+for port in "${PORTS_TO_CHECK[@]}"; do
+  if ! check_port_free "$port"; then
+    echo "  WARNING: Port $port is already in use. Docker Compose may fail."
+    PORT_CONFLICT=true
+  fi
+done
+if [ "$PORT_CONFLICT" = true ] && [ "$DRY_RUN" = false ]; then
+  echo "  Consider stopping conflicting services or changing ports in docker-compose.yml."
+  echo "  Continuing anyway — Docker may reuse the existing service."
+fi
+
+# Do NOT clear LITELLM_MASTER_KEY — it may already be set from the environment.
+# The resolve_master_key function checks env first, then .master-key, then .env.
 
 # Helper: check if LiteLLM Docker container exists (running or stopped)
 litellm_container_exists() {

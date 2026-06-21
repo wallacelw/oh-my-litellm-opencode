@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# validate_e2e.sh — End-to-end validation for LiteLLM Huawei MaaS Proxy
-# Usage: ./scripts/validate_e2e.sh  (can be run from any directory)
+# validate_litellm.sh — End-to-end validation for LiteLLM Huawei MaaS Proxy
+# Usage: ./scripts/validate_litellm.sh  (can be run from any directory)
 
 set -euo pipefail
 

@@ -72,10 +72,24 @@ fi
 echo "  Duration: ${DURATION}"
 echo ""
 
-RESPONSE=$(curl -sf -X POST http://127.0.0.1:4000/key/generate \
-  -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
-  -H "Content-Type: application/json" \
-  -d "$BODY")
+# Retry curl with backoff (3 attempts, 5s/10s/15s delay)
+MAX_ATTEMPTS=3
+RESPONSE=""
+for attempt in $(seq 1 $MAX_ATTEMPTS); do
+  RESPONSE=$(curl -sf --connect-timeout 10 --max-time 30 -X POST http://127.0.0.1:4000/key/generate \
+    -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+    -H "Content-Type: application/json" \
+    -d "$BODY" 2>/dev/null) && break
+  if [ $attempt -lt $MAX_ATTEMPTS ]; then
+    DELAY=$((attempt * 5))
+    echo "  Attempt $attempt failed. Retrying in ${DELAY}s..."
+    sleep $DELAY
+  else
+    echo "ERROR: Failed to mint virtual key after $MAX_ATTEMPTS attempts."
+    echo "  Check that LiteLLM is healthy and LITELLM_MASTER_KEY is correct."
+    exit 1
+  fi
+done
 
 KEY=$(echo "$RESPONSE" | jq -r '.key')
 KEY_ID=$(echo "$RESPONSE" | jq -r '.key_id // empty')

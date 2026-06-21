@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -uo pipefail
+set -euo pipefail
 
 # ─── Unified Validation: LiteLLM proxy + opencode + oh-my-opencode-slim ───
 #

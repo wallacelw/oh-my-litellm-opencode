@@ -352,7 +352,7 @@ Expect a virtual key starting with `sk-`.
 
 ### Step 3: Install opencode
 - **Guard**: `command -v opencode` succeeds
-- **Action**: `bun install -g opencode`
+- **Action**: `bun install -g opencode@0.4.6` (pinned for determinism)
 
 ### Step 4: Install oh-my-opencode-slim plugin
 - **Guard**: `~/.config/opencode/oh-my-opencode-slim.json` exists
@@ -538,10 +538,10 @@ Under `general_settings`:
 
 | Service | Image | Container name | Port | Healthcheck | Depends on |
 |---|---|---|---|---|---|
-| `litellm` | `ghcr.io/berriai/litellm:v1.83.14-stable.patch.3` | `litellm_proxy` | `4000:4000` | `GET /health/liveliness` every 30s, 10s timeout, 3 retries, 40s start period | `db` (healthy) |
-| `db` | `postgres:16-alpine` | `litellm_pg_db` | (internal 5432) | `pg_isready` every 5s, 5s timeout, 10 retries | — |
-| `prometheus` | `prom/prometheus:v3.3.1` | `litellm_prometheus` | `9090:9090` | `GET /-/healthy` every 15s, 5s timeout, 3 retries, 10s start period | `litellm` (healthy) |
-| `grafana` | `grafana/grafana:11.5.2` | `litellm_grafana` | `3000:3000` | `GET /api/health` every 15s, 5s timeout, 3 retries, 15s start period | `prometheus` (healthy) |
+| `litellm` | `ghcr.io/berriai/litellm:v1.83.14-stable.patch.3` | `litellm_proxy` | `4000:4000` | `GET /health/liveliness` every 30s, 10s timeout, 3 retries, 40s start period | `db` (healthy) | 2g RAM, 2 CPUs |
+| `db` | `postgres:16-alpine` | `litellm_pg_db` | (internal 5432) | `pg_isready` every 5s, 5s timeout, 10 retries | — | 512m RAM, 1 CPU |
+| `prometheus` | `prom/prometheus:v3.3.1` | `litellm_prometheus` | `9090:9090` | `GET /-/healthy` every 15s, 5s timeout, 3 retries, 10s start period | `litellm` (healthy) | 512m RAM, 1 CPU |
+| `grafana` | `grafana/grafana:11.5.2` | `litellm_grafana` | `3000:3000` | `GET /api/health` every 15s, 5s timeout, 3 retries, 15s start period | `prometheus` (healthy) | 256m RAM, 0.5 CPU |
 
 ### Volume mounts
 
@@ -861,6 +861,46 @@ docker compose exec litellm env | grep -E '^(LITELLM|DB_|HUAWEI|STORE_)'
 | Uneven request distribution | Routing strategy not optimal | Try `--routing-strategy=least-busy` |
 | Config file overwritten | Edited `litellm_config.yaml` directly | Edit `litellm_config.yaml.template` instead; run `generate_config.sh` |
 | Deployment count mismatch | `HUAWEI_MAAS_API_KEY_COUNT` wrong | Verify count matches indexed keys; regenerate config |
+| Port conflict on startup | Another service using 4000/9090/3000 | Check with `ss -tlnp \| grep -E ':4000\|:9090\|:3000'`; stop conflicting service or change ports in `docker-compose.yml` |
+
+### Bootstrap Rollback
+
+If `bootstrap.sh` fails partway through, use this procedure to roll back cleanly:
+
+| Failed at | State | Rollback |
+|---|---|---|
+| Step 2 (prerequisites) | Nothing created | No cleanup needed |
+| Step 3 (deploy LiteLLM) — init_env.sh ran | `.env` created | `rm .env`; remove any `.master-key` file |
+| Step 3 (deploy LiteLLM) — docker compose up ran | Containers running | `docker compose down`; `rm .env` |
+| Step 4 (install opencode) | LiteLLM running, opencode installed | No rollback needed — LiteLLM still usable |
+| Step 4 (install plugin) | Plugin config written | `rm ~/.config/opencode/oh-my-opencode-slim.json*` |
+| Step 5 (mint virtual key) | Virtual key minted | `curl -s -X POST http://localhost:4000/key/delete -H "Authorization: Bearer $LITELLM_MASTER_KEY" -H "Content-Type: application/json" -d '{"keys":["<virtual-key>"]}'` |
+| Step 5 (write opencode.jsonc) | Config written | `rm ~/.config/opencode/opencode.jsonc*` |
+
+**Full reset** (destroy everything):
+```bash
+docker compose down -v    # stop containers and destroy volumes
+rm -f .env .master-key
+rm -f ~/.config/opencode/opencode.jsonc*
+rm -f ~/.config/opencode/oh-my-opencode-slim.json*
+```
+
+### Determinism Guarantees
+
+| Property | Mechanism |
+|---|---|
+| `init_env.sh --ci` is idempotent | Reuses existing `LITELLM_SALT_KEY` from `.env` (preserves virtual keys) |
+| `init_env.sh --auto` is non-interactive | Overwrites `.env` without prompting (auto mode) |
+| `LITELLM_MASTER_KEY` not cleared on bootstrap | Resolved from env → `.master-key` → `.env` → prompt (never unconditionally cleared) |
+| opencode version pinned | `install.sh` installs `opencode@0.4.6` (constant); warns if installed version differs |
+| oh-my-opencode-slim version pinned | `install.sh` installs `oh-my-opencode-slim@1.1.1` (constant) |
+| LiteLLM image pinned | `ghcr.io/berriai/litellm:v1.83.14-stable.patch.3` (no `latest` tag) |
+| `request_timeout` consistent | Template and generated config both use `600`; `stream_timeout: 60` |
+| Docker resource limits set | All 4 services have `deploy.resources.limits` (memory + CPU) |
+| Port conflicts detected | `bootstrap.sh` checks ports 4000/9090/3000 before `docker compose up` |
+| `mint-virtual-key.sh` is resilient | 3 retries with exponential backoff (5s/10s/15s); `--connect-timeout 10 --max-time 30` |
+| `validate.sh` uses `set -euo pipefail` | Failed checks cause immediate exit |
+| Config substitution uses `jq --arg` | No `sed` — JSON-safe, no injection risk |
 
 ### Common Mistakes
 

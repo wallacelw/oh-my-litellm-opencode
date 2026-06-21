@@ -93,7 +93,12 @@ fi
 # ── Check if .env already exists ─────────────────────────────────
 if [[ -f "$ENV_FILE" ]]; then
   if [[ "$MODE" == "ci" ]]; then
-    echo "WARNING: .env already exists. Overwriting in CI mode."
+    # In CI mode, preserve LITELLM_SALT_KEY from existing .env to avoid
+    # invalidating existing virtual keys. Overwrite everything else.
+    EXISTING_SALT_KEY="$(grep -oP '^LITELLM_SALT_KEY="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
+    echo "WARNING: .env already exists. Overwriting in CI mode (preserving LITELLM_SALT_KEY if set)."
+  elif [[ "$MODE" == "auto" ]]; then
+    echo "WARNING: .env already exists. Overwriting in auto mode."
   else
     echo "WARNING: .env already exists."
     read -r -p "  Overwrite? [y/N]: " overwrite < /dev/tty
@@ -110,6 +115,14 @@ DEFAULT_DB_PASSWORD=$(generate_secret)
 DEFAULT_GRAFANA_PASSWORD=$(generate_secret)
 DEFAULT_MAAS_BASE="https://api-ap-southeast-1.modelarts-maas.com/openai/v1"
 DEFAULT_RETENTION="15d"
+
+# ── Idempotency: preserve SALT_KEY in CI mode ────────────────────
+# Changing SALT_KEY invalidates all existing virtual keys.
+# In CI mode with an existing .env, reuse the old SALT_KEY.
+if [[ "$MODE" == "ci" && -n "${EXISTING_SALT_KEY:-}" ]]; then
+  DEFAULT_SALT_KEY="$EXISTING_SALT_KEY"
+  echo "  Reusing existing LITELLM_SALT_KEY (idempotent — preserves virtual keys)"
+fi
 
 # ── Collect values ────────────────────────────────────────────────
 echo "Configuring secrets and endpoints..."
@@ -258,7 +271,7 @@ echo "    HUAWEI_MAAS_API_BASE= $MAAS_API_BASE"
 echo "    PROMETHEUS_RETENTION= $RETENTION"
 echo "    GRAFANA_PASSWORD    = ${GRAFANA_PASSWORD:0:6}...${GRAFANA_PASSWORD: -4}"
 echo ""
-echo "  Next steps:"
-echo "    docker compose up -d"
-echo "    ./scripts/validate_e2e.sh"
+  echo "  Next steps:"
+  echo "    docker compose up -d"
+  echo "    ./scripts/validate_litellm.sh"
 echo "══════════════════════════════════════════════════════"

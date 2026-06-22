@@ -45,12 +45,30 @@ Startup: PostgreSQL + ClickHouse (parallel) → LiteLLM + OpenLit (parallel, hea
 
 ### Humans
 
-**Prerequisites:** bun, jq, Docker + Compose V2, git, python3. Install Docker from https://docs.docker.com/get-docker/ if missing.
+**1. Install prerequisites** (skip any you already have):
+
+```bash
+# bun (JavaScript runtime)
+curl -fsSL https://bun.sh/install | bash
+
+# jq (JSON processor)
+sudo apt-get install -y jq        # Debian/Ubuntu
+brew install jq                   # macOS
+
+# Docker + Compose V2 — follow https://docs.docker.com/get-docker/
+# Then start the daemon: open Docker Desktop, or: sudo systemctl start docker
+
+# git, python3 — usually pre-installed; if not:
+sudo apt-get install -y git python3   # Debian/Ubuntu
+brew install git python3              # macOS
+```
+
+**2. Deploy and run:**
 
 ```bash
 git clone https://github.com/wallacelw/oh-my-litellm-opencode /home/oh-my-litellm-opencode
 cd /home/oh-my-litellm-opencode
-./scripts/bootstrap.sh          # prompts for MaaS key + extra keys
+./scripts/bootstrap.sh          # prompts for MaaS key + extra keys, starts Docker
 ./scripts/validate.sh           # verify everything works
 opencode
 ```

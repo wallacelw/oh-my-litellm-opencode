@@ -51,23 +51,24 @@ bun, jq, Docker + Compose V2, git, python3, `HUAWEI_MAAS_API_KEY` env var.
 - **Disable `explore` and `general` agents.** Enable LSP. Use virtual keys (not master key) for opencode.
 - **`jq --arg` for JSON substitution** — never `sed`.
 - **Same-host only.**
+- **Mask secrets** as `<prefix>...<suffix> (len=N)` in logs.
 
 ## Architecture
 
 ```
 Client → LiteLLM (:4000) → Huawei MaaS (ap-southeast-1)
-                │               │
-                │          ┌────┴────┐
-                │          │ N API   │  (N = HUAWEI_MAAS_API_KEY_COUNT)
-                │          │ keys    │  LiteLLM load-balances N deployments
-                │          └────────┘
-                ├── PostgreSQL (:5432)  — keys, usage, spend
-                └── OpenLit (:3000)    — LLM observability (traces + metrics + dashboards)
-                      ├── OTLP receiver (:4317/:4318) — from LiteLLM "otel" callback
-                      └── ClickHouse (:8123/:9000)    — 30-day storage, SQL analytics
+                 │               │
+                 │          ┌────┴────┐
+                 │          │ N API   │  (N = HUAWEI_MAAS_API_KEY_COUNT)
+                 │          │ keys    │  LiteLLM load-balances N deployments
+                 │          └────────┘
+                 ├── PostgreSQL (:5432)  — keys, usage, spend
+                 └── OpenLit (:3000)    — LLM observability (traces + metrics + dashboards)
+                       ↑ OTLP (:4317/:4318) — from LiteLLM "otel" callback
+                       └── ClickHouse (:8123/:9000)    — 30-day storage, SQL analytics
 ```
 
-Startup: PostgreSQL → LiteLLM → ClickHouse → OpenLit (all healthcheck-gated).
+Startup: PostgreSQL + ClickHouse (parallel) → LiteLLM + OpenLit (parallel, healthcheck-gated).
 
 ## Deployment Workflow
 
@@ -102,7 +103,8 @@ docker compose up -d
 | Mode | Secrets | MaaS keys | Use case |
 |------|---------|-----------|----------|
 | interactive | Prompt each | Prompt each | Human, first-time |
-| `--auto` | Auto-generate | From env var | AI agent, non-interactive |
+| `--auto` | Auto-generate, preserve on re-run | From env var | AI agent, non-interactive |
+| `--auto --force` | Regenerate all | From env var | Key rotation after security incident |
 
 ### Master Key Resolution (bootstrap.sh)
 
@@ -162,7 +164,7 @@ Handled by `bootstrap.sh` or `install.sh`:
 | designer | glm-5 | medium | — |
 | fixer | deepseek-v4-flash | high | glm-5 |
 
-Fallback via model arrays in v2: `"model": ["primary", "fallback"]`.
+Fallback via model arrays (oh-my-opencode-slim v2 format): `"model": ["primary", "fallback"]`.
 
 Council: single `councillor` per preset (deepseek-v4-pro/high).
 
@@ -231,10 +233,10 @@ SELECT model, sum(cost) FROM otel_traces WHERE timestamp > now() - INTERVAL 1 DA
 
 | Service | URL | Auth |
 |---|---|---|
-| LiteLLM API | `http://localhost:4000` | `Bearer <key>` |
-| LiteLLM Admin UI | `http://localhost:4000/ui` | Master key |
-| OpenLit UI | `http://localhost:3000` | None (local) |
-| ClickHouse | `http://localhost:8123` | `default / OPENLIT_DB_PASSWORD` |
+| LiteLLM API | `http://127.0.0.1:4000` | `Bearer <key>` |
+| LiteLLM Admin UI | `http://127.0.0.1:4000/ui` | Master key |
+| OpenLit UI | `http://127.0.0.1:3000` | None (local) |
+| ClickHouse | `http://127.0.0.1:8123` | `default / OPENLIT_DB_PASSWORD` |
 
 **Backup:** `docker compose exec db pg_dump -U llmproxy litellm > backup.sql`
 **Reset:** `docker compose down -v && docker compose up -d`
@@ -284,7 +286,7 @@ curl -fsSL https://opencode.ai/install | bash
 1. `docker compose ps` + `docker compose logs litellm --tail 50`
 2. Verify `.env` has real MaaS key (not placeholder)
 3. Check DB: `docker compose exec db pg_isready -d litellm -U llmproxy`
-4. Check health: `curl -s http://localhost:4000/health -H "Authorization: Bearer $LITELLM_MASTER_KEY"`
+4. Check health: `curl -s http://127.0.0.1:4000/health -H "Authorization: Bearer $LITELLM_MASTER_KEY"`
 5. Fix issue (see table below)
 6. `docker compose restart litellm` if config changed
 7. `scripts/validate.sh`
@@ -303,7 +305,7 @@ curl -fsSL https://opencode.ai/install | bash
 | Virtual key 403 | Check key with `/key/info` |
 | Plugin not loaded | Re-run `bunx oh-my-opencode-slim@2.0.4 install` |
 | Fallback not triggering | Set `fallback.enabled: true`, use model arrays |
-| Port conflict | Check `ss -tlnp | grep -E ':4000|:4317|:4318|:8123|:3000'` |
+| Port conflict | Check `ss -tlnp | grep -E ':4000|:4317|:4318|:8123|:9000|:3000'` |
 | OpenLit not receiving data | Check `docker compose logs openlit`, verify OTEL_EXPORTER_OTLP_ENDPOINT |
 | ClickHouse down | Check `curl http://127.0.0.1:8123/ping` |
 
@@ -335,12 +337,6 @@ curl -fsSL https://opencode.ai/install | bash
 | Port conflicts detected | `bootstrap.sh` checks 4000/4317/4318/8123/9000/3000 |
 | `mint-virtual-key.sh` resilient | 3 retries with backoff; `--max-time 30` |
 | Config substitution safe | `jq --arg` only, never `sed` |
-
-## Sanitization Rules
-
-- Never write real secrets into committed files. Use `.env` (gitignored, `0600`).
-- Mask keys as `<prefix>...<suffix> (len=N)`.
-- Use `jq --arg` for substitution, never `sed`.
 
 ## Verification Exit Criteria
 

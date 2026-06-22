@@ -61,3 +61,14 @@ Switch: `/preset LiteLLM-Huawei-MaaS-Lite`
 | `HUAWEI_MAAS_API_BASE` | Yes | `https://api-ap-southeast-1.modelarts-maas.com/openai/v1` |
 | `HUAWEI_MAAS_API_KEY_COUNT` | Auto | Number of MaaS keys (set by init_env.sh) |
 | `OPENLIT_DB_PASSWORD` | Yes | ClickHouse database password |
+
+## Stack Versions
+
+| Component | Version |
+|-----------|---------|
+| LiteLLM | v1.89.3 (pinned) |
+| OpenLit | 1.22.0 (pinned) |
+| ClickHouse | 24.4.1 (pinned) |
+| PostgreSQL | 16-alpine |
+| oh-my-opencode-slim | 2.0.4 (pinned) |
+| opencode | latest (via curl) |

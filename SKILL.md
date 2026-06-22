@@ -177,7 +177,7 @@ Strategies: `simple-shuffle` (default), `least-busy`, `latency-based-routing`, `
 Handled by `bootstrap.sh` or `install.sh`:
 
 1. **Install opencode** — `curl -fsSL https://opencode.ai/install | bash` (latest stable, download-then-execute)
-2. **Install plugin** — `bunx oh-my-opencode-slim@2.0.4 install` (skips if already installed)
+2. **Install plugin + companion** — `bunx oh-my-opencode-slim@2.0.4 install --companion=yes` (skips if already installed; downloads native companion binary for live agent status window)
 3. **Mint virtual key** — reuse existing by alias (up to 50 key lookups), else mint unlimited key via LiteLLM
 4. **Write opencode.jsonc** — `jq --arg` substitution on template (diff-before-write, backup on change)
 5. **Write oh-my-opencode-slim.json** — copy template (diff-before-write, backup on change)

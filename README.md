@@ -11,6 +11,7 @@ One command to deploy a production-ready AI coding stack: **LiteLLM proxy** rout
 - **4 presets** — full/Lite × proxy/direct, switchable at runtime with `/preset`
 - **Full observability** — OpenLit dashboards with ITL, TTFT, TPOT, cost, traces
 - **30-day analytics** — ClickHouse SQL over all traces and metrics
+- **Desktop companion** — floating status window showing live agent activity
 
 ## Architecture
 
@@ -186,7 +187,7 @@ All 4 services (litellm, db, clickhouse, openlit) must show `healthy`. If any ar
 ./scripts/install.sh
 ```
 
-This installs opencode, the oh-my-opencode-slim plugin, mints a virtual key, and writes all config files. It is idempotent — safe to re-run.
+This installs opencode, the oh-my-opencode-slim plugin (with `--companion=yes` for the floating desktop status window), mints a virtual key, and writes all config files. It is idempotent — safe to re-run.
 
 **Step 11 — Validate**
 

@@ -88,7 +88,7 @@ prompt_master_key() {
   if [ -z "${LITELLM_MASTER_KEY:-}" ]; then
     echo "  LITELLM_MASTER_KEY not found in env, .master-key, or .env files."
     echo "  Enter LITELLM_MASTER_KEY (or Ctrl+C to abort):"
-    read -r LITELLM_MASTER_KEY
+    read -r LITELLM_MASTER_KEY < /dev/tty
     if [ -z "$LITELLM_MASTER_KEY" ]; then
       echo "ERROR: LITELLM_MASTER_KEY is required to mint virtual keys."
       exit 1
@@ -162,7 +162,7 @@ if [ -z "$MAAS_KEY" ]; then
   if [ "$DRY_RUN" = true ]; then
     MAAS_KEY="<HUAWEI_MAAS_API_KEY>"
   else
-    echo ""; echo "  Enter Huawei MaaS API key:"; read -r MAAS_KEY
+    echo ""; echo "  Enter Huawei MaaS API key:"; read -r MAAS_KEY < /dev/tty
     [ -z "$MAAS_KEY" ] && { echo "ERROR: MaaS API key is required."; PREREQ_OK=false; }
   fi
 else

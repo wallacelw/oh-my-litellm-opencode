@@ -2,20 +2,8 @@
 .env
 assets/config/litellm/litellm_config.yaml
 
-# ── opencode configs containing secrets ──
-opencode.json
-opencode.jsonc
-oh-my-opencode-slim.json
-oh-my-opencode-slim.jsonc
-
-# ── Environment files with secrets ──
-*.env
-
 # ── Master key files ──
 .master-key
-
-# ── Stale config files ──
-config.json
 
 # ── Backups created by scripts ──
 *.bak

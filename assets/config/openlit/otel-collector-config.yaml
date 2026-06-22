@@ -18,8 +18,8 @@ processors:
     send_batch_size: 1024
     timeout: 5s
   memory_limiter:
-    limit_mib: 1500
-    spike_limit_mib: 512
+    limit_mib: 350
+    spike_limit_mib: 100
     check_interval: 5s
 
 exporters:

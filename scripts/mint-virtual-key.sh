@@ -4,7 +4,7 @@ set -euo pipefail
 # ─── Mint a scoped virtual key from LiteLLM ───
 #
 # Usage:
-#   ./mint-virtual-key.sh                                    # key with alias, budget 100, duration 30d
+#   ./mint-virtual-key.sh                                    # key with alias, budget $100, unlimited duration
 #   ./mint-virtual-key.sh --models=glm-5.1,deepseek-v3.2    # model-scoped key
 #   ./mint-virtual-key.sh --budget=50 --duration=7d          # custom budget + duration
 #   ./mint-virtual-key.sh --models=glm-5.1 --budget=10       # model-scoped with budget

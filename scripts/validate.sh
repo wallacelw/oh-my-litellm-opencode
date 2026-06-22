@@ -309,8 +309,6 @@ if [ "$LITELLM_ONLY" = false ]; then
       "Huawei-MaaS provider defined" '.provider["Huawei-MaaS"]' \
       "Huawei-MaaS has 5+ models" '.provider["Huawei-MaaS"].models | keys | length >= 5' \
       "LiteLLM has 5+ models" '.provider.LiteLLM.models | keys | length >= 5' \
-      "provider key is singular" 'if .provider then true else false end' \
-      "agent key is singular" 'if .agent then true else false end' \
       "oh-my-opencode-slim plugin" '.plugin | index("oh-my-opencode-slim")' \
       "explore agent disabled" '.agent.explore.disable == true' \
       "general agent disabled" '.agent.general.disable == true' \
@@ -324,7 +322,7 @@ if [ "$LITELLM_ONLY" = false ]; then
     fi
   else
     fail "No opencode config file — skipping provider checks"
-    FAIL=$((FAIL + 13))
+    FAIL=$((FAIL + 11))
   fi
 
   # B4. oh-my-opencode-slim preset

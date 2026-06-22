@@ -44,6 +44,53 @@ retry_curl() {
   return 1
 }
 
+# ── Helper: strip JSONC comments for jq ──
+# Only removes // comments outside of quoted strings
+strip_jsonc() {
+  python3 -c "
+import sys
+text = sys.stdin.read()
+result = []
+in_string = False
+escape = False
+i = 0
+while i < len(text):
+    c = text[i]
+    if escape:
+        result.append(c)
+        escape = False
+        i += 1
+        continue
+    if in_string:
+        result.append(c)
+        if c == '\\\\':
+            escape = True
+        elif c == '\"':
+            in_string = False
+        i += 1
+        continue
+    if c == '\"':
+        in_string = True
+        result.append(c)
+        i += 1
+        continue
+    if c == '/' and i + 1 < len(text):
+        if text[i+1] == '/':
+            while i < len(text) and text[i] != '\\n':
+                i += 1
+            continue
+        elif text[i+1] == '*':
+            i += 2
+            while i + 1 < len(text) and not (text[i] == '*' and text[i+1] == '/'):
+                i += 1
+            i += 2
+            continue
+    result.append(c)
+    i += 1
+sys.stdout.write(''.join(result))
+" < "$1" 2>/dev/null || cat "$1"
+}
+
 # ── Parse args ──
 VIRTUAL_KEY=""
 DRY_RUN=false
@@ -175,7 +222,7 @@ fi
 
 # Try to reuse existing key from current opencode config
 if [ -z "$VIRTUAL_KEY" ] && [ -f "$OPENCODE_CONFIG" ]; then
-  EXISTING_KEY=$(jq -r '.provider.LiteLLM.options.apiKey // empty' "$OPENCODE_CONFIG" 2>/dev/null || true)
+  EXISTING_KEY=$(strip_jsonc "$OPENCODE_CONFIG" | jq -r '.provider.LiteLLM.options.apiKey // empty' 2>/dev/null || true)
   if [ -n "$EXISTING_KEY" ] && [ "$EXISTING_KEY" != "null" ] && [[ "$EXISTING_KEY" == sk-* ]]; then
     if [ "$DRY_RUN" = true ]; then
       echo "   Would test existing key: ${EXISTING_KEY:0:8}...${EXISTING_KEY: -4}"
@@ -264,7 +311,7 @@ if [ -f "$TARGET" ]; then
     echo "   Config unchanged — skipping write"
   else
     # Warn if existing config has non-LiteLLM providers
-    EXISTING_PROVIDERS=$(jq -r '.provider | keys[]' "$TARGET" 2>/dev/null | grep -v '^LiteLLM$' | grep -v '^Huawei-MaaS$' || true)
+    EXISTING_PROVIDERS=$(strip_jsonc "$TARGET" | jq -r '.provider | keys[]' 2>/dev/null | grep -v '^LiteLLM$' | grep -v '^Huawei-MaaS$' || true)
     if [ -n "$EXISTING_PROVIDERS" ]; then
       echo "   WARNING: Existing config has non-LiteLLM/Huawei-MaaS providers: $EXISTING_PROVIDERS"
       echo "   These will be overwritten. Backing up."

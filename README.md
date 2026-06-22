@@ -197,7 +197,12 @@ All 4 services (litellm, db, clickhouse, openlit) must show `healthy`. If any ar
 ./scripts/install.sh
 ```
 
-This installs opencode, the oh-my-opencode-slim plugin (with `--companion=yes` for the floating desktop status window), mints a virtual key, and writes all config files. It is idempotent — safe to re-run.
+This installs opencode, the oh-my-opencode-slim plugin (with `--companion=yes` for the floating desktop status window), mints or reuses a virtual key, and writes all config files. It is idempotent — safe to re-run.
+
+**Virtual key reuse** (handled automatically by install.sh — no separate step needed):
+- If a key with alias "opencode" already exists in LiteLLM → smoke test → reuse if valid
+- If `opencode.jsonc` already has a key → smoke test → reuse if valid
+- Otherwise → mint new key with alias "opencode", unlimited budget, unlimited duration
 
 **Step 11 — Validate**
 

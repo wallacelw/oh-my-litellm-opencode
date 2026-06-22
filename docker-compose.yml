@@ -16,7 +16,7 @@ services:
     volumes:
       - ./assets/config/litellm/litellm_config.yaml:/app/config.yaml:ro
     environment:
-      DATABASE_URL: "postgresql://llmproxy:${DB_PASSWORD}@db:5432/litellm"
+      DATABASE_URL: "postgresql://llmproxy:${DB_PASSWORD:?DB_PASSWORD must be set in .env}@db:5432/litellm"
       STORE_MODEL_IN_DB: "True"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://openlit:4318"
       LITELLM_OTEL_INTEGRATION_ENABLE_METRICS: "true"
@@ -52,7 +52,7 @@ services:
     environment:
       POSTGRES_DB: litellm
       POSTGRES_USER: llmproxy
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

@@ -166,7 +166,7 @@ if [ "$OPENCODE_ONLY" = false ]; then
     skip "LiteLLM liveness probe"
     skip "LiteLLM per-model health"
   else
-    LIVENESS=$(curl -s --connect-timeout 5 -w '%{http_code}' "$LITELLM_URL/health/liveliness" 2>/dev/null)
+    LIVENESS=$(curl -s --connect-timeout 5 --max-time 10 -w '%{http_code}' "$LITELLM_URL/health/liveliness" 2>/dev/null)
     LIVENESS_CODE="${LIVENESS: -3}"
     if [ "$LIVENESS_CODE" = "200" ]; then
       pass "LiteLLM liveness probe returned 200"
@@ -175,7 +175,7 @@ if [ "$OPENCODE_ONLY" = false ]; then
     fi
 
     if [ -n "${LITELLM_MASTER_KEY:-}" ]; then
-      HEALTH_RESP=$(curl -s --connect-timeout 10 "$LITELLM_URL/health" -H "Authorization: Bearer $LITELLM_MASTER_KEY" 2>/dev/null)
+      HEALTH_RESP=$(curl -s --connect-timeout 10 --max-time 15 "$LITELLM_URL/health" -H "Authorization: Bearer $LITELLM_MASTER_KEY" 2>/dev/null)
       HEALTH_FAIL=$(echo "$HEALTH_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('unhealthy_count',0))" 2>/dev/null || echo "?")
       if [ "$HEALTH_FAIL" = "0" ]; then
         pass "All deployments healthy (unhealthy_count=0)"
@@ -210,8 +210,8 @@ if [ "$OPENCODE_ONLY" = false ]; then
     fi
 
     OTLP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 10 "http://127.0.0.1:4318/" 2>/dev/null || echo "000")
-    if [ -n "$OTLP_CODE" ]; then
-      pass "OTLP HTTP endpoint reachable on port 4318"
+    if [ "$OTLP_CODE" != "000" ]; then
+      pass "OTLP HTTP endpoint reachable on port 4318 (HTTP $OTLP_CODE)"
     else
       warn "OTLP HTTP endpoint not responding on port 4318 (may still be starting)"
     fi
@@ -400,7 +400,7 @@ if [ "$LITELLM_ONLY" = false ]; then
         MODEL_LIST=$(printf '%s' "$MODELS_JSON" | jq -r '.data[].id' 2>/dev/null)
         echo "  ℹ Discovered $MODEL_COUNT model(s): $(echo "$MODEL_LIST" | tr '\n' ' ' | sed 's/ $//')"
 
-        # Parallel inference smoke test
+        # Parallel inference smoke test (staggered to avoid rate limits)
         SMOKE_PIDS=()
         SMOKE_MODELS=()
         for model in $MODEL_LIST; do
@@ -411,6 +411,7 @@ if [ "$LITELLM_ONLY" = false ]; then
             -d "$BODY" >/dev/null 2>&1 &
           SMOKE_PIDS+=($!)
           SMOKE_MODELS+=("$model")
+          sleep 0.5  # stagger to avoid burst rate limits
         done
 
         SMOKE_PASS=0; SMOKE_FAIL=0; SMOKE_FAIL_LIST=""

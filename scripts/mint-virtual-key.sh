@@ -61,7 +61,11 @@ if [ -n "${LITELLM_MASTER_KEY:-}" ]; then
     -H "Authorization: Bearer $LITELLM_MASTER_KEY" 2>/dev/null || true)
   if [ -n "$KEY_LIST" ]; then
     # /key/list returns key IDs; check /key/info for each to find matching alias
+    # Limit lookups to avoid O(N) API calls with many keys
+    KEY_LOOKUP_COUNT=0
     for KEY_ID in $(echo "$KEY_LIST" | jq -r '.keys[]' 2>/dev/null); do
+      [ $KEY_LOOKUP_COUNT -ge 50 ] && break
+      KEY_LOOKUP_COUNT=$((KEY_LOOKUP_COUNT + 1))
       KEY_INFO=$(curl -sf -m 10 "$LITELLM_URL/key/info?key=$KEY_ID" \
         -H "Authorization: Bearer $LITELLM_MASTER_KEY" 2>/dev/null || true)
       if [ -n "$KEY_INFO" ]; then
@@ -80,7 +84,7 @@ if [ -n "$EXISTING_KEY" ] && [[ "$EXISTING_KEY" == sk-* ]]; then
   if curl -sf -m 10 "$LITELLM_URL/v1/chat/completions" \
      -H "Authorization: Bearer $EXISTING_KEY" \
      -H "Content-Type: application/json" \
-     -d '{"model":"glm-5.1","messages":[{"role":"user","content":"ok"}],"max_tokens":1}' &>/dev/null; then
+     -d '{"model":"deepseek-v3.2","messages":[{"role":"user","content":"ok"}],"max_tokens":1}' &>/dev/null; then
     echo "Existing virtual key with alias '$ALIAS' is valid. Reusing:"
     echo "  Key:    ${EXISTING_KEY:0:8}...${EXISTING_KEY: -4}"
     echo ""

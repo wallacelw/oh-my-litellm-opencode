@@ -95,7 +95,7 @@ if [[ -f "$ENV_FILE" ]]; then
     EXISTING_OPENLIT_DB_PASSWORD="$(grep -oP '^OPENLIT_DB_PASSWORD="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
     echo "WARNING: .env already exists. Overwriting in auto mode (preserving secrets if set)."
   else
-    echo "WARNING: .env already exists."
+    echo "WARNING: .env already exists. Overwriting will regenerate all values."
     read -r -p "  Overwrite? [y/N]: " overwrite < /dev/tty
     if [[ "${overwrite,,}" != "y" ]]; then
       echo "Aborting. Edit .env manually or remove it first."; exit 0
@@ -228,6 +228,14 @@ OPENLIT_DB_PASSWORD="${OPENLIT_DB_PASSWORD}"
 EOF
 
 chmod 600 "$ENV_FILE"
+
+# ── Warn if --force was used ──────────────────────────────────────
+if [[ "$MODE" == "auto" && "$FORCE" == true ]]; then
+  echo ""
+  echo "WARNING: All secrets were regenerated (--force). You must restart Docker to pick up the new values:"
+  echo "  docker compose up -d"
+  echo "Existing virtual keys are invalidated — re-run install.sh to mint new ones."
+fi
 
 # ── Generate litellm_config.yaml ─────────────────────────────────
 echo ""

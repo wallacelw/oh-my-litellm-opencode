@@ -104,16 +104,18 @@ try_resolve_master_key() {
 
 # ── Wait for LiteLLM to become healthy (up to 90s) ──
 wait_for_litellm() {
-  echo "  Waiting for LiteLLM to become healthy..."
+  echo "  Waiting for LiteLLM to become healthy (up to 90s)..."
   local waited=0
   while [ $waited -lt 90 ]; do
     if curl -sf -m "$CURL_TIMEOUT" "$LITELLM_URL/health/liveliness" &>/dev/null; then
-      echo "  LiteLLM healthy after ~${waited}s."
+      echo "  ✓ LiteLLM healthy after ~${waited}s."
       return 0
     fi
+    printf "  ."
     sleep 5
     waited=$((waited + 5))
   done
+  echo ""
   echo "ERROR: LiteLLM did not become healthy within 90s. Check: docker compose logs"
   exit 1
 }
@@ -168,9 +170,9 @@ if [ -z "$MAAS_KEY" ]; then
 else
   echo "  ✓ Huawei MaaS API key set"
 fi
-export HUAWEI_MAAS_API_KEY="$MAAS_KEY"
-
 [ "$PREREQ_OK" = false ] && { echo ""; echo "ERROR: Prerequisites missing. Install them and re-run."; exit 1; }
+
+export HUAWEI_MAAS_API_KEY="$MAAS_KEY"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Step 3: Deploy LiteLLM
@@ -194,6 +196,18 @@ if [ ! -f "$PROJECT_DIR/.env" ]; then
     (cd "$PROJECT_DIR" && ./scripts/init_env.sh --auto)
   fi
 else
+  # If --maas-key was provided and differs from .env, update .env
+  if [ -n "$MAAS_KEY" ] && [ "$MAAS_KEY" != "${HUAWEI_MAAS_API_KEY:-}" ]; then
+    if [ "$DRY_RUN" = true ]; then
+      echo "  Would update HUAWEI_MAAS_API_KEY in .env and regenerate config"
+    else
+      echo "  Updating HUAWEI_MAAS_API_KEY in .env (key changed)..."
+      sed -i "s|^HUAWEI_MAAS_API_KEY=.*|HUAWEI_MAAS_API_KEY=\"$MAAS_KEY\"|" "$PROJECT_DIR/.env"
+      sed -i "s|^HUAWEI_MAAS_API_KEY_0=.*|HUAWEI_MAAS_API_KEY_0=\"$MAAS_KEY\"|" "$PROJECT_DIR/.env" 2>/dev/null || true
+      echo "  Regenerating litellm_config.yaml..."
+      (cd "$PROJECT_DIR" && ./scripts/generate_config.sh)
+    fi
+  fi
   echo "  .env exists — skipping init_env.sh"
 fi
 
@@ -270,6 +284,11 @@ echo "LiteLLM Admin UI:  ${LITELLM_URL}/ui"
 echo "OpenLit UI:         http://127.0.0.1:3000"
 echo "opencode config:    ~/.config/opencode/opencode.jsonc"
 echo "plugin config:      ~/.config/opencode/oh-my-opencode-slim.json"
+# Show virtual key (masked) from config
+FINAL_VK=$(jq -r '.provider.LiteLLM.options.apiKey // empty' "$HOME/.config/opencode/opencode.jsonc" 2>/dev/null || true)
+if [ -n "$FINAL_VK" ]; then
+  echo "Virtual key:        ${FINAL_VK:0:8}...${FINAL_VK: -4}"
+fi
 echo ""
 echo "Preset: LiteLLM-Huawei-MaaS (default) — all 5 models via LiteLLM"
 echo "Fallback: LiteLLM-Huawei-MaaS-Lite — 3 models (no v4-pro/v4-flash)"

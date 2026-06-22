@@ -5,20 +5,23 @@ description: Deploy LiteLLM proxy (Docker Compose: litellm + postgres + openlit 
 
 # oh-my-litellm-opencode
 
-Deploy LiteLLM proxy → bootstrap opencode + oh-my-opencode-slim → mint virtual key → configure. Idempotent — safe to re-run.
+Deploy LiteLLM proxy → bootstrap opencode + oh-my-opencode-slim → mint virtual key → configure. **Idempotent — safe to re-run.**
 
 ## When to Use
 
 | Situation | Route |
 |---|---|
 | Deploy full stack from scratch | `./scripts/bootstrap.sh` |
-| LiteLLM already running | `./scripts/bootstrap.sh` (auto-detects) |
-| Add/modify a model | Edit template → `generate_config.sh` → `docker compose restart litellm` |
+| LiteLLM already running | `./scripts/bootstrap.sh` (auto-detects, skips deploy) |
+| Change MaaS key | `./scripts/bootstrap.sh --maas-key=NEW` (updates .env + regenerates config) |
+| Add/modify a model | Edit `generate_config.sh` MODELS array → `generate_config.sh` → `docker compose restart litellm` |
+| Add a MaaS key for load balancing | Add `HUAWEI_MAAS_API_KEY_N` to `.env`, increment COUNT → `generate_config.sh` → `docker compose restart litellm` |
+| Change routing strategy | `./scripts/generate_config.sh --routing-strategy=least-busy && docker compose restart litellm` |
 | Troubleshoot | See **Repair Playbook** |
 | Validate | `./scripts/validate.sh` |
-| Switch presets | `/preset LiteLLM-Huawei-MaaS-Lite` |
+| Switch presets at runtime | `/preset LiteLLM-Huawei-MaaS-Lite` |
 
-**When NOT to use:** Direct MaaS calls without proxy, non-Huawei providers, multi-host/K8s.
+**When NOT to use:** Direct MaaS calls without proxy, non-Huawei providers, multi-host/K8s deployments.
 
 ## Required Inputs
 
@@ -34,45 +37,66 @@ All collected by `./scripts/init_env.sh` (interactive or `--auto`).
 
 bun, jq, Docker + Compose V2, git, python3, `HUAWEI_MAAS_API_KEY` env var.
 
-## Core Rules
-
-- **Never commit `.env` or real keys.** Secrets in `.env` (gitignored, `0600`).
-- **Never change `LITELLM_SALT_KEY` after virtual keys exist.** Recovery = `docker compose down -v` + fresh start.
-- **Model names case-sensitive.** Must match MaaS console.
-- **MaaS region-locked** to `ap-southeast-1`.
-- **Config is generated** by `scripts/generate_config.sh`. Never edit `litellm_config.yaml` directly.
-- **Config read-only at startup.** Changes require `docker compose restart litellm`.
-- **Non-zero pricing required** on every model for budget enforcement.
-- **Master key admin-only.** Mint virtual keys per team/service.
-- **Proxy is sole egress** for MaaS traffic (centralized budgets/rate limits/audit).
-- **LiteLLM provider uses `@ai-sdk/openai-compatible`** (not `openai`).
-- **Model keys: `openai/<model>`** in LiteLLM provider. **Presets: `LiteLLM/openai/<model>`** (3-part).
-- **LiteLLM baseURL: `http://127.0.0.1:4000`** (no `/v1` — SDK adds it).
-- **Disable `explore` and `general` agents.** Enable LSP. Use virtual keys (not master key) for opencode.
-- **`jq --arg` for JSON substitution** — never `sed`.
-- **Same-host only.**
-- **Mask secrets** as `<prefix>...<suffix> (len=N)` in logs.
-
 ## Architecture
 
 ```
-Client → LiteLLM (:4000) → Huawei MaaS (ap-southeast-1)
-                 │               │
-                 │          ┌────┴────┐
-                 │          │ N API   │  (N = HUAWEI_MAAS_API_KEY_COUNT)
-                 │          │ keys    │  LiteLLM load-balances N deployments
-                 │          └────────┘
-                 ├── PostgreSQL (:5432)  — keys, usage, spend
-                 └── OpenLit (:3000)    — LLM observability (traces + metrics + dashboards)
-                       ↑ OTLP (:4317/:4318) — from LiteLLM "otel" callback
-                       └── ClickHouse (:8123/:9000)    — 30-day storage, SQL analytics
+ opencode                    LiteLLM Proxy (:4000)              Huawei MaaS
+ ─────────                   ─────────────────────              ─────────────
+ orchestrator ─┐                                    ┌───────→ glm-5.1
+ oracle ───────┤                                    ├───────→ glm-5
+ council ──────┤    virtual key (sk-...)            ├───────→ deepseek-v4-pro
+ librarian ────┤──────────────────────→  LiteLLM  ──┤───────→ deepseek-v4-flash
+ explorer ─────┤    (scoped, unlimited)   │         └───────→ deepseek-v3.2
+ designer ─────┤                        │
+ fixer ────────┘                        │    N API keys (load-balanced)
+                                        │    LiteLLM fans out each model
+                                        │    across N deployments
+                                        │
+                              ┌─────────┴──────────┐
+                              │                    │
+                         PostgreSQL (:5432)    OpenLit (:3000)
+                         keys · spend · usage   dashboards · traces
+                                                │
+                                           OTLP (:4317/:4318)
+                                                │
+                                         ClickHouse (:8123)
+                                         30-day SQL analytics
 ```
 
-Startup: PostgreSQL + ClickHouse (parallel) → LiteLLM + OpenLit (parallel, healthcheck-gated).
+**Startup order:** PostgreSQL + ClickHouse start in parallel → LiteLLM + OpenLit start in parallel (healthcheck-gated on their databases).
+
+**Data flow:**
+1. opencode sends request to LiteLLM with virtual key
+2. LiteLLM validates key, selects healthy deployment, forwards to MaaS
+3. MaaS responds → LiteLLM records usage/spend in PostgreSQL
+4. LiteLLM emits OTLP trace to OpenLit (via `"otel"` callback)
+5. OpenLit stores trace in ClickHouse, displays in dashboard
+
+## Core Rules
+
+These invariants must always hold. Violating them breaks the system.
+
+- **Never commit `.env` or real keys.** Secrets in `.env` (gitignored, `0600`).
+- **Never change `LITELLM_SALT_KEY` after virtual keys exist.** Recovery = `docker compose down -v` + fresh start.
+- **Model names are case-sensitive.** Must match MaaS console exactly.
+- **MaaS region-locked** to `ap-southeast-1`. Do not change `HUAWEI_MAAS_API_BASE`.
+- **Config is generated** by `scripts/generate_config.sh`. Never edit `litellm_config.yaml` directly.
+- **Config is read-only at startup.** Changes require `docker compose restart litellm`.
+- **Non-zero pricing required** on every model for budget enforcement.
+- **Master key is admin-only.** Mint virtual keys per team/service — never use master key in opencode.
+- **Proxy is sole egress** for MaaS traffic (centralized budgets/rate limits/audit).
+- **LiteLLM provider uses `@ai-sdk/openai-compatible`** (not `openai`).
+- **Model keys: `openai/<model>`** in LiteLLM provider. **Preset references: `LiteLLM/openai/<model>`** (3-part).
+- **LiteLLM baseURL: `http://127.0.0.1:4000`** (no `/v1` — SDK adds it).
+- **Disable `explore` and `general` agents.** Enable LSP. Use virtual keys (not master key) for opencode.
+- **`jq --arg` for JSON substitution** — never `sed` on JSON files.
+- **Same-host only.** No multi-host or K8s support.
+- **Mask secrets** as `<prefix>...<suffix>` in all log output.
 
 ## Deployment Workflow
 
-**For AI agents (non-interactive):**
+### For AI agents (non-interactive)
+
 ```bash
 git clone https://github.com/wallacelw/oh-my-litellm-opencode /home/oh-my-litellm-opencode
 cd /home/oh-my-litellm-opencode
@@ -80,39 +104,57 @@ export HUAWEI_MAAS_API_KEY="<your-key>"
 ./scripts/bootstrap.sh --maas-key="$HUAWEI_MAAS_API_KEY"
 ```
 
-That's it. `bootstrap.sh --maas-key=KEY` is fully non-interactive — it uses `init_env.sh --auto` internally, auto-generates all secrets, starts Docker, mints a virtual key, writes configs, and validates.
+`bootstrap.sh --maas-key=KEY` is fully non-interactive — it uses `init_env.sh --auto` internally, auto-generates all secrets, starts Docker, mints a virtual key, writes configs, and validates.
 
-**For humans (interactive):**
+### For humans (interactive)
+
 ```bash
 git clone https://github.com/wallacelw/oh-my-litellm-opencode /home/oh-my-litellm-opencode
 cd /home/oh-my-litellm-opencode
 ./scripts/bootstrap.sh          # prompts for MaaS key + any missing values
 ```
 
-**Step-by-step (if not using bootstrap.sh):**
+### Step-by-step (if not using bootstrap.sh)
+
 ```bash
 ./scripts/init_env.sh --auto    # agent mode: reads HUAWEI_MAAS_API_KEY from env
-./scripts/generate_config.sh
-docker compose up -d
-./scripts/install.sh            # reads LITELLM_MASTER_KEY from .env
-./scripts/validate.sh
+./scripts/generate_config.sh    # build litellm_config.yaml from .env
+docker compose up -d            # start all 4 services
+./scripts/install.sh            # install opencode + plugin + mint key + write config
+./scripts/validate.sh           # verify everything works
 ```
+
+### bootstrap.sh step-by-step
+
+| Step | Action | Idempotency |
+|------|--------|-------------|
+| 2 | Check prerequisites (bun, jq, docker, git, python3, MaaS key) | Read-only |
+| 3a | Ensure `.env` exists (runs `init_env.sh --auto` if missing) | Skips if `.env` exists; updates key if `--maas-key` differs |
+| 3b | Start Docker Compose | `docker compose up -d` is no-op if already running |
+| 3c | Resolve master key (env → `.master-key` → `.env` → prompt) | Caches to `.master-key` for faster future resolution |
+| 4 | Install opencode + plugin + mint key + write config | Reuses existing key by alias; diff-before-write on configs |
+| 5 | Validate (55+ checks) | Read-only |
+| 6 | Summary (URLs, keys, next steps) | Read-only |
 
 ### init_env.sh modes
 
 | Mode | Secrets | MaaS keys | Use case |
 |------|---------|-----------|----------|
-| interactive | Prompt each | Prompt each | Human, first-time |
-| `--auto` | Auto-generate, preserve on re-run | From env var | AI agent, non-interactive |
+| interactive (default) | Prompt each with generated defaults | Prompt each | Human, first-time |
+| `--auto` | Auto-generate, **preserve on re-run** | From env var | AI agent, non-interactive |
 | `--auto --force` | Regenerate all | From env var | Key rotation after security incident |
+
+**Important:** `--auto --force` regenerates `LITELLM_MASTER_KEY` and `LITELLM_SALT_KEY`. You must run `docker compose up -d` afterward to pick up the new values. All existing virtual keys are invalidated — re-run `install.sh` to mint new ones.
 
 ### Master Key Resolution (bootstrap.sh)
 
 Priority: env var → `.master-key` file → `.env` file → interactive prompt.
 
+When found in `.env`, the key is cached to `.master-key` (chmod 600) for faster future resolution.
+
 ## Multi-Key Load Balancing
 
-With N MaaS API keys, each model has N deployments. LiteLLM load-balances across them. Effective RPM/TPM = per-key × N.
+With N MaaS API keys, each model has N deployments. LiteLLM load-balances across them. **Effective RPM/TPM = per-key × N.**
 
 | Variable | Set by | Description |
 |---|---|---|
@@ -120,7 +162,10 @@ With N MaaS API keys, each model has N deployments. LiteLLM load-balances across
 | `HUAWEI_MAAS_API_KEY_COUNT` | init_env.sh | Total keys (1 + extra) |
 | `HUAWEI_MAAS_API_KEY_N` | init_env.sh | Indexed keys (_0, _1, ...) |
 
-**Add a key:** Add `HUAWEI_MAAS_API_KEY_N=<key>` to `.env`, increment COUNT, `generate_config.sh`, `docker compose restart litellm`.
+**Add a key:**
+1. Add `HUAWEI_MAAS_API_KEY_N=<key>` to `.env`
+2. Increment `HUAWEI_MAAS_API_KEY_COUNT`
+3. `./scripts/generate_config.sh && docker compose restart litellm`
 
 **Change routing:** `./scripts/generate_config.sh --routing-strategy=least-busy && docker compose restart litellm`
 
@@ -130,47 +175,48 @@ Strategies: `simple-shuffle` (default), `least-busy`, `latency-based-routing`, `
 
 Handled by `bootstrap.sh` or `install.sh`:
 
-1. **Install opencode** — `curl -fsSL https://opencode.ai/install | bash` (latest stable)
-2. **Install plugin** — `bunx oh-my-opencode-slim@2.0.4 install`
-3. **Mint virtual key** — reuse existing if valid, else mint unlimited key via LiteLLM
-4. **Write opencode.jsonc** — jq substitution on template:
-   ```bash
-   jq --arg vk "$VIRTUAL_KEY" --arg mk "$MAAS_KEY" \
-     '.provider.LiteLLM.options.apiKey = $vk |
-      .provider["Huawei-MaaS"].options.apiKey = $mk' \
-     assets/config/opencode/opencode.jsonc.example > ~/.config/opencode/opencode.jsonc
-   ```
-5. **Write oh-my-opencode-slim.json** — copy template to `~/.config/opencode/`
+1. **Install opencode** — `curl -fsSL https://opencode.ai/install | bash` (latest stable, download-then-execute)
+2. **Install plugin** — `bunx oh-my-opencode-slim@2.0.4 install` (skips if already installed)
+3. **Mint virtual key** — reuse existing by alias (up to 50 key lookups), else mint unlimited key via LiteLLM
+4. **Write opencode.jsonc** — `jq --arg` substitution on template (diff-before-write, backup on change)
+5. **Write oh-my-opencode-slim.json** — copy template (diff-before-write, backup on change)
 6. **Validate** — `scripts/validate.sh`
+
+### Virtual key reuse logic (install.sh)
+
+1. If `--virtual-key=sk-...` provided → use it directly
+2. If `LITELLM_MASTER_KEY` available → query `/key/list` → iterate up to 50 keys → `/key/info` for each → find alias "opencode" → smoke test with `deepseek-v3.2` (700 RPM, cheapest) → reuse if valid
+3. If existing `opencode.jsonc` has a key → smoke test → reuse if valid
+4. Otherwise → mint new key with alias "opencode", unlimited budget, unlimited duration
 
 ## Presets
 
-| Preset | Models | Route |
-|--------|--------|-------|
-| **LiteLLM-Huawei-MaaS** (default) | All 5 | LiteLLM proxy → MaaS |
-| **LiteLLM-Huawei-MaaS-Lite** | 3 (no v4-pro/v4-flash) | LiteLLM proxy → MaaS |
-| **Huawei-MaaS** | All 5 | Direct to MaaS |
-| **Huawei-MaaS-Lite** | 3 (no v4-pro/v4-flash) | Direct to MaaS |
+| Preset | Models | Route | When to use |
+|--------|--------|-------|-------------|
+| **LiteLLM-Huawei-MaaS** (default) | All 5 | LiteLLM proxy → MaaS | Production — budget tracking, load balancing, observability |
+| **LiteLLM-Huawei-MaaS-Lite** | 3 (no v4-pro/v4-flash) | LiteLLM proxy → MaaS | Cost-saving — skip expensive models |
+| **Huawei-MaaS** | All 5 | Direct to MaaS | Debugging proxy issues — bypass LiteLLM |
+| **Huawei-MaaS-Lite** | 3 (no v4-pro/v4-flash) | Direct to MaaS | Debugging + cost-saving |
 
 ### Agent Assignments (LiteLLM-Huawei-MaaS)
 
-| Agent | Model | Variant | Fallback |
-|-------|-------|---------|----------|
-| orchestrator | glm-5.1 | high | — |
-| oracle | deepseek-v4-pro | max | glm-5.1 |
-| council | deepseek-v4-pro | high | glm-5.1 |
-| librarian | deepseek-v3.2 | low | — |
-| explorer | deepseek-v4-flash | low | deepseek-v3.2 |
-| designer | glm-5 | medium | — |
-| fixer | deepseek-v4-flash | high | glm-5 |
+| Agent | Model | Variant | Fallback | Rationale |
+|-------|-------|---------|----------|-----------|
+| orchestrator | glm-5.1 | high | — | Strongest GLM, reliable orchestrator |
+| oracle | deepseek-v4-pro | max | glm-5.1 | Best reasoning, fallback to GLM |
+| council | deepseek-v4-pro | high | glm-5.1 | Multi-model consensus, same pair |
+| librarian | deepseek-v3.2 | low | — | Cheap, fast, good enough for docs |
+| explorer | deepseek-v4-flash | low | deepseek-v3.2 | Fast search, fallback to cheapest |
+| designer | glm-5 | medium | — | Good design sense, mid-tier |
+| fixer | deepseek-v4-flash | high | glm-5 | Fast implementation, fallback to GLM |
 
 Fallback via model arrays (oh-my-opencode-slim v2 format): `"model": ["primary", "fallback"]`.
 
-Council: single `councillor` per preset (deepseek-v4-pro/high).
+Council: single `councillor` per preset (deepseek-v4-pro/high), executed in parallel with 3 retries.
 
 ## Models
 
-| Name | in / out | RPM | TPM | Cost (in/out per token) |
+| Name | Context (in/out) | RPM | TPM | Cost (in/out per token) |
 |---|---|---|---|---|
 | `glm-5.1` | 192K / 128K | 30 | 500K | $1.078 / $3.774 × 10⁻⁶ |
 | `glm-5` | 192K / 64K | 30 | 500K | $0.809 / $2.965 × 10⁻⁶ |
@@ -181,32 +227,26 @@ Council: single `councillor` per preset (deepseek-v4-pro/high).
 ### Adding a new model
 
 1. Find name/rate/price in [MaaS console](https://console.huaweicloud.com/modelarts/)
-2. Add entry to `litellm_config.yaml.template` (match MaaS name exactly)
+2. Add entry to `generate_config.sh` `MODELS` array (match MaaS name exactly, case-sensitive)
 3. Set non-zero `input_cost_per_token` / `output_cost_per_token` (per-token, not per-1K)
 4. `./scripts/generate_config.sh && docker compose restart litellm`
 
-## Proxy Settings
-
-| Setting | Value | Meaning |
-|---|---|---|
-| `request_timeout` | 600 | Full request: 10 min |
-| `stream_timeout` | 60 | TTFT: 60s |
-| `routing_strategy` | `simple-shuffle` | Random across healthy deployments |
-| `cooldown_time` | 30 | Seconds to cool down failed deployment |
-| `allowed_fails` | 3 | Failures before cooldown |
-
 ## Docker Compose
 
-| Service | Image | Port | Resources |
-|---|---|---|---|
-| litellm | `ghcr.io/berriai/litellm:v1.89.3` | 4000 | 2g RAM, 2 CPU |
-| db | `postgres:16-alpine` | (5432) | 512m RAM, 1 CPU |
-| clickhouse | `clickhouse/clickhouse-server:24.4.1` | 8123, 9000 | 512m RAM, 1 CPU |
-| openlit | `ghcr.io/openlit/openlit:1.22.0` | 3000, 4317, 4318 | 512m RAM, 1 CPU |
+| Service | Image | Port | Resources | Depends on |
+|---|---|---|---|---|
+| litellm | `ghcr.io/berriai/litellm:v1.89.3` | 4000 | 2g RAM, 2 CPU | db (healthy) |
+| db | `postgres:16-alpine` | (5432) | 512m RAM, 1 CPU | — |
+| clickhouse | `clickhouse/clickhouse-server:24.4.1` | 8123, 9000 | 512m RAM, 1 CPU | — |
+| openlit | `ghcr.io/openlit/openlit:1.22.0` | 3000, 4317, 4318 | 512m RAM, 1 CPU | clickhouse (healthy) |
 
-## Metrics
+All services: `restart: unless-stopped`, json-file logs (10m × 3 rotations), memory + CPU limits.
 
-**Telemetry pipeline:** LiteLLM → OpenLit (OTLP) → ClickHouse
+All passwords use `:?` fail-fast syntax — Docker Compose refuses to start if any required variable is missing from `.env`.
+
+## Observability
+
+**Telemetry pipeline:** LiteLLM → OTLP (:4317/:4318) → OpenLit → ClickHouse
 
 **OTel GenAI metrics** (via `"otel"` callback):
 - `gen_ai.client.operation.duration` — end-to-end request latency
@@ -295,19 +335,20 @@ curl -fsSL https://opencode.ai/install | bash
 
 | Symptom | Fix |
 |---|---|
-| `litellm` keeps restarting | Check `docker compose logs db`, verify `DB_PASSWORD` |
-| 401 | Verify `Authorization: Bearer sk-...` header |
-| 404 model not found | Model name case-sensitive, must match MaaS console |
-| `LITELLM_SALT_KEY` error | Use original salt; if lost, `docker compose down -v` |
+| `litellm` keeps restarting | Check `docker compose logs db`, verify `DB_PASSWORD` matches `.env` |
+| 401 Unauthorized | Verify `Authorization: Bearer sk-...` header — key must start with `sk-` |
+| 404 model not found | Model name case-sensitive, must match MaaS console exactly |
+| `LITELLM_SALT_KEY` error | Use original salt; if lost, `docker compose down -v` and start fresh |
 | MaaS 403 | Verify key in console; region must be `ap-southeast-1` |
-| `unhealthy_count > 0` | Check MaaS key, model ID, region |
-| Budget not consumed | Set non-zero `input_cost_per_token` / `output_cost_per_token` |
-| Virtual key 403 | Check key with `/key/info` |
+| `unhealthy_count > 0` | Check MaaS key, model ID, region — may be transient, wait 30s |
+| Budget not consumed | Set non-zero `input_cost_per_token` / `output_cost_per_token` in model catalog |
+| Virtual key 403 | Check key with `/key/info?key=<key_id>` — may be expired or revoked |
 | Plugin not loaded | Re-run `bunx oh-my-opencode-slim@2.0.4 install` |
-| Fallback not triggering | Set `fallback.enabled: true`, use model arrays |
-| Port conflict | Check `ss -tlnp | grep -E ':4000|:4317|:4318|:8123|:9000|:3000'` |
-| OpenLit not receiving data | Check `docker compose logs openlit`, verify OTEL_EXPORTER_OTLP_ENDPOINT |
-| ClickHouse down | Check `curl http://127.0.0.1:8123/ping` |
+| Fallback not triggering | Set `fallback.enabled: true`, use model arrays (not strings) |
+| Port conflict | Check `ss -tlnp \| grep -E ':4000\|:4317\|:4318\|:8123\|:9000\|:3000'` |
+| OpenLit not receiving data | Check `docker compose logs openlit`, verify `OTEL_EXPORTER_OTLP_ENDPOINT=http://openlit:4318` |
+| ClickHouse down | Check `curl http://127.0.0.1:8123/ping` — may need `start_period: 100s` |
+| `.env` has `:?` error | All required variables must be set — run `init_env.sh` |
 
 ### Bootstrap Rollback
 
@@ -324,30 +365,38 @@ curl -fsSL https://opencode.ai/install | bash
 
 | Property | Mechanism |
 |---|---|
-| `init_env.sh --auto` non-interactive | Preserves all secrets on re-run (MASTER_KEY, SALT_KEY, DB_PASSWORD, OPENLIT_DB_PASSWORD) — true no-op |
+| `init_env.sh --auto` non-interactive | Preserves all 4 secrets on re-run (MASTER_KEY, SALT_KEY, DB_PASSWORD, OPENLIT_DB_PASSWORD) — true no-op |
 | opencode latest | `curl -fsSL https://opencode.ai/install \| bash` (no pinning — always latest) |
-| docker compose up -d | Idempotent — always run, no-op if services already up |
-| mint-virtual-key.sh | Reuses existing key by alias; mints only if missing or invalid |
-| install.sh configs | Diff-before-write — skip if unchanged |
+| docker compose up -d | Idempotent — always run, no-op if services already up and config unchanged |
+| Virtual key reuse | install.sh reuses existing key by alias (up to 50 lookups); mints only if missing or invalid |
+| install.sh configs | Diff-before-write — skip if unchanged, backup if changed |
+| `--maas-key=NEW` key change | Updates `.env` + regenerates `litellm_config.yaml` + Docker picks up on `up -d` |
 | LiteLLM image pinned | `v1.89.3` (no `latest`) |
 | OpenLit image pinned | `1.22.0` (no `latest`) |
 | ClickHouse image pinned | `24.4.1` (no `latest`) |
+| Docker passwords fail-fast | `:?` syntax — Compose refuses to start if any required variable is missing |
 | Timeouts consistent | `request_timeout: 600`, `stream_timeout: 60` |
-| Resource limits | All 4 services have memory + CPU limits |
-| Port conflicts detected | `bootstrap.sh` checks 4000/4317/4318/8123/9000/3000 |
-| `mint-virtual-key.sh` resilient | 3 retries with backoff; `--max-time 30` |
-| Config substitution safe | `jq --arg` only, never `sed` |
+| Resource limits | All 4 services have memory + CPU limits (no unbounded containers) |
+| Port conflicts detected | `bootstrap.sh` checks 4000/4317/4318/8123/9000/3000 before starting |
+| `mint-virtual-key.sh` resilient | 3 retries with backoff (5s/10s/15s); `--max-time 30` on all curls |
+| Config substitution safe | `jq --arg` only, never `sed` on JSON |
+| All curls have timeouts | `--max-time` or `-m` on every curl call (no hanging) |
+| Interactive reads safe | All `read -r` calls use `< /dev/tty` (safe in piped stdin contexts) |
+| JSONC parsing safe | State-machine `strip_jsonc()` — not regex — handles comments inside strings correctly |
 
 ## Verification Exit Criteria
+
+Run `./scripts/validate.sh` after bootstrap. All checks must pass:
 
 - [ ] `.env` exists with all required variables (no placeholders), `0600` permissions
 - [ ] `litellm_config.yaml` generated with `5 × N` deployments
 - [ ] All 4 Docker services healthy
 - [ ] LiteLLM liveness 200, `unhealthy_count: 0`
-- [ ] Chat completion + streaming succeed
-- [ ] OpenLit UI reachable, ClickHouse healthy
+- [ ] OpenLit UI reachable (HTTP 200)
+- [ ] ClickHouse reachable (HTTP 200)
 - [ ] OTLP endpoint responding on port 4318
-- [ ] Virtual key minting succeeds
-- [ ] opencode.jsonc: both providers, valid virtual key, 5 models each, chmod 600
-- [ ] oh-my-opencode-slim.json: 4 presets, default LiteLLM-Huawei-MaaS, council configured
+- [ ] Virtual key minting succeeds (starts with `sk-`)
+- [ ] opencode.jsonc: both providers (LiteLLM + Huawei-MaaS), valid virtual key, 5 models each, chmod 600
+- [ ] oh-my-opencode-slim.json: 4 presets, default LiteLLM-Huawei-MaaS, council configured, fallback enabled
+- [ ] Inference smoke test: all models respond via proxy
 - [ ] No real secrets in `git diff`

@@ -123,7 +123,7 @@ fi
 echo "   jq: $(jq --version)"
 
 if ! command -v docker &>/dev/null; then
-  echo "WARNING: docker is not installed. Required for LiteLLM proxy (prerequisite)."
+  echo "WARNING: docker is not installed. LiteLLM proxy requires Docker — opencode will work but cannot reach the proxy."
   echo "   Install: https://docs.docker.com/engine/install/"
 else
   if docker compose version &>/dev/null; then
@@ -155,7 +155,7 @@ if ! command -v opencode &>/dev/null; then
     echo "   Would run: curl -fsSL $OPENCODE_INSTALL_URL | bash"
   else
     TMPFILE=$(mktemp /tmp/opencode_install.XXXXXX.sh)
-    if curl -fsSL "$OPENCODE_INSTALL_URL" -o "$TMPFILE"; then
+    if curl -fsSL --max-time 30 "$OPENCODE_INSTALL_URL" -o "$TMPFILE"; then
       bash "$TMPFILE"
       echo "   Installed: $(opencode --version 2>/dev/null)"
     else
@@ -194,7 +194,11 @@ if [ -z "$VIRTUAL_KEY" ] && [ -n "${LITELLM_MASTER_KEY:-}" ]; then
     -H "Authorization: Bearer $LITELLM_MASTER_KEY" 2>/dev/null || true)
   if [ -n "$KEY_LIST" ]; then
     # /key/list returns key IDs; check /key/info for each to find matching alias
+    # Limit lookups to avoid O(N) API calls with many keys
+    KEY_LOOKUP_COUNT=0
     for KEY_ID in $(echo "$KEY_LIST" | jq -r '.keys[]' 2>/dev/null); do
+      [ $KEY_LOOKUP_COUNT -ge 50 ] && { echo "   Stopped alias lookup after 50 keys."; break; }
+      KEY_LOOKUP_COUNT=$((KEY_LOOKUP_COUNT + 1))
       KEY_INFO=$(curl -sf -m 10 "http://127.0.0.1:4000/key/info?key=$KEY_ID" \
         -H "Authorization: Bearer $LITELLM_MASTER_KEY" 2>/dev/null || true)
       if [ -n "$KEY_INFO" ]; then
@@ -205,10 +209,10 @@ if [ -z "$VIRTUAL_KEY" ] && [ -n "${LITELLM_MASTER_KEY:-}" ]; then
             if [ "$DRY_RUN" = true ]; then
               echo "   Would test existing key by alias: ${ALIAS_KEY:0:8}...${ALIAS_KEY: -4}"
               VIRTUAL_KEY="$ALIAS_KEY"
-            elif retry_curl -sf -m $CURL_TIMEOUT "http://127.0.0.1:4000/v1/chat/completions" \
-                 -H "Authorization: Bearer $ALIAS_KEY" \
-                 -H "Content-Type: application/json" \
-                 -d '{"model":"glm-5.1","messages":[{"role":"user","content":"ok"}],"max_tokens":1}'; then
+             elif retry_curl -sf -m $CURL_TIMEOUT "http://127.0.0.1:4000/v1/chat/completions" \
+                  -H "Authorization: Bearer $ALIAS_KEY" \
+                  -H "Content-Type: application/json" \
+                  -d '{"model":"deepseek-v3.2","messages":[{"role":"user","content":"ok"}],"max_tokens":1}'; then
               echo "   Existing virtual key (alias 'opencode') is valid. Reusing: ${ALIAS_KEY:0:8}...${ALIAS_KEY: -4}"
               VIRTUAL_KEY="$ALIAS_KEY"
             fi
@@ -230,7 +234,7 @@ if [ -z "$VIRTUAL_KEY" ] && [ -f "$OPENCODE_CONFIG" ]; then
     elif retry_curl -sf -m $CURL_TIMEOUT "http://127.0.0.1:4000/v1/chat/completions" \
          -H "Authorization: Bearer $EXISTING_KEY" \
          -H "Content-Type: application/json" \
-         -d '{"model":"glm-5.1","messages":[{"role":"user","content":"ok"}],"max_tokens":1}'; then
+         -d '{"model":"deepseek-v3.2","messages":[{"role":"user","content":"ok"}],"max_tokens":1}'; then
       echo "   Existing virtual key is valid. Reusing: ${EXISTING_KEY:0:8}...${EXISTING_KEY: -4}"
       VIRTUAL_KEY="$EXISTING_KEY"
     else
@@ -243,7 +247,7 @@ fi
 if [ -z "$VIRTUAL_KEY" ]; then
   if [ -z "${LITELLM_MASTER_KEY:-}" ]; then
     echo "  LITELLM_MASTER_KEY not set. Enter it (or Ctrl+C to abort):"
-    read -r LITELLM_MASTER_KEY
+    read -r LITELLM_MASTER_KEY < /dev/tty
     if [ -z "$LITELLM_MASTER_KEY" ]; then
       echo "ERROR: LITELLM_MASTER_KEY is required to mint virtual keys."
       exit 1
@@ -253,7 +257,7 @@ if [ -z "$VIRTUAL_KEY" ]; then
   if [ "$DRY_RUN" = true ]; then
     echo "   Would mint new virtual key with alias 'opencode', unlimited budget & duration, all models"
   else
-    echo "   Minting virtual key from LiteLLM..."
+    echo "   Minting virtual key from LiteLLM (unlimited budget, unlimited duration)..."
     RESPONSE=$(retry_curl -o -sf -X POST "http://127.0.0.1:4000/key/generate" \
       -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
       -H "Content-Type: application/json" \
@@ -293,7 +297,7 @@ mkdir -p "$OPENCODE_DIR"
 HUAWEI_MAAS_API_KEY="${HUAWEI_MAAS_API_KEY:-}"
 if [ -z "$HUAWEI_MAAS_API_KEY" ]; then
   echo "   Enter Huawei MaaS API key (or press Enter to skip direct provider):"
-  read -r HUAWEI_MAAS_API_KEY
+  read -r HUAWEI_MAAS_API_KEY < /dev/tty
 fi
 
 # Build opencode.jsonc from template using jq for JSON-safe substitution

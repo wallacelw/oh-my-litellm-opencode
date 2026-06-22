@@ -282,6 +282,20 @@ docker compose down -v && docker compose up -d                       # Full rese
 | `allowed_fails` | 3 | Failures before cooldown kicks in |
 | `num_retries` | 3 | Retry across deployments on transient failure |
 
+## For AI Agents
+
+If you are an AI agent reading this README, the full operational reference is in [SKILL.md](https://github.com/wallacelw/oh-my-litellm-opencode/blob/main/SKILL.md). It contains:
+
+- **Core Rules** — invariants that must always hold (never commit `.env`, never change `LITELLM_SALT_KEY`, etc.)
+- **Deployment Workflow** — step-by-step with idempotency guarantees
+- **Script Details** — what each script does, arguments, key reuse logic
+- **Upgrade Paths** — per-service upgrade procedures
+- **Repair Playbook** — common failure modes and rollback steps
+- **Determinism Guarantees** — 19 properties that ensure idempotent re-runs
+- **Verification Exit Criteria** — 12-point checklist for validation
+
+Read SKILL.md before making any changes to this repo.
+
 ---
 
 See [SKILL.md](./SKILL.md) for the full operational reference: core rules, upgrade paths, repair playbook, determinism guarantees, and verification exit criteria.

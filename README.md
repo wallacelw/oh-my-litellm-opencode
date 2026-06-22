@@ -45,10 +45,13 @@ Startup: PostgreSQL + ClickHouse (parallel) → LiteLLM + OpenLit (parallel, hea
 
 ### Humans
 
+**Prerequisites:** bun, jq, Docker + Compose V2, git, python3. Install Docker from https://docs.docker.com/get-docker/ if missing.
+
 ```bash
 git clone https://github.com/wallacelw/oh-my-litellm-opencode /home/oh-my-litellm-opencode
 cd /home/oh-my-litellm-opencode
 ./scripts/bootstrap.sh          # prompts for MaaS key + extra keys
+./scripts/validate.sh           # verify everything works
 opencode
 ```
 

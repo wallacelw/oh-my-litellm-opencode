@@ -184,17 +184,17 @@ ERRORS=0
 
 if [[ ! "$MASTER_KEY" == sk-* ]]; then
   echo "ERROR: LITELLM_MASTER_KEY must start with 'sk-'. Got: ${MASTER_KEY:0:6}..." >&2
-  ((ERRORS++))
+  ERRORS=$((ERRORS + 1))
 fi
 
 if [[ -z "$MAAS_API_KEY" ]]; then
   echo "ERROR: HUAWEI_MAAS_API_KEY is required. Get it from https://console.huaweicloud.com/modelarts/" >&2
-  ((ERRORS++))
+  ERRORS=$((ERRORS + 1))
 fi
 
 if [[ "$MAAS_API_KEY" == *"change-me"* ]] || [[ "$MAAS_API_KEY" == *"xxx"* ]]; then
   echo "ERROR: HUAWEI_MAAS_API_KEY still has a placeholder value." >&2
-  ((ERRORS++))
+  ERRORS=$((ERRORS + 1))
 fi
 
 # Validate extra keys
@@ -202,10 +202,10 @@ for i in "${!EXTRA_KEYS[@]}"; do
   key="${EXTRA_KEYS[$i]}"
   if [[ -z "$key" ]]; then
     echo "ERROR: Additional MaaS API key $((i + 1)) is empty." >&2
-    ((ERRORS++))
+    ERRORS=$((ERRORS + 1))
   elif [[ "$key" == *"change-me"* ]] || [[ "$key" == *"xxx"* ]]; then
     echo "ERROR: Additional MaaS API key $((i + 1)) still has a placeholder value." >&2
-    ((ERRORS++))
+    ERRORS=$((ERRORS + 1))
   fi
 done
 

@@ -312,23 +312,26 @@ if [ "$LITELLM_ONLY" = false ]; then
       done
     }
     check_slim_pair \
-      "LiteLLM-Huawei-MaaS preset" '.presets["LiteLLM-Huawei-MaaS"]' \
+      "LiteLLM-Huawei-MaaS-Full preset" '.presets["LiteLLM-Huawei-MaaS-Full"]' \
       "LiteLLM-Huawei-MaaS-Core preset" '.presets["LiteLLM-Huawei-MaaS-Core"]' \
-      "Huawei-MaaS direct preset" '.presets["Huawei-MaaS"]' \
+      "Huawei-MaaS-Full direct preset" '.presets["Huawei-MaaS-Full"]' \
       "Huawei-MaaS-Core direct preset" '.presets["Huawei-MaaS-Core"]' \
-      "Default is LiteLLM-Huawei-MaaS" '.preset == "LiteLLM-Huawei-MaaS"' \
-      "Orchestrator model set" '.presets["LiteLLM-Huawei-MaaS"].orchestrator.model' \
-      "Oracle model set (array for fallback)" '.presets["LiteLLM-Huawei-MaaS"].oracle.model' \
-      "Council model set (array for fallback)" '.presets["LiteLLM-Huawei-MaaS"].council.model' \
-      "Librarian model set" '.presets["LiteLLM-Huawei-MaaS"].librarian.model' \
-      "Explorer model set" '.presets["LiteLLM-Huawei-MaaS"].explorer.model' \
-      "Designer model set" '.presets["LiteLLM-Huawei-MaaS"].designer.model' \
-      "Fixer model set (array for fallback)" '.presets["LiteLLM-Huawei-MaaS"].fixer.model' \
+      "Default is LiteLLM-Huawei-MaaS-Full" '.preset == "LiteLLM-Huawei-MaaS-Full"' \
+      "Orchestrator model set" '.presets["LiteLLM-Huawei-MaaS-Full"].orchestrator.model' \
+      "Oracle model set (array for fallback)" '.presets["LiteLLM-Huawei-MaaS-Full"].oracle.model' \
+      "Council model set (array for fallback)" '.presets["LiteLLM-Huawei-MaaS-Full"].council.model' \
+      "Librarian model set" '.presets["LiteLLM-Huawei-MaaS-Full"].librarian.model' \
+      "Explorer model set" '.presets["LiteLLM-Huawei-MaaS-Full"].explorer.model' \
+      "Designer model set" '.presets["LiteLLM-Huawei-MaaS-Full"].designer.model' \
+      "Fixer model set (array for fallback)" '.presets["LiteLLM-Huawei-MaaS-Full"].fixer.model' \
       "Observer disabled" '.disabled_agents | index("observer")' \
       "Fallback enabled" '.fallback.enabled == true' \
       "Fallback has no chains (v2 format)" '(.fallback.chains // null) == null' \
       "Council presets defined" '.council.presets' \
-      "Council has councillor (v2 format)" '.council.presets.default.councillor'
+      "Council has 3 councillors" '(.council.presets.default | keys | length) == 3' \
+      "Council reasoner model set" '.council.presets.default.reasoner.model' \
+      "Council planner model set" '.council.presets.default.planner.model' \
+      "Council pragmatist model set" '.council.presets.default.pragmatist.model'
 
     PERMS=$(stat -c '%a' "$SLIM_CONFIG" 2>/dev/null || stat -f '%Lp' "$SLIM_CONFIG" 2>/dev/null)
     if [ "$PERMS" = "600" ]; then

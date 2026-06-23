@@ -78,12 +78,22 @@ export HUAWEI_MAAS_API_KEY_2="$MAAS_KEY_2"        # if provided
 
 | Preset | Models | Route |
 |--------|--------|-------|
-| **LiteLLM-Huawei-MaaS** (default) | All 5 | Proxy → MaaS |
+| **LiteLLM-Huawei-MaaS-Full** (default) | All 5 | Proxy → MaaS |
 | **LiteLLM-Huawei-MaaS-Core** | 3 (no v4-pro/v4-flash) | Proxy → MaaS |
-| **Huawei-MaaS** | All 5 | Direct → MaaS |
+| **Huawei-MaaS-Full** | All 5 | Direct → MaaS |
 | **Huawei-MaaS-Core** | 3 (no v4-pro/v4-flash) | Direct → MaaS |
 
 Switch at runtime: `/preset LiteLLM-Huawei-MaaS-Core`
+
+## Council
+
+3 councillors run in parallel, each with a different model and focus:
+
+| Councillor | Model | Focus |
+|------------|-------|-------|
+| **reasoner** | deepseek-v4-pro | Deep reasoning, logical correctness, subtle bugs/edge cases |
+| **planner** | glm-5.1 | Architecture, maintainability, trade-offs, long-term implications |
+| **pragmatist** | deepseek-v3.2 | Practical implementation, cost-efficiency, verification steps |
 
 ## Models
 

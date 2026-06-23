@@ -1,9 +1,9 @@
 {
   "$schema": "https://unpkg.com/oh-my-opencode-slim@2.0.5/oh-my-opencode-slim.schema.json",
-  "preset": "LiteLLM-Huawei-MaaS",
+  "preset": "LiteLLM-Huawei-MaaS-Full",
   "disabled_agents": ["observer"],
   "presets": {
-    "LiteLLM-Huawei-MaaS": {
+    "LiteLLM-Huawei-MaaS-Full": {
       "orchestrator": { "model": "LiteLLM/openai/glm-5.1", "variant": "high", "skills": ["*"], "mcps": ["*", "!context7"] },
       "oracle":       { "model": ["LiteLLM/openai/deepseek-v4-pro", "LiteLLM/openai/glm-5.1"], "variant": "max", "skills": ["simplify"], "mcps": [] },
       "council":      { "model": ["LiteLLM/openai/deepseek-v4-pro", "LiteLLM/openai/glm-5.1"], "variant": "high", "skills": [], "mcps": [] },
@@ -21,7 +21,7 @@
       "designer":     { "model": "LiteLLM/openai/glm-5", "variant": "medium", "skills": [], "mcps": [] },
       "fixer":        { "model": ["LiteLLM/openai/glm-5", "LiteLLM/openai/deepseek-v3.2"], "variant": "high", "skills": [], "mcps": [] }
     },
-    "Huawei-MaaS": {
+    "Huawei-MaaS-Full": {
       "orchestrator": { "model": "Huawei-MaaS/glm-5.1", "variant": "high", "skills": ["*"], "mcps": ["*", "!context7"] },
       "oracle":       { "model": ["Huawei-MaaS/deepseek-v4-pro", "Huawei-MaaS/glm-5.1"], "variant": "max", "skills": ["simplify"], "mcps": [] },
       "council":      { "model": ["Huawei-MaaS/deepseek-v4-pro", "Huawei-MaaS/glm-5.1"], "variant": "high", "skills": [], "mcps": [] },
@@ -49,7 +49,9 @@
   "council": {
     "presets": {
       "default": {
-        "councillor": { "model": "LiteLLM/openai/deepseek-v4-pro", "variant": "high" }
+        "reasoner":   { "model": "LiteLLM/openai/deepseek-v4-pro", "variant": "high", "prompt": "Focus on deep reasoning, logical correctness, and identifying subtle bugs or edge cases." },
+        "planner":    { "model": "LiteLLM/openai/glm-5.1", "variant": "high", "prompt": "Focus on architecture, maintainability, trade-offs, and long-term implications." },
+        "pragmatist": { "model": "LiteLLM/openai/deepseek-v3.2", "variant": "high", "prompt": "Focus on practical implementation, cost-efficiency, and concrete verification steps." }
       }
     },
     "timeout": 180000,

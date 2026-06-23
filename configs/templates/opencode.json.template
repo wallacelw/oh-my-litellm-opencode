@@ -13,7 +13,7 @@
       "models": {
         "glm-5.2": {
           "name": "glm-5.2",
-          "limit": { "context": 198000, "input": 192000, "output": 128000, "reasoning": 64000 }
+          "limit": { "context": 198000, "input": 192000, "output": 128000 }
         },
         "glm-5.1": {
           "name": "glm-5.1",
@@ -47,7 +47,7 @@
       "models": {
         "openai/glm-5.2": {
           "name": "glm-5.2",
-          "limit": { "context": 198000, "input": 192000, "output": 128000, "reasoning": 64000 }
+          "limit": { "context": 198000, "input": 192000, "output": 128000 }
         },
         "openai/glm-5.1": {
           "name": "glm-5.1",

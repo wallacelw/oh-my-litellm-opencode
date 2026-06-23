@@ -16,7 +16,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ENV_FILE="$PROJECT_ROOT/.env"
-CONFIG_FILE="$PROJECT_ROOT/assets/config/litellm/litellm_config.yaml"
+CONFIG_FILE="$PROJECT_ROOT/configs/litellm_config.yaml"
 
 # ── Parse args ────────────────────────────────────────────────────
 ROUTING_STRATEGY="simple-shuffle"

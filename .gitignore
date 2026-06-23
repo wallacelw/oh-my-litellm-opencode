@@ -1,6 +1,6 @@
-# ── LiteLLM secrets and generated config ──
+# ── LiteLLM generated config ──
 .env
-assets/config/litellm/litellm_config.yaml
+configs/litellm_config.yaml
 
 # ── Master key files ──
 .master-key

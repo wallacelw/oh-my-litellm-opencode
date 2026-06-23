@@ -20,7 +20,7 @@ set -euo pipefail
 # ── Resolve project root ──────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-ENV_EXAMPLE="$PROJECT_ROOT/assets/config/litellm/.env.example"
+ENV_EXAMPLE="$PROJECT_ROOT/configs/templates/litellm_env.template"
 ENV_FILE="$PROJECT_ROOT/.env"
 
 # ── Parse mode ────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ echo "  Mode: $MODE"
 echo "══════════════════════════════════════════════════════"
 echo ""
 
-# ── Check .env.example exists ────────────────────────────────────
+# ── Check env template exists ────────────────────────────────────
 if [[ ! -f "$ENV_EXAMPLE" ]]; then
   echo "ERROR: $ENV_EXAMPLE not found." >&2; exit 1
 fi

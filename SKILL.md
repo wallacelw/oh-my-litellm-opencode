@@ -402,7 +402,7 @@ All passwords use `:?` fail-fast syntax — Docker Compose refuses to start if a
 
 1. Check [releases](https://github.com/nicepkg/oh-my-opencode-slim/releases) for config format changes
 2. Edit `scripts/install.sh`: change `SLIM_VERSION="2.0.4"` → new version
-3. Edit `assets/config/opencode/oh-my-opencode-slim.json.example`: update `$schema` URL
+3. Edit `configs/templates/oh-my-opencode-slim.json.template`: update `$schema` URL
 4. `bunx oh-my-opencode-slim@<new-version> install`
 5. `./scripts/install.sh` (re-writes config with diff-before-write)
 

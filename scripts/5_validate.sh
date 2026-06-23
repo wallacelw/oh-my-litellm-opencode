@@ -313,9 +313,9 @@ if [ "$LITELLM_ONLY" = false ]; then
     }
     check_slim_pair \
       "LiteLLM-Huawei-MaaS preset" '.presets["LiteLLM-Huawei-MaaS"]' \
-      "LiteLLM-Huawei-MaaS-Lite preset" '.presets["LiteLLM-Huawei-MaaS-Lite"]' \
+      "LiteLLM-Huawei-MaaS-Core preset" '.presets["LiteLLM-Huawei-MaaS-Core"]' \
       "Huawei-MaaS direct preset" '.presets["Huawei-MaaS"]' \
-      "Huawei-MaaS-Lite direct preset" '.presets["Huawei-MaaS-Lite"]' \
+      "Huawei-MaaS-Core direct preset" '.presets["Huawei-MaaS-Core"]' \
       "Default is LiteLLM-Huawei-MaaS" '.preset == "LiteLLM-Huawei-MaaS"' \
       "Orchestrator model set" '.presets["LiteLLM-Huawei-MaaS"].orchestrator.model' \
       "Oracle model set (array for fallback)" '.presets["LiteLLM-Huawei-MaaS"].oracle.model' \

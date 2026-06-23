@@ -79,11 +79,11 @@ export HUAWEI_MAAS_API_KEY_2="$MAAS_KEY_2"        # if provided
 | Preset | Models | Route |
 |--------|--------|-------|
 | **LiteLLM-Huawei-MaaS** (default) | All 5 | Proxy → MaaS |
-| **LiteLLM-Huawei-MaaS-Lite** | 3 (no v4-pro/v4-flash) | Proxy → MaaS |
+| **LiteLLM-Huawei-MaaS-Core** | 3 (no v4-pro/v4-flash) | Proxy → MaaS |
 | **Huawei-MaaS** | All 5 | Direct → MaaS |
-| **Huawei-MaaS-Lite** | 3 (no v4-pro/v4-flash) | Direct → MaaS |
+| **Huawei-MaaS-Core** | 3 (no v4-pro/v4-flash) | Direct → MaaS |
 
-Switch at runtime: `/preset LiteLLM-Huawei-MaaS-Lite`
+Switch at runtime: `/preset LiteLLM-Huawei-MaaS-Core`
 
 ## Models
 

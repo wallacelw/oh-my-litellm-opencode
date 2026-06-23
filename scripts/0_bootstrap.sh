@@ -350,7 +350,7 @@ echo ""
 if [ "$AGENT_MODE" = true ]; then
   echo "Next steps:"
   echo "  1. Run: opencode"
-  echo "  2. Switch preset: /preset LiteLLM-Huawei-MaaS-Lite"
+  echo "  2. Switch preset: /preset LiteLLM-Huawei-MaaS-Core"
   echo ""
   echo "⚠️  If any API keys were visible during installation, rotate them:"
   echo "  1. Get new key from MaaS console"
@@ -359,11 +359,11 @@ if [ "$AGENT_MODE" = true ]; then
   echo "  4. Run: ./scripts/5_validate.sh"
 else
   echo "Preset: LiteLLM-Huawei-MaaS (default) — all 5 models via LiteLLM"
-  echo "Fallback: LiteLLM-Huawei-MaaS-Lite — 3 models (no v4-pro/v4-flash)"
-  echo "Direct: Huawei-MaaS / Huawei-MaaS-Lite — bypass LiteLLM proxy"
+  echo "Core:    LiteLLM-Huawei-MaaS-Core — 3 models (no v4-pro/v4-flash)"
+  echo "Direct: Huawei-MaaS / Huawei-MaaS-Core — bypass LiteLLM proxy"
   echo ""
   echo "Next steps:"
   echo "  1. Run: opencode"
   echo "  2. Verify preset: status bar should show LiteLLM-Huawei-MaaS"
-  echo "  3. Switch preset: /preset LiteLLM-Huawei-MaaS-Lite"
+  echo "  3. Switch preset: /preset LiteLLM-Huawei-MaaS-Core"
 fi

@@ -12,9 +12,7 @@
 #
 # Usage:
 #   ./scripts/1_init_env.sh              # interactive — you choose every value
-
 #   ./scripts/1_init_env.sh --auto       # agent mode — idempotent, preserves secrets
-
 #   ./scripts/1_init_env.sh --auto --force # agent mode — regenerate all secrets
 
 set -euo pipefail
@@ -228,6 +226,8 @@ for i in "${!EXTRA_KEYS[@]}"; do
 done
 
 cat >> "$ENV_FILE" <<EOF
+
+# ── MaaS Endpoint ──────────────────────────────────
 HUAWEI_MAAS_API_BASE="${MAAS_API_BASE}"
 EOF
 

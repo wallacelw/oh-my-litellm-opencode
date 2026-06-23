@@ -11,9 +11,9 @@ set -euo pipefail
 #   - LITELLM_MASTER_KEY set in environment
 #
 # Usage:
-#   ./install.sh                          # interactive — prompts for keys
-#   ./install.sh --virtual-key=sk-...     # non-interactive — use existing virtual key
-#   ./install.sh --dry-run                # preview changes without modifying anything
+#   ./3_install.sh                          # interactive — prompts for keys
+#   ./3_install.sh --virtual-key=sk-...     # non-interactive — use existing virtual key
+#   ./3_install.sh --dry-run                # preview changes without modifying anything
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"

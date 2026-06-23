@@ -153,7 +153,7 @@ if [ "$OPENCODE_ONLY" = false ]; then
     if [ "$RUNNING" -ge 2 ]; then
       pass "$RUNNING services running"
     else
-      fail "Only $RUNNING services running (expected 4)"
+      fail "Only $RUNNING services running (expected 2)"
     fi
   fi
 
@@ -331,7 +331,9 @@ if [ "$LITELLM_ONLY" = false ]; then
       "Council has 3 councillors" '(.council.presets.default | keys | length) == 3' \
       "Council alpha model set" '.council.presets.default.alpha.model' \
       "Council beta model set" '.council.presets.default.beta.model' \
-      "Council gamma model set" '.council.presets.default.gamma.model'
+      "Council gamma model set" '.council.presets.default.gamma.model' \
+      "Huawei-MaaS-Full orchestrator model set" '.presets["Huawei-MaaS-Full"].orchestrator.model' \
+      "Huawei-MaaS-Core orchestrator model set" '.presets["Huawei-MaaS-Core"].orchestrator.model'
 
     PERMS=$(stat -c '%a' "$SLIM_CONFIG" 2>/dev/null || stat -f '%Lp' "$SLIM_CONFIG" 2>/dev/null)
     if [ "$PERMS" = "600" ]; then
@@ -341,7 +343,7 @@ if [ "$LITELLM_ONLY" = false ]; then
     fi
   else
     fail "No oh-my-opencode-slim config — skipping preset checks"
-    FAIL=$((FAIL + 20))
+    FAIL=$((FAIL + 22))
   fi
 
   # B5. Model availability (via proxy)

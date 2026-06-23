@@ -385,7 +385,27 @@ echo "LiteLLM Admin UI:  ${LITELLM_URL}/ui"
 echo "opencode config:    ~/.config/opencode/opencode.jsonc"
 echo "plugin config:      ~/.config/opencode/oh-my-opencode-slim.json"
 # Show virtual key (masked) from config
-FINAL_VK=$(jq -r '.provider.LiteLLM.options.apiKey // empty' "$HOME/.config/opencode/opencode.jsonc" 2>/dev/null || true)
+FINAL_VK=$(python3 -c "
+import sys, json
+text = open(sys.argv[1]).read()
+# Quick JSONC strip: remove // line comments outside strings
+result, in_str, esc, i = [], False, False, 0
+while i < len(text):
+    c = text[i]
+    if esc: result.append(c); esc = False; i += 1; continue
+    if in_str:
+        result.append(c)
+        if c == '\\': esc = True
+        elif c == '\"': in_str = False
+        i += 1; continue
+    if c == '\"': in_str = True; result.append(c); i += 1; continue
+    if c == '/' and i+1 < len(text) and text[i+1] == '/':
+        while i < len(text) and text[i] != '\n': i += 1
+        continue
+    result.append(c); i += 1
+d = json.loads(''.join(result))
+print(d.get('provider',{}).get('LiteLLM',{}).get('options',{}).get('apiKey',''))
+" "$HOME/.config/opencode/opencode.jsonc" 2>/dev/null || true)
 if [ -n "$FINAL_VK" ]; then
   echo "Virtual key:        ${FINAL_VK:0:8}...${FINAL_VK: -4}"
 fi

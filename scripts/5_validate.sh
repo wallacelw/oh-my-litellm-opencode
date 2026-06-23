@@ -45,7 +45,7 @@ jqc() {
 # Only removes // comments outside of quoted strings
 strip_jsonc() {
   python3 -c "
-import sys, re
+import sys
 text = sys.stdin.read()
 result = []
 in_string = False

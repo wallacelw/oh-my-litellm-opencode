@@ -200,7 +200,7 @@ if [ -z "$VIRTUAL_KEY" ] && [ -n "${LITELLM_MASTER_KEY:-}" ]; then
     # Limit lookups to avoid O(N) API calls with many keys
     KEY_LOOKUP_COUNT=0
     for KEY_ID in $(echo "$KEY_LIST" | jq -r '.keys[]' 2>/dev/null); do
-      [ $KEY_LOOKUP_COUNT -ge 50 ] && { echo "   Stopped alias lookup after 50 keys."; break; }
+      [ "$KEY_LOOKUP_COUNT" -ge 50 ] && { echo "   Stopped alias lookup after 50 keys."; break; }
       KEY_LOOKUP_COUNT=$((KEY_LOOKUP_COUNT + 1))
       KEY_INFO=$(curl -sf -m 10 "http://127.0.0.1:4000/key/info?key=$KEY_ID" \
         -H "Authorization: Bearer $LITELLM_MASTER_KEY" 2>/dev/null || true)
@@ -284,7 +284,7 @@ echo "5. Writing opencode config..."
 
 if [ "$DRY_RUN" = true ]; then
   echo "   Would write: $OPENCODE_CONFIG (chmod 600)"
-   echo "   Template: $PROJECT_DIR/configs/templates/opencode.json.template"
+  echo "   Template: $PROJECT_DIR/configs/templates/opencode.json.template"
   echo "   Substitutions: <LITELLM_VIRTUAL_KEY> → ${VIRTUAL_KEY:0:8}..., <HUAWEI_MAAS_API_KEY> → from env"
   echo ""
   echo "6. Writing oh-my-opencode-slim config..."

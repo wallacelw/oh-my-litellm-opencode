@@ -329,9 +329,9 @@ if [ "$LITELLM_ONLY" = false ]; then
       "Fallback has no chains (v2 format)" '(.fallback.chains // null) == null' \
       "Council presets defined" '.council.presets' \
       "Council has 3 councillors" '(.council.presets.default | keys | length) == 3' \
-      "Council reasoner model set" '.council.presets.default.reasoner.model' \
-      "Council planner model set" '.council.presets.default.planner.model' \
-      "Council pragmatist model set" '.council.presets.default.pragmatist.model'
+      "Council alpha model set" '.council.presets.default.alpha.model' \
+      "Council beta model set" '.council.presets.default.beta.model' \
+      "Council gamma model set" '.council.presets.default.gamma.model'
 
     PERMS=$(stat -c '%a' "$SLIM_CONFIG" 2>/dev/null || stat -f '%Lp' "$SLIM_CONFIG" 2>/dev/null)
     if [ "$PERMS" = "600" ]; then

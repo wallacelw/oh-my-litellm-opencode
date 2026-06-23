@@ -49,9 +49,9 @@
   "council": {
     "presets": {
       "default": {
-        "reasoner":   { "model": "LiteLLM/openai/deepseek-v4-pro", "variant": "high", "prompt": "Focus on deep reasoning, logical correctness, and identifying subtle bugs or edge cases." },
-        "planner":    { "model": "LiteLLM/openai/glm-5.1", "variant": "high", "prompt": "Focus on architecture, maintainability, trade-offs, and long-term implications." },
-        "pragmatist": { "model": "LiteLLM/openai/deepseek-v3.2", "variant": "high", "prompt": "Focus on practical implementation, cost-efficiency, and concrete verification steps." }
+        "alpha": { "model": "LiteLLM/openai/deepseek-v4-pro", "variant": "high", "prompt": "Focus on deep reasoning, logical correctness, and identifying subtle bugs or edge cases." },
+        "beta":  { "model": "LiteLLM/openai/glm-5.1", "variant": "high", "prompt": "Focus on architecture, maintainability, trade-offs, and long-term implications." },
+        "gamma": { "model": "LiteLLM/openai/deepseek-v3.2", "variant": "high", "prompt": "Focus on practical implementation, cost-efficiency, and concrete verification steps." }
       }
     },
     "timeout": 180000,

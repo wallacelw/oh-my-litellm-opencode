@@ -94,8 +94,6 @@ litellm_settings:
   stream_timeout: 60 # TTFT only: 60s
   drop_params: True
   set_verbose: False
-  callbacks:
-    - "otel"
   ui_theme_config:
     logo_url: "https://upload.wikimedia.org/wikipedia/en/thumb/0/04/Huawei_Standard_logo.svg/3840px-Huawei_Standard_logo.svg.png"
     favicon_url: "https://upload.wikimedia.org/wikipedia/en/thumb/0/04/Huawei_Standard_logo.svg/3840px-Huawei_Standard_logo.svg.png"
@@ -109,5 +107,4 @@ router_settings:
 general_settings:
   database_connection_pool_limit: 10
   database_connection_timeout: 60
-  otel: true
   allow_client_side_credentials: true

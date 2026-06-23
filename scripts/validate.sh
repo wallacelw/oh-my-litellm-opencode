@@ -19,8 +19,6 @@ DRY_RUN=false
 LITELLM_ONLY=false
 OPENCODE_ONLY=false
 LITELLM_URL="http://127.0.0.1:4000"
-OPENLIT_URL="${OPENLIT_URL:-http://127.0.0.1:3000}"
-CLICKHOUSE_URL="${CLICKHOUSE_URL:-http://127.0.0.1:8123}"
 
 for arg in "$@"; do
   case "$arg" in
@@ -128,7 +126,7 @@ if [ "$OPENCODE_ONLY" = false ]; then
     else
       warn ".env permissions are $PERMS (expected 0600)"
     fi
-    for VAR in LITELLM_MASTER_KEY LITELLM_SALT_KEY DB_PASSWORD HUAWEI_MAAS_API_KEY OPENLIT_DB_PASSWORD; do
+    for VAR in LITELLM_MASTER_KEY LITELLM_SALT_KEY DB_PASSWORD HUAWEI_MAAS_API_KEY; do
       VAL="${!VAR:-}"
       if [ -z "$VAL" ] || echo "$VAL" | grep -qi 'change-me\|replace\|xxx'; then
         fail "$VAR is not set or still has a placeholder value"
@@ -187,37 +185,7 @@ if [ "$OPENCODE_ONLY" = false ]; then
     fi
   fi
 
-  # A4. OpenLit + ClickHouse
-  echo ""
-  echo "A4. Observability (OpenLit)"
-  if [ "$DRY_RUN" = true ]; then
-    skip "OpenLit UI reachable"
-    skip "ClickHouse reachable"
-    skip "OTLP endpoint reachable"
-  else
-    OPENLIT_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 10 "$OPENLIT_URL" 2>/dev/null || echo "000")
-    if [ "$OPENLIT_CODE" = "200" ]; then
-      pass "OpenLit UI reachable (HTTP 200)"
-    else
-      fail "OpenLit UI returned HTTP $OPENLIT_CODE"
-    fi
-
-    CH_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 10 "$CLICKHOUSE_URL/ping" 2>/dev/null || echo "000")
-    if [ "$CH_CODE" = "200" ]; then
-      pass "ClickHouse reachable (HTTP 200)"
-    else
-      fail "ClickHouse returned HTTP $CH_CODE"
-    fi
-
-    OTLP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 10 "http://127.0.0.1:4318/" 2>/dev/null || echo "000")
-    if [ "$OTLP_CODE" != "000" ]; then
-      pass "OTLP HTTP endpoint reachable on port 4318 (HTTP $OTLP_CODE)"
-    else
-      warn "OTLP HTTP endpoint not responding on port 4318 (may still be starting)"
-    fi
-  fi
-
-  # A5. Config deployment count
+  # A4. Config deployment count
   echo ""
   echo "A5. Config validation"
   CONFIG_FILE="$PROJECT_DIR/assets/config/litellm/litellm_config.yaml"

@@ -92,7 +92,6 @@ if [[ -f "$ENV_FILE" ]]; then
     EXISTING_MASTER_KEY="$(grep -oP '^LITELLM_MASTER_KEY="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
     EXISTING_SALT_KEY="$(grep -oP '^LITELLM_SALT_KEY="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
     EXISTING_DB_PASSWORD="$(grep -oP '^DB_PASSWORD="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
-    EXISTING_OPENLIT_DB_PASSWORD="$(grep -oP '^OPENLIT_DB_PASSWORD="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
     echo "WARNING: .env already exists. Overwriting in auto mode (preserving secrets if set)."
   else
     echo "WARNING: .env already exists. Overwriting will regenerate all values."
@@ -108,14 +107,12 @@ DEFAULT_MASTER_KEY=$(generate_master_key)
 DEFAULT_SALT_KEY=$(generate_secret)
 DEFAULT_DB_PASSWORD=$(generate_secret)
 DEFAULT_MAAS_BASE="https://api-ap-southeast-1.modelarts-maas.com/openai/v1"
-DEFAULT_OPENLIT_DB_PASSWORD=$(generate_secret)
 
 # ── Idempotency: preserve secrets in auto mode ────────────────────
 # Changing these breaks existing deployments:
 #   MASTER_KEY → admin access to LiteLLM
 #   SALT_KEY   → invalidates all virtual keys
 #   DB_PASSWORD → PostgreSQL auth
-#   OPENLIT_DB_PASSWORD → ClickHouse database password
 # With --force, all secrets are regenerated (for key rotation).
 if [[ "$MODE" == "auto" && "$FORCE" != true ]]; then
   if [[ -n "${EXISTING_MASTER_KEY:-}" ]]; then
@@ -130,10 +127,6 @@ if [[ "$MODE" == "auto" && "$FORCE" != true ]]; then
     DEFAULT_DB_PASSWORD="$EXISTING_DB_PASSWORD"
     echo "  Reusing existing DB_PASSWORD (idempotent)"
   fi
-  if [[ -n "${EXISTING_OPENLIT_DB_PASSWORD:-}" ]]; then
-    DEFAULT_OPENLIT_DB_PASSWORD="$EXISTING_OPENLIT_DB_PASSWORD"
-    echo "  Reusing existing OPENLIT_DB_PASSWORD (idempotent)"
-  fi
 fi
 
 # ── Collect values ────────────────────────────────────────────────
@@ -145,7 +138,6 @@ SALT_KEY=$(prompt_value "LITELLM_SALT_KEY" "LITELLM_SALT_KEY (key encryption sal
 DB_PASSWORD=$(prompt_value "DB_PASSWORD" "DB_PASSWORD (PostgreSQL llmproxy user)" "$DEFAULT_DB_PASSWORD" "yes")
 MAAS_API_KEY=$(prompt_value "HUAWEI_MAAS_API_KEY" "HUAWEI_MAAS_API_KEY (main key from ModelArts MaaS console, ap-southeast-1)" "" "yes")
 MAAS_API_BASE=$(prompt_value "HUAWEI_MAAS_API_BASE" "HUAWEI_MAAS_API_BASE (MaaS endpoint URL)" "$DEFAULT_MAAS_BASE" "no")
-OPENLIT_DB_PASSWORD=$(prompt_value "OPENLIT_DB_PASSWORD" "OPENLIT_DB_PASSWORD (ClickHouse database)" "$DEFAULT_OPENLIT_DB_PASSWORD" "yes")
 
 # ── Collect additional MaaS API keys ───────────
 EXTRA_KEYS=()
@@ -235,13 +227,6 @@ done
 
 cat >> "$ENV_FILE" <<EOF
 HUAWEI_MAAS_API_BASE="${MAAS_API_BASE}"
-
-# ── OpenLit ──────────────────────────────────────
-OPENLIT_DB_PASSWORD="${OPENLIT_DB_PASSWORD}"
-# OpenLit UI default credentials (seeded at container startup, cannot be removed):
-#   Email:    user@openlit.io
-#   Password: openlituser
-# Change password after first login: http://127.0.0.1:3000 → Settings
 EOF
 
 chmod 600 "$ENV_FILE"
@@ -278,7 +263,6 @@ if [[ "$KEY_COUNT" -gt 1 ]]; then
   done
 fi
 echo "    HUAWEI_MAAS_API_BASE= $MAAS_API_BASE"
-echo "    OPENLIT_DB_PASSWORD= ${OPENLIT_DB_PASSWORD:0:6}...${OPENLIT_DB_PASSWORD: -4}"
 echo ""
 echo "  Next steps:"
 echo "    docker compose up -d"

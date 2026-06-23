@@ -207,7 +207,7 @@ fi
 print_step "3" "Deploy LiteLLM"
 
 # ── Port conflict check ──
-for port in 4000 4317 4318 8123 9000 3000; do
+for port in 4000; do
   if command -v ss &>/dev/null && ss -tlnp 2>/dev/null | grep -q ":${port} "; then
     echo "  WARNING: Port $port is already in use. Docker Compose may fail."
   elif command -v netstat &>/dev/null && netstat -tlnp 2>/dev/null | grep -q ":${port} "; then
@@ -309,7 +309,6 @@ echo ""
 echo "Project dir:       $PROJECT_DIR"
 echo "LiteLLM proxy:     $LITELLM_URL"
 echo "LiteLLM Admin UI:  ${LITELLM_URL}/ui"
-echo "OpenLit UI:         http://127.0.0.1:3000"
 echo "opencode config:    ~/.config/opencode/opencode.jsonc"
 echo "plugin config:      ~/.config/opencode/oh-my-opencode-slim.json"
 # Show virtual key (masked) from config

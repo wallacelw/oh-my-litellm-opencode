@@ -1,6 +1,6 @@
 # oh-my-litellm-opencode
 
-One command to deploy a production-ready AI coding stack: **LiteLLM proxy** routing through **Huawei ModelArts MaaS**, with **OpenLit + ClickHouse** observability, **opencode** bootstrap, virtual keys, 4 presets, and multi-key load balancing.
+One command to deploy a production-ready AI coding stack: **LiteLLM proxy** routing through **Huawei ModelArts MaaS**, with **opencode** bootstrap, virtual keys, 4 presets, and multi-key load balancing.
 
 ## What You Get
 
@@ -9,8 +9,6 @@ One command to deploy a production-ready AI coding stack: **LiteLLM proxy** rout
 - **Multi-key load balancing** — add N MaaS keys, effective RPM/TPM = per-key × N
 - **Automatic fallback** — if a model fails, the next in the array takes over
 - **4 presets** — full/Lite × proxy/direct, switchable at runtime with `/preset`
-- **Full observability** — OpenLit dashboards with ITL, TTFT, TPOT, cost, traces
-- **30-day analytics** — ClickHouse SQL over all traces and metrics
 - **Desktop companion** — floating status window showing live agent activity
 
 ## Architecture
@@ -28,18 +26,11 @@ One command to deploy a production-ready AI coding stack: **LiteLLM proxy** rout
                                         │    LiteLLM fans out each model
                                         │    across N deployments
                                         │
-                              ┌─────────┴──────────┐
-                              │                    │
-                         PostgreSQL (:5432)    OpenLit (:3000)
-                         keys · spend · usage   dashboards · traces
-                                                │
-                                           OTLP (:4317/:4318)
-                                                │
-                                          ClickHouse (:8123)
-                                          30-day SQL analytics
+                                  PostgreSQL (:5432)
+                                  keys · spend · usage
 ```
 
-Startup: PostgreSQL + ClickHouse (parallel) → LiteLLM + OpenLit (parallel, healthcheck-gated).
+Startup: PostgreSQL → LiteLLM (healthcheck-gated on db).
 
 ## Quick Start
 
@@ -86,7 +77,7 @@ See **[For AI Agents](#for-ai-agents)** below for the exact step-by-step flow.
 ```bash
 ./scripts/init_env.sh --auto    # generate .env with all secrets
 ./scripts/generate_config.sh    # build litellm_config.yaml from .env
-docker compose up -d            # start all 4 services
+docker compose up -d            # start both services
 ./scripts/install.sh            # install opencode + plugin + mint key + write config
 ./scripts/validate.sh           # verify everything works
 ```
@@ -97,8 +88,6 @@ docker compose up -d            # start all 4 services
 |---------|-----|------|
 | LiteLLM Proxy | `http://127.0.0.1:4000` | Virtual key (`sk-...`) |
 | LiteLLM Admin UI | `http://127.0.0.1:4000/ui` | Master key |
-| OpenLit UI | `http://127.0.0.1:3000` | `user@openlit.io` / `openlituser` (change after first login) |
-| ClickHouse | `http://127.0.0.1:8123` | `default / OPENLIT_DB_PASSWORD` |
 
 ## For AI Agents
 
@@ -117,4 +106,4 @@ Read **[SKILL.md](https://github.com/wallacelw/oh-my-litellm-opencode/blob/main/
 11. Validate
 12. Send summary report with key rotation instructions
 
-SKILL.md also contains core rules, presets, models, observability, upgrade paths, repair playbook, and determinism guarantees.
+SKILL.md also contains core rules, presets, models, upgrade paths, repair playbook, and determinism guarantees.

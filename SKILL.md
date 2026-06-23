@@ -1,6 +1,6 @@
 ---
 name: oh-my-litellm-opencode
-description: Deploy LiteLLM proxy (Docker Compose: litellm + postgres + openlit + clickhouse) routing through Huawei ModelArts MaaS with multi-key load balancing, then bootstrap opencode + oh-my-opencode-slim with virtual key, dual providers, and 4 presets. TRIGGER when the task involves: LiteLLM proxy deployment, Huawei MaaS model routing, opencode + MaaS setup, full-stack AI coding bootstrap, oh-my-litellm-opencode, virtual key management, OpenLit observability, OTel/OTLP telemetry, multi-key load balancing, docker compose with this stack, or any reference to LITELLM_MASTER_KEY, HUAWEI_MAAS_API_KEY.
+description: Deploy LiteLLM proxy (Docker Compose: litellm + postgres) routing through Huawei ModelArts MaaS with multi-key load balancing, then bootstrap opencode + oh-my-opencode-slim with virtual key, dual providers, and 4 presets. TRIGGER when the task involves: LiteLLM proxy deployment, Huawei MaaS model routing, opencode + MaaS setup, full-stack AI coding bootstrap, oh-my-litellm-opencode, virtual key management, multi-key load balancing, docker compose with this stack, or any reference to LITELLM_MASTER_KEY, HUAWEI_MAAS_API_KEY.
 ---
 
 # oh-my-litellm-opencode
@@ -52,25 +52,16 @@ bun, jq, Docker + Compose V2, git, python3, `HUAWEI_MAAS_API_KEY` env var.
                                         │    LiteLLM fans out each model
                                         │    across N deployments
                                         │
-                              ┌─────────┴──────────┐
-                              │                    │
-                         PostgreSQL (:5432)    OpenLit (:3000)
-                         keys · spend · usage   dashboards · traces
-                                                │
-                                           OTLP (:4317/:4318)
-                                                │
-                                         ClickHouse (:8123)
-                                         30-day SQL analytics
+                                  PostgreSQL (:5432)
+                                  keys · spend · usage
 ```
 
-**Startup order:** PostgreSQL + ClickHouse start in parallel → LiteLLM + OpenLit start in parallel (healthcheck-gated on their databases).
+**Startup order:** PostgreSQL starts → LiteLLM starts (healthcheck-gated on db).
 
 **Data flow:**
 1. opencode sends request to LiteLLM with virtual key
 2. LiteLLM validates key, selects healthy deployment, forwards to MaaS
 3. MaaS responds → LiteLLM records usage/spend in PostgreSQL
-4. LiteLLM emits OTLP trace to OpenLit (via OpenLit SDK auto-instrumentation)
-5. OpenLit stores trace in ClickHouse, displays in dashboard
 
 ## Core Rules
 
@@ -85,7 +76,6 @@ These invariants must always hold. Violating them breaks the system.
 - **Non-zero pricing required** on every model for budget enforcement.
 - **Master key is admin-only.** Mint virtual keys per team/service — never use master key in opencode.
 - **Proxy is sole egress** for MaaS traffic (centralized budgets/rate limits/audit).
-- **OpenLit SDK auto-instruments LiteLLM** — do NOT use `callbacks: ["otel"]` or `otel: true` in litellm_config.yaml (causes duplicate traces).
 - **LiteLLM provider uses `@ai-sdk/openai-compatible`** (not `openai`).
 - **Model keys: `openai/<model>`** in LiteLLM provider. **Preset references: `LiteLLM/openai/<model>`** (3-part).
 - **LiteLLM baseURL: `http://127.0.0.1:4000`** (no `/v1` — SDK adds it).
@@ -170,12 +160,10 @@ If the directory exists, ask the user: "An existing installation was found. Do y
 **Step 7 — Check port availability**
 
 ```bash
-for port in 4000 4317 4318 8123 9000 3000; do
-  ss -tlnp 2>/dev/null | grep -q ":${port} " && echo "PORT $port IN USE" || true
-done
+ss -tlnp 2>/dev/null | grep -q ":4000 " && echo "PORT 4000 IN USE" || true
 ```
 
-If any port is in use, tell the user which ports are occupied and ask them to stop the conflicting services before proceeding.
+If port 4000 is in use, tell the user and ask them to stop the conflicting service before proceeding.
 
 **Step 8 — Install LiteLLM and related services**
 
@@ -198,7 +186,7 @@ docker compose up -d
 **Step 9 — Wait for services to be healthy**
 
 ```bash
-# Wait up to 90s for all 4 services to report healthy
+# Wait up to 90s for both services to report healthy
 for i in $(seq 1 18); do
   HEALTHY=$(docker compose ps --format json 2>/dev/null | jq -r '.Health' 2>/dev/null | sort -u)
   [ "$HEALTHY" = "healthy" ] && echo "All healthy" && break
@@ -208,7 +196,7 @@ done
 docker compose ps  # final status
 ```
 
-All 4 services (litellm, db, clickhouse, openlit) must show `healthy`. If any are unhealthy after 90s, check `docker compose logs <service> --tail 20` and consult the Repair Playbook below.
+Both services (litellm, db) must show `healthy`. If any are unhealthy after 90s, check `docker compose logs <service> --tail 20` and consult the Repair Playbook below.
 
 **Step 10 — Install opencode and oh-my-opencode-slim**
 
@@ -241,8 +229,6 @@ Report the following to the user:
 Services:
   LiteLLM Proxy:    http://127.0.0.1:4000
   LiteLLM Admin UI: http://127.0.0.1:4000/ui
-  OpenLit Dashboard: http://127.0.0.1:3000  (user@openlit.io / openlituser)
-  ClickHouse:       http://127.0.0.1:8123
 
 Next steps:
   1. Run `opencode` to start coding
@@ -269,7 +255,7 @@ cd /home/oh-my-litellm-opencode
 ```bash
 ./scripts/init_env.sh --auto    # agent mode: reads HUAWEI_MAAS_API_KEY from env
 ./scripts/generate_config.sh    # build litellm_config.yaml from .env
-docker compose up -d            # start all 4 services
+docker compose up -d            # start both services
 ./scripts/install.sh            # install opencode + plugin + mint key + write config
 ./scripts/validate.sh           # verify everything works
 ```
@@ -343,7 +329,7 @@ Handled by `bootstrap.sh` or `install.sh`:
 
 | Preset | Models | Route | When to use |
 |--------|--------|-------|-------------|
-| **LiteLLM-Huawei-MaaS** (default) | All 5 | LiteLLM proxy → MaaS | Production — budget tracking, load balancing, observability |
+| **LiteLLM-Huawei-MaaS** (default) | All 5 | LiteLLM proxy → MaaS | Production — budget tracking, load balancing |
 | **LiteLLM-Huawei-MaaS-Lite** | 3 (no v4-pro/v4-flash) | LiteLLM proxy → MaaS | Cost-saving — skip expensive models |
 | **Huawei-MaaS** | All 5 | Direct to MaaS | Debugging proxy issues — bypass LiteLLM |
 | **Huawei-MaaS-Lite** | 3 (no v4-pro/v4-flash) | Direct to MaaS | Debugging + cost-saving |
@@ -387,47 +373,10 @@ Council: single `councillor` per preset (deepseek-v4-pro/high), executed in para
 |---|---|---|---|---|
 | litellm | `ghcr.io/berriai/litellm:v1.89.3` | 4000 | 2g RAM, 2 CPU | db (healthy) |
 | db | `postgres:16-alpine` | (5432) | 512m RAM, 1 CPU | — |
-| clickhouse | `clickhouse/clickhouse-server:24.4.1` | 8123, 9000 | 512m RAM, 1 CPU | — |
-| openlit | `ghcr.io/openlit/openlit:1.22.0` | 3000, 4317, 4318 | 512m RAM, 1 CPU | clickhouse (healthy) |
 
 All services: `restart: unless-stopped`, json-file logs (10m × 3 rotations), memory + CPU limits.
 
 All passwords use `:?` fail-fast syntax — Docker Compose refuses to start if any required variable is missing from `.env`.
-
-## Observability
-
-**Telemetry pipeline:** LiteLLM (OpenLit SDK auto-instrumentation) → OTLP (:4317/:4318) → OpenLit → ClickHouse
-
-The LiteLLM container uses the **OpenLit Python SDK** (`openlit-instrument`) for zero-code auto-instrumentation. This produces rich OTel traces with GenAI semantic conventions that the OpenLit dashboard needs — including ITL, TTFT, TPOT, and per-token cost.
-
-**How it works:**
-1. `entrypoint.sh` installs `openlit` Python SDK at container startup
-2. LiteLLM is started via `openlit-instrument python -m litellm --config=/app/config.yaml`
-3. OpenLit SDK auto-instruments all LiteLLM internal calls (completion, embedding, etc.)
-4. Traces are sent via OTLP to the OpenLit client's embedded OTel Collector
-5. OpenLit stores traces in ClickHouse and renders dashboards
-
-**GenAI metrics** (via OpenLit SDK auto-instrumentation):
-- **ITL** — inter-token latency (time between consecutive output tokens)
-- **TTFT** — time to first token (streaming latency)
-- **TPOT** — time per output token (generation throughput)
-- `gen_ai.client.operation.duration` — end-to-end request latency
-- `gen_ai.client.token.usage` — input/output token counts
-- `gen_ai.client.token.cost` — per-request cost with provider pricing
-
-**Distributed traces:** Every request traced end-to-end (opencode → LiteLLM → MaaS). Click any trace in OpenLit UI to inspect timing, model selection, retries, and errors.
-
-**OpenLit dashboards** (pre-built):
-- Cost per model, per day, per key
-- Token usage breakdown (input/output/cache)
-- Latency comparison across models
-- Error rates and failure drilldown
-- Request-level trace inspection
-
-**ClickHouse SQL** for custom analytics (30-day retention):
-```sql
-SELECT model, sum(cost) FROM otel_traces WHERE timestamp > now() - INTERVAL 1 DAY GROUP BY model
-```
 
 ## Operations
 
@@ -435,13 +384,10 @@ SELECT model, sum(cost) FROM otel_traces WHERE timestamp > now() - INTERVAL 1 DA
 |---|---|---|
 | LiteLLM API | `http://127.0.0.1:4000` | `Bearer <key>` |
 | LiteLLM Admin UI | `http://127.0.0.1:4000/ui` | Master key |
-| OpenLit UI | `http://127.0.0.1:3000` | `user@openlit.io` / `openlituser` (change after first login) |
-| ClickHouse | `http://127.0.0.1:8123` | `default / OPENLIT_DB_PASSWORD` |
 
 **Backup:** `docker compose exec db pg_dump -U llmproxy litellm > backup.sql`
 **Reset:** `docker compose down -v && docker compose up -d`
 **Logs:** `docker compose logs litellm --tail 50`
-**Traces:** `docker compose logs openlit --tail 50`
 
 ## Upgrade Path
 
@@ -451,20 +397,6 @@ SELECT model, sum(cost) FROM otel_traces WHERE timestamp > now() - INTERVAL 1 DA
 2. Edit `docker-compose.yml`: change `ghcr.io/berriai/litellm:v1.89.3` → new version
 3. `docker compose pull litellm && docker compose up -d litellm`
 4. `./scripts/validate.sh --litellm-only`
-
-### Upgrade OpenLit
-
-1. Check [releases](https://github.com/openlit/openlit/releases) for breaking changes
-2. Edit `docker-compose.yml`: change `ghcr.io/openlit/openlit:1.22.0` → new version
-3. `docker compose pull openlit && docker compose up -d openlit`
-4. Verify OpenLit UI at `http://127.0.0.1:3000`
-
-### Upgrade ClickHouse
-
-1. Check [releases](https://github.com/ClickHouse/ClickHouse/releases) for backward compatibility
-2. Edit `docker-compose.yml`: change `clickhouse/clickhouse-server:24.4.1` → new version
-3. `docker compose pull clickhouse && docker compose up -d clickhouse`
-4. Verify: `curl http://127.0.0.1:8123/ping`
 
 ### Upgrade oh-my-opencode-slim
 
@@ -505,9 +437,7 @@ curl -fsSL https://opencode.ai/install | bash
 | Virtual key 403 | Check key with `/key/info?key=<key_id>` — may be expired or revoked |
 | Plugin not loaded | Re-run `bunx oh-my-opencode-slim@2.0.4 install` |
 | Fallback not triggering | Set `fallback.enabled: true`, use model arrays (not strings) |
-| Port conflict | Check `ss -tlnp \| grep -E ':4000\|:4317\|:4318\|:8123\|:9000\|:3000'` |
-| OpenLit not receiving data | Check `docker compose logs openlit`, verify `OTEL_EXPORTER_OTLP_ENDPOINT=http://openlit:4318` |
-| ClickHouse down | Check `curl http://127.0.0.1:8123/ping` — may need `start_period: 100s` |
+| Port conflict | Check `ss -tlnp \| grep ':4000'` |
 | `.env` has `:?` error | All required variables must be set — run `init_env.sh` |
 
 ### Bootstrap Rollback
@@ -525,19 +455,17 @@ curl -fsSL https://opencode.ai/install | bash
 
 | Property | Mechanism |
 |---|---|
-| `init_env.sh --auto` non-interactive | Preserves all 4 secrets on re-run (MASTER_KEY, SALT_KEY, DB_PASSWORD, OPENLIT_DB_PASSWORD) — true no-op |
+| `init_env.sh --auto` non-interactive | Preserves all 3 secrets on re-run (MASTER_KEY, SALT_KEY, DB_PASSWORD) — true no-op |
 | opencode latest | `curl -fsSL https://opencode.ai/install \| bash` (no pinning — always latest) |
 | docker compose up -d | Idempotent — always run, no-op if services already up and config unchanged |
 | Virtual key reuse | install.sh reuses existing key by alias (up to 50 lookups); mints only if missing or invalid |
 | install.sh configs | Diff-before-write — skip if unchanged, backup if changed |
 | `--maas-key=NEW` key change | Updates `.env` + regenerates `litellm_config.yaml` + Docker picks up on `up -d` |
 | LiteLLM image pinned | `v1.89.3` (no `latest`) |
-| OpenLit image pinned | `1.22.0` (no `latest`) |
-| ClickHouse image pinned | `24.4.1` (no `latest`) |
 | Docker passwords fail-fast | `:?` syntax — Compose refuses to start if any required variable is missing |
 | Timeouts consistent | `request_timeout: 600`, `stream_timeout: 60` |
-| Resource limits | All 4 services have memory + CPU limits (no unbounded containers) |
-| Port conflicts detected | `bootstrap.sh` checks 4000/4317/4318/8123/9000/3000 before starting |
+| Resource limits | Both services have memory + CPU limits (no unbounded containers) |
+| Port conflicts detected | `bootstrap.sh` checks 4000 before starting |
 | `mint-virtual-key.sh` resilient | 3 retries with backoff (5s/10s/15s); `--max-time 30` on all curls |
 | Config substitution safe | `jq --arg` only, never `sed` on JSON |
 | All curls have timeouts | `--max-time` or `-m` on every curl call (no hanging) |
@@ -550,13 +478,10 @@ Run `./scripts/validate.sh` after bootstrap. All checks must pass:
 
 - [ ] `.env` exists with all required variables (no placeholders), `0600` permissions
 - [ ] `litellm_config.yaml` generated with `5 × N` deployments
-- [ ] All 4 Docker services healthy
+- [ ] Both Docker services healthy
 - [ ] LiteLLM liveness 200, `unhealthy_count: 0`
-- [ ] OpenLit UI reachable (HTTP 200)
-- [ ] ClickHouse reachable (HTTP 200)
-- [ ] OTLP endpoint responding on port 4318
 - [ ] Virtual key minting succeeds (starts with `sk-`)
 - [ ] opencode.jsonc: both providers (LiteLLM + Huawei-MaaS), valid virtual key, 5 models each, chmod 600
 - [ ] oh-my-opencode-slim.json: 4 presets, default LiteLLM-Huawei-MaaS, council configured, fallback enabled
-- [ ] Inference smoke test: all models respond via proxy
+- [ ] Inference smoke test: model responds via proxy
 - [ ] No real secrets in `git diff`

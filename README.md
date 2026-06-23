@@ -47,4 +47,4 @@ opencode
 
 ## For AI Agents
 
-Read **[SKILL.md](https://github.com/wallacelw/oh-my-litellm-opencode/blob/main/SKILL.md)** for the 12-step installation flow.
+Read **[SKILL.md](https://github.com/wallacelw/oh-my-litellm-opencode/blob/main/SKILL.md)** for the installation flow. Agent collects keys interactively, then calls `0_bootstrap.sh --agent --maas-key=KEY` for the non-interactive deploy.

@@ -28,6 +28,40 @@ Deploy LiteLLM proxy → bootstrap opencode → mint virtual key → configure. 
 - LiteLLM baseURL: `http://127.0.0.1:4000` (no `/v1`)
 - MaaS region-locked to `ap-southeast-1`
 
+## AI Agent Installation Flow
+
+For generic AI agents (Claude Code, Cursor, etc.) installing this stack for a user.
+
+### What the agent does interactively
+
+**1. Ask for MaaS key** — "What is your Huawei ModelArts MaaS API key? (region: ap-southeast-1, get from https://console.huaweicloud.com/modelarts/)"
+
+**2. Ask for extra keys** — "How many additional MaaS keys for load balancing? (0 for none)" — if >0, prompt one-by-one
+
+**3. Check prerequisites** — for each missing tool, ask user "OK to install bun/jq/git/python3?" then install. Docker must be installed manually by user.
+
+**4. Check Docker running** — `docker info >/dev/null 2>&1` — if not, ask user to start it
+
+**5. Check existing install** — if `/home/oh-my-litellm-opencode` exists, ask: "Existing installation found. Update in-place or fresh install?"
+
+**6. Check port 4000** — if in use, ask user to stop the conflicting service
+
+### What the agent delegates to the script
+
+```bash
+git clone https://github.com/wallacelw/oh-my-litellm-opencode /home/oh-my-litellm-opencode
+cd /home/oh-my-litellm-opencode
+
+export HUAWEI_MAAS_API_KEY="$MAAS_KEY"
+export HUAWEI_MAAS_API_KEY_COUNT="$TOTAL_KEYS"    # 1 + extra
+export HUAWEI_MAAS_API_KEY_1="$MAAS_KEY_1"        # if provided
+export HUAWEI_MAAS_API_KEY_2="$MAAS_KEY_2"        # if provided
+
+./scripts/0_bootstrap.sh --agent --maas-key="$MAAS_KEY"
+```
+
+`--agent` mode: non-interactive, fail-fast, reads extra keys from env vars, runs validate, prints summary with key rotation instructions.
+
 ## Presets
 
 | Preset | Models | Route |

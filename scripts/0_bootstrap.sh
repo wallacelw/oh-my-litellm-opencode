@@ -14,10 +14,11 @@ set -euo pipefail
 # Canonical path: /home/oh-my-litellm-opencode
 #
 # Usage:
-#   ./bootstrap.sh                                    # interactive — prompts for keys
-#   ./bootstrap.sh --maas-key=KEY                     # non-interactive (agent mode)
-#   ./bootstrap.sh --virtual-key=sk-...               # use existing virtual key (skip minting)
-#   ./bootstrap.sh --dry-run                          # preview changes
+#   ./0_bootstrap.sh                                    # interactive — prompts for keys
+#   ./0_bootstrap.sh --maas-key=KEY                     # non-interactive (agent mode)
+#   ./0_bootstrap.sh --agent --maas-key=KEY             # agent mode: non-interactive, fail-fast, validate + summary
+#   ./0_bootstrap.sh --virtual-key=sk-...               # use existing virtual key (skip minting)
+#   ./0_bootstrap.sh --dry-run                          # preview changes
 # ──────────────────────────────────────────────────────────────────────────────
 
 # ── Constants ──
@@ -30,20 +31,28 @@ CURL_TIMEOUT=15
 MAAS_KEY=""
 VIRTUAL_KEY=""
 DRY_RUN=false
+AGENT_MODE=false
 
 # ── Parse command-line arguments ──
 for arg in "$@"; do
   case "$arg" in
     --maas-key=*)       MAAS_KEY="${arg#--maas-key=}" ;;
     --virtual-key=*)    VIRTUAL_KEY="${arg#--virtual-key=}" ;;
+    --agent)            AGENT_MODE=true ;;
     --dry-run)          DRY_RUN=true ;;
     *)
       echo "ERROR: Unknown argument: $arg"
-      echo "Usage: $0 [--maas-key=KEY] [--virtual-key=sk-...] [--dry-run]"
+      echo "Usage: $0 [--maas-key=KEY] [--agent] [--virtual-key=sk-...] [--dry-run]"
       exit 1
       ;;
   esac
 done
+
+# ── Agent mode validation ──
+if [ "$AGENT_MODE" = true ] && [ -z "$MAAS_KEY" ]; then
+  echo "ERROR: --agent requires --maas-key=KEY"
+  exit 1
+fi
 
 # ── Resolve LITELLM_MASTER_KEY from multiple sources ──
 # Returns the key on stdout; log messages go to stderr.
@@ -85,6 +94,10 @@ resolve_master_key() {
 
 # ── Prompt for LITELLM_MASTER_KEY if not found automatically ──
 prompt_master_key() {
+  if [ "$AGENT_MODE" = true ]; then
+    echo "ERROR: LITELLM_MASTER_KEY not found. Set it in .env or environment before running with --agent."
+    exit 1
+  fi
   if [ -z "${LITELLM_MASTER_KEY:-}" ]; then
     echo "  LITELLM_MASTER_KEY not found in env, .master-key, or .env files."
     echo "  Enter LITELLM_MASTER_KEY (or Ctrl+C to abort):"
@@ -161,7 +174,9 @@ fi
 # Resolve MaaS key
 if [ -z "$MAAS_KEY" ]; then MAAS_KEY="${HUAWEI_MAAS_API_KEY:-}"; fi
 if [ -z "$MAAS_KEY" ]; then
-  if [ "$DRY_RUN" = true ]; then
+  if [ "$AGENT_MODE" = true ]; then
+    echo "ERROR: HUAWEI_MAAS_API_KEY is required in agent mode."; exit 1
+  elif [ "$DRY_RUN" = true ]; then
     MAAS_KEY="<HUAWEI_MAAS_API_KEY>"
   else
     echo ""; echo "  Enter Huawei MaaS API key:"; read -r MAAS_KEY < /dev/tty
@@ -176,9 +191,24 @@ export HUAWEI_MAAS_API_KEY="$MAAS_KEY"
 export HUAWEI_MAAS_API_KEY_0="$MAAS_KEY"
 
 # ── Collect extra MaaS API keys for load balancing ──
-# Always prompt — user can press Enter to skip (0 extra keys)
 EXTRA_KEY_COUNT=0
-if [ "$DRY_RUN" = true ]; then
+if [ "$AGENT_MODE" = true ]; then
+  # Agent mode: read extra keys from env vars (HUAWEI_MAAS_API_KEY_1, _2, etc.)
+  AUTO_COUNT="${HUAWEI_MAAS_API_KEY_COUNT:-1}"
+  for i in $(seq 1 $((AUTO_COUNT - 1))); do
+    VAR="HUAWEI_MAAS_API_KEY_$i"
+    VAL="${!VAR:-}"
+    if [ -n "$VAL" ]; then
+      EXTRA_KEY_COUNT=$i
+      export "HUAWEI_MAAS_API_KEY_$i=$VAL"
+    fi
+  done
+  if [ "$EXTRA_KEY_COUNT" -gt 0 ]; then
+    echo "  ✓ $((1 + EXTRA_KEY_COUNT)) MaaS API keys total (main + $EXTRA_KEY_COUNT extra)"
+  else
+    echo "  Using 1 MaaS API key (no load balancing)"
+  fi
+elif [ "$DRY_RUN" = true ]; then
   echo "  (Would prompt for additional MaaS API keys)"
 else
   echo ""
@@ -317,11 +347,23 @@ if [ -n "$FINAL_VK" ]; then
   echo "Virtual key:        ${FINAL_VK:0:8}...${FINAL_VK: -4}"
 fi
 echo ""
-echo "Preset: LiteLLM-Huawei-MaaS (default) — all 5 models via LiteLLM"
-echo "Fallback: LiteLLM-Huawei-MaaS-Lite — 3 models (no v4-pro/v4-flash)"
-echo "Direct: Huawei-MaaS / Huawei-MaaS-Lite — bypass LiteLLM proxy"
-echo ""
-echo "Next steps:"
-echo "  1. Run: opencode"
-echo "  2. Verify preset: status bar should show LiteLLM-Huawei-MaaS"
-echo "  3. Switch preset: /preset LiteLLM-Huawei-MaaS-Lite"
+if [ "$AGENT_MODE" = true ]; then
+  echo "Next steps:"
+  echo "  1. Run: opencode"
+  echo "  2. Switch preset: /preset LiteLLM-Huawei-MaaS-Lite"
+  echo ""
+  echo "⚠️  If any API keys were visible during installation, rotate them:"
+  echo "  1. Get new key from MaaS console"
+  echo "  2. Edit .env: replace HUAWEI_MAAS_API_KEY"
+  echo "  3. Run: ./scripts/2_generate_config.sh && docker compose restart litellm"
+  echo "  4. Run: ./scripts/5_validate.sh"
+else
+  echo "Preset: LiteLLM-Huawei-MaaS (default) — all 5 models via LiteLLM"
+  echo "Fallback: LiteLLM-Huawei-MaaS-Lite — 3 models (no v4-pro/v4-flash)"
+  echo "Direct: Huawei-MaaS / Huawei-MaaS-Lite — bypass LiteLLM proxy"
+  echo ""
+  echo "Next steps:"
+  echo "  1. Run: opencode"
+  echo "  2. Verify preset: status bar should show LiteLLM-Huawei-MaaS"
+  echo "  3. Switch preset: /preset LiteLLM-Huawei-MaaS-Lite"
+fi

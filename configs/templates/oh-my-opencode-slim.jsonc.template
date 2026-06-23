@@ -5,7 +5,7 @@
   "presets": {
     "LiteLLM-Huawei-MaaS": {
       "orchestrator": { "model": "LiteLLM/openai/glm-5.1", "variant": "high", "skills": ["*"], "mcps": ["*", "!context7"] },
-      "oracle":       { "model": ["LiteLLM/openai/deepseek-v4-pro", "LiteLLM/openai/glm-5.1"], "variant": "max", "skills": ["simplify"], "mcps": [] },
+      "oracle":       { "model": ["LiteLLM/openai/deepseek-v4-pro", "LiteLLM/openai/glm-5.1"], "variant": "high", "skills": ["simplify"], "mcps": [] },
       "council":      { "model": ["LiteLLM/openai/deepseek-v4-pro", "LiteLLM/openai/glm-5.1"], "variant": "high", "skills": [], "mcps": [] },
       "librarian":    { "model": "LiteLLM/openai/deepseek-v3.2", "variant": "low", "skills": [], "mcps": ["websearch", "context7", "grep_app"] },
       "explorer":     { "model": ["LiteLLM/openai/deepseek-v4-flash", "LiteLLM/openai/deepseek-v3.2"], "variant": "low", "skills": [], "mcps": [] },
@@ -17,13 +17,13 @@
       "oracle":       { "model": ["LiteLLM/openai/glm-5.1", "LiteLLM/openai/deepseek-v3.2"], "variant": "high", "skills": ["simplify"], "mcps": [] },
       "council":      { "model": ["LiteLLM/openai/glm-5.1", "LiteLLM/openai/deepseek-v3.2"], "variant": "high", "skills": [], "mcps": [] },
       "librarian":    { "model": "LiteLLM/openai/deepseek-v3.2", "variant": "low", "skills": [], "mcps": ["websearch", "context7", "grep_app"] },
-      "explorer":     { "model": "LiteLLM/openai/deepseek-v3.2", "variant": "medium", "skills": [], "mcps": [] },
+      "explorer":     { "model": "LiteLLM/openai/deepseek-v3.2", "variant": "low", "skills": [], "mcps": [] },
       "designer":     { "model": "LiteLLM/openai/glm-5", "variant": "medium", "skills": [], "mcps": [] },
-      "fixer":        { "model": ["LiteLLM/openai/glm-5", "LiteLLM/openai/deepseek-v3.2"], "variant": "high", "skills": [], "mcps": [] }
+      "fixer":        { "model": ["LiteLLM/openai/deepseek-v3.2", "LiteLLM/openai/glm-5"], "variant": "high", "skills": [], "mcps": [] }
     },
     "Huawei-MaaS": {
       "orchestrator": { "model": "Huawei-MaaS/glm-5.1", "variant": "high", "skills": ["*"], "mcps": ["*", "!context7"] },
-      "oracle":       { "model": ["Huawei-MaaS/deepseek-v4-pro", "Huawei-MaaS/glm-5.1"], "variant": "max", "skills": ["simplify"], "mcps": [] },
+      "oracle":       { "model": ["Huawei-MaaS/deepseek-v4-pro", "Huawei-MaaS/glm-5.1"], "variant": "high", "skills": ["simplify"], "mcps": [] },
       "council":      { "model": ["Huawei-MaaS/deepseek-v4-pro", "Huawei-MaaS/glm-5.1"], "variant": "high", "skills": [], "mcps": [] },
       "librarian":    { "model": "Huawei-MaaS/deepseek-v3.2", "variant": "low", "skills": [], "mcps": ["websearch", "context7", "grep_app"] },
       "explorer":     { "model": ["Huawei-MaaS/deepseek-v4-flash", "Huawei-MaaS/deepseek-v3.2"], "variant": "low", "skills": [], "mcps": [] },
@@ -35,9 +35,9 @@
       "oracle":       { "model": ["Huawei-MaaS/glm-5.1", "Huawei-MaaS/deepseek-v3.2"], "variant": "high", "skills": ["simplify"], "mcps": [] },
       "council":      { "model": ["Huawei-MaaS/glm-5.1", "Huawei-MaaS/deepseek-v3.2"], "variant": "high", "skills": [], "mcps": [] },
       "librarian":    { "model": "Huawei-MaaS/deepseek-v3.2", "variant": "low", "skills": [], "mcps": ["websearch", "context7", "grep_app"] },
-      "explorer":     { "model": "Huawei-MaaS/deepseek-v3.2", "variant": "medium", "skills": [], "mcps": [] },
+      "explorer":     { "model": "Huawei-MaaS/deepseek-v3.2", "variant": "low", "skills": [], "mcps": [] },
       "designer":     { "model": "Huawei-MaaS/glm-5", "variant": "medium", "skills": [], "mcps": [] },
-      "fixer":        { "model": ["Huawei-MaaS/glm-5", "Huawei-MaaS/deepseek-v3.2"], "variant": "high", "skills": [], "mcps": [] }
+      "fixer":        { "model": ["Huawei-MaaS/deepseek-v3.2", "Huawei-MaaS/glm-5"], "variant": "high", "skills": [], "mcps": [] }
     }
   },
   "fallback": {
@@ -49,7 +49,7 @@
   "council": {
     "presets": {
       "default": {
-        "councillor": { "model": "LiteLLM/openai/deepseek-v4-pro", "variant": "high" }
+        "councillor": { "model": "LiteLLM/openai/glm-5.1", "variant": "high" }
       }
     },
     "timeout": 180000,

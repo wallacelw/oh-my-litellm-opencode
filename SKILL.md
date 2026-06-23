@@ -99,7 +99,7 @@ Switch at runtime: `/preset LiteLLM-Huawei-MaaS-Core`
 
 | Name | Context | RPM | Cost (in/out per token) |
 |------|---------|-----|------------------------|
-| `glm-5.2` | 1M/128K | 100 | $1.400 / $4.400 × 10⁻⁶ |
+| `glm-5.2` | 198K/128K (reasoning 64K) | 100 | $1.400 / $4.400 × 10⁻⁶ |
 | `glm-5.1` | 192K/128K | 30 | $1.078 / $3.774 × 10⁻⁶ |
 | `glm-5` | 192K/64K | 30 | $0.809 / $2.965 × 10⁻⁶ |
 | `deepseek-v4-pro` | 1M/128K | 3 | $1.617 / $3.235 × 10⁻⁶ |

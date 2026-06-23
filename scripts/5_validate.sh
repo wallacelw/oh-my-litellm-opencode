@@ -195,7 +195,7 @@ if [ "$OPENCODE_ONLY" = false ]; then
   if [ -f "$CONFIG_FILE" ]; then
     pass "litellm_config.yaml exists (generated)"
     DEPLOYMENT_COUNT=$(grep -c '^\s*- model_name:' "$CONFIG_FILE" 2>/dev/null || echo "0")
-    EXPECTED_DEPLOYMENTS=$((KEY_COUNT * 5))
+    EXPECTED_DEPLOYMENTS=$((KEY_COUNT * 6))
     if [ "$DEPLOYMENT_COUNT" = "$EXPECTED_DEPLOYMENTS" ]; then
       pass "Deployment count: $DEPLOYMENT_COUNT (6 models × $KEY_COUNT keys)"
     else

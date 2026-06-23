@@ -1,9 +1,7 @@
 {
-  "$schema": "https://unpkg.com/oh-my-opencode-slim@2.0.4/oh-my-opencode-slim.schema.json",
+  "$schema": "https://unpkg.com/oh-my-opencode-slim@2.0.5/oh-my-opencode-slim.schema.json",
   "preset": "LiteLLM-Huawei-MaaS",
   "disabled_agents": ["observer"],
-  "disabled_tools": [],
-  "disabled_skills": [],
   "presets": {
     "LiteLLM-Huawei-MaaS": {
       "orchestrator": { "model": "LiteLLM/openai/glm-5.1", "variant": "high", "skills": ["*"], "mcps": ["*", "!context7"] },

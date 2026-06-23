@@ -21,7 +21,7 @@ OPENCODE_DIR="$HOME/.config/opencode"
 OPENCODE_CONFIG="$OPENCODE_DIR/opencode.jsonc"
 
 # ── Constants ──
-SLIM_VERSION="2.0.4"
+SLIM_VERSION="2.0.5"
 OPENCODE_INSTALL_URL="https://opencode.ai/install"
 CURL_TIMEOUT=15
 

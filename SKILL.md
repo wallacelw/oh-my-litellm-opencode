@@ -43,12 +43,12 @@ For generic AI agents (Claude Code, Cursor, etc.) installing this stack for a us
 | git | `command -v git` | `sudo apt-get install -y git` or `brew install git` | OS package manager (usually pre-installed) |
 | python3 | `command -v python3` | `sudo apt-get install -y python3` or `brew install python3` | OS package manager (usually pre-installed) |
 | curl | `command -v curl` | `sudo apt-get install -y curl` or `brew install curl` | OS package manager (usually pre-installed) |
-| docker | `command -v docker` | `curl -fsSL https://get.docker.com \| sudo sh` or [Docker Desktop](https://docs.docker.com/get-docker/) | Latest stable from Docker |
-| docker compose | `docker compose version` | Included with Docker Desktop / Docker Engine 20.10+ | V2 (plugin, not standalone `docker-compose`) |
+| docker | `command -v docker` | `curl -fsSL https://get.docker.com \| sudo sh` | Latest Docker Engine from get.docker.com |
+| docker compose | `docker compose version` | Included with Docker Engine 20.10+ | V2 plugin (not standalone `docker-compose`) |
 
 opencode is NOT a prerequisite — it's installed automatically by `3_install.sh` via `curl -fsSL https://opencode.ai/install | bash`.
 
-**2. Check Docker running** — `docker info >/dev/null 2>&1` — if not, start it (`sudo systemctl start docker` or ask user to open Docker Desktop)
+**2. Check Docker running** — `docker info >/dev/null 2>&1` — if not, run `sudo systemctl start docker`
 
 **3. Ask for MaaS key** — "What is your Huawei ModelArts MaaS API key? (region: ap-southeast-1, get from https://console.huaweicloud.com/modelarts/)"
 

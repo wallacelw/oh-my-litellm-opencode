@@ -34,13 +34,13 @@ For generic AI agents (Claude Code, Cursor, etc.) installing this stack for a us
 
 ### What the agent does interactively
 
-**1. Ask for MaaS key** — "What is your Huawei ModelArts MaaS API key? (region: ap-southeast-1, get from https://console.huaweicloud.com/modelarts/)"
+**1. Check prerequisites** — for each missing tool, ask user "OK to install bun/jq/git/python3?" then install. Docker must be installed manually by user.
 
-**2. Ask for extra keys** — "How many additional MaaS keys for load balancing? (0 for none)" — if >0, prompt one-by-one
+**2. Check Docker running** — `docker info >/dev/null 2>&1` — if not, ask user to start it
 
-**3. Check prerequisites** — for each missing tool, ask user "OK to install bun/jq/git/python3?" then install. Docker must be installed manually by user.
+**3. Ask for MaaS key** — "What is your Huawei ModelArts MaaS API key? (region: ap-southeast-1, get from https://console.huaweicloud.com/modelarts/)"
 
-**4. Check Docker running** — `docker info >/dev/null 2>&1` — if not, ask user to start it
+**4. Ask for extra keys** — "How many additional MaaS keys for load balancing? (0 for none)" — if >0, prompt one-by-one
 
 **5. Check existing install** — if `/home/oh-my-litellm-opencode` exists, ask: "Existing installation found. Update in-place or fresh install?"
 

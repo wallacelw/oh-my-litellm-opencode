@@ -31,16 +31,17 @@ CURL_TIMEOUT=15
 retry_curl() {
   local capture=false
   if [ "$1" = "-o" ]; then capture=true; shift; fi
-  local max_attempts=3 delay=2 attempt=1 response=""
+  local max_attempts=3 delay=2 attempt=1 response="" err=""
   while [ $attempt -le $max_attempts ]; do
     if [ "$capture" = true ]; then
       response=$(curl "$@" 2>/dev/null) && [ -n "$response" ] && echo "$response" && return 0
     else
-      curl "$@" &>/dev/null && return 0
+      err=$(curl "$@" 2>&1) && return 0
     fi
     [ $attempt -lt $max_attempts ] && sleep $delay
     ((attempt++))
   done
+  [ -n "$err" ] && echo "  curl error: $err" >&2
   return 1
 }
 
@@ -83,6 +84,8 @@ while i < len(text):
             i += 2
             while i + 1 < len(text) and not (text[i] == '*' and text[i+1] == '/'):
                 i += 1
+            if i + 1 >= len(text):
+                break
             i += 2
             continue
     result.append(c)
@@ -281,7 +284,7 @@ echo "5. Writing opencode config..."
 
 if [ "$DRY_RUN" = true ]; then
   echo "   Would write: $OPENCODE_CONFIG (chmod 600)"
-  echo "   Template: $PROJECT_DIR/configs/templates/opencode.jsonc.template"
+   echo "   Template: $PROJECT_DIR/configs/templates/opencode.json.template"
   echo "   Substitutions: <LITELLM_VIRTUAL_KEY> → ${VIRTUAL_KEY:0:8}..., <HUAWEI_MAAS_API_KEY> → from env"
   echo ""
   echo "6. Writing oh-my-opencode-slim config..."
@@ -301,13 +304,18 @@ if [ -z "$HUAWEI_MAAS_API_KEY" ]; then
 fi
 
 # Build opencode.jsonc from template using jq for JSON-safe substitution
-TEMPLATE="$PROJECT_DIR/configs/templates/opencode.jsonc.template"
+TEMPLATE="$PROJECT_DIR/configs/templates/opencode.json.template"
 TARGET="$OPENCODE_CONFIG"
 
 NEW_CONFIG=$(jq --arg vk "$VIRTUAL_KEY" --arg mk "${HUAWEI_MAAS_API_KEY:-<HUAWEI_MAAS_API_KEY>}" \
   '.provider.LiteLLM.options.apiKey = $vk |
    .provider["Huawei-MaaS"].options.apiKey = $mk' \
   "$TEMPLATE")
+
+if [ -z "$NEW_CONFIG" ] || ! echo "$NEW_CONFIG" | jq -e . >/dev/null 2>&1; then
+  echo "ERROR: Failed to generate opencode config from template. Check $TEMPLATE is valid JSON."
+  exit 1
+fi
 
 if [ -f "$TARGET" ]; then
   EXISTING_CONFIG=$(cat "$TARGET")
@@ -335,9 +343,14 @@ echo ""
 # ── 6. Write oh-my-opencode-slim.json ──
 echo "6. Writing oh-my-opencode-slim config..."
 SLIM_CONFIG="$OPENCODE_DIR/oh-my-opencode-slim.json"
-SLIM_TEMPLATE="$PROJECT_DIR/configs/templates/oh-my-opencode-slim.jsonc.template"
+SLIM_TEMPLATE="$PROJECT_DIR/configs/templates/oh-my-opencode-slim.json.template"
 
 NEW_SLIM=$(cat "$SLIM_TEMPLATE")
+
+if [ -z "$NEW_SLIM" ] || ! echo "$NEW_SLIM" | jq -e . >/dev/null 2>&1; then
+  echo "ERROR: Failed to read slim template. Check $SLIM_TEMPLATE is valid JSON."
+  exit 1
+fi
 
 if [ -f "$SLIM_CONFIG" ]; then
   EXISTING_SLIM=$(cat "$SLIM_CONFIG")

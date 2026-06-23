@@ -31,10 +31,10 @@ done
 # ── Colors ──
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'; NC='\033[0m'
 
-pass() { PASS=$((PASS + 1)); printf "${GREEN}✅ PASS${NC} — $1\n"; }
-fail() { FAIL=$((FAIL + 1)); printf "${RED}❌ FAIL${NC} — $1\n"; }
-warn() { WARN=$((WARN + 1)); printf "${YELLOW}⚠️  WARN${NC} — $1\n"; }
-skip() { printf "  ○ $1 (skipped)\n"; }
+pass() { PASS=$((PASS + 1)); printf '%b' "${GREEN}✅ PASS${NC} — $1\n"; }
+fail() { FAIL=$((FAIL + 1)); printf '%b' "${RED}❌ FAIL${NC} — $1\n"; }
+warn() { WARN=$((WARN + 1)); printf '%b' "${YELLOW}⚠️  WARN${NC} — $1\n"; }
+skip() { printf '%b' "  ○ $1 (skipped)\n"; }
 
 # ── Helper: pipe JSON into jq as a single command ──
 jqc() {
@@ -82,6 +82,8 @@ while i < len(text):
             i += 2
             while i + 1 < len(text) and not (text[i] == '*' and text[i+1] == '/'):
                 i += 1
+            if i + 1 >= len(text):
+                break
             i += 2
             continue
     result.append(c)
@@ -101,9 +103,9 @@ fi
 
 KEY_COUNT="${HUAWEI_MAAS_API_KEY_COUNT:-1}"
 
-printf "${YELLOW}╔══════════════════════════════════════════════════════╗\n"
-printf "║  oh-my-litellm-opencode — Unified Validation          ║\n"
-printf "╚══════════════════════════════════════════════════════╝${NC}\n"
+printf '%b' "${YELLOW}╔══════════════════════════════════════════════════════╗\n"
+printf '%b' "║  oh-my-litellm-opencode — Unified Validation          ║\n"
+printf '%b' "╚══════════════════════════════════════════════════════╝${NC}\n"
 if [ "$DRY_RUN" = true ]; then
   echo "   (DRY RUN — network checks skipped)"
 fi
@@ -392,12 +394,12 @@ fi
 
 # ── Summary ──
 TOTAL=$((PASS + FAIL + WARN))
-printf "\n${YELLOW}══════════════════════════════════════════════════════${NC}\n"
-printf "Results: ${GREEN}$PASS passed${NC}, ${RED}$FAIL failed${NC}, ${YELLOW}$WARN warnings${NC} out of $TOTAL checks\n"
+printf '%b' "\n${YELLOW}══════════════════════════════════════════════════════${NC}\n"
+printf '%b' "Results: ${GREEN}$PASS passed${NC}, ${RED}$FAIL failed${NC}, ${YELLOW}$WARN warnings${NC} out of $TOTAL checks\n"
 if [ "$FAIL" -gt 0 ]; then
-  printf "${RED}VALIDATION FAILED — $FAIL check(s) did not pass${NC}\n"
+  printf '%b' "${RED}VALIDATION FAILED — $FAIL check(s) did not pass${NC}\n"
   exit 1
 else
-  printf "${GREEN}VALIDATION PASSED${NC}\n"
+  printf '%b' "${GREEN}VALIDATION PASSED${NC}\n"
   exit 0
 fi

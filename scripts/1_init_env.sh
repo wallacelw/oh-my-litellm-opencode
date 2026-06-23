@@ -92,6 +92,8 @@ if [[ -f "$ENV_FILE" ]]; then
     EXISTING_MASTER_KEY="$(grep -oP '^LITELLM_MASTER_KEY="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
     EXISTING_SALT_KEY="$(grep -oP '^LITELLM_SALT_KEY="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
     EXISTING_DB_PASSWORD="$(grep -oP '^DB_PASSWORD="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
+    EXISTING_MAAS_KEY="$(grep -oP '^HUAWEI_MAAS_API_KEY="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
+    EXISTING_MAAS_BASE="$(grep -oP '^HUAWEI_MAAS_API_BASE="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
     echo "WARNING: .env already exists. Overwriting in auto mode (preserving secrets if set)."
   else
     echo "WARNING: .env already exists. Overwriting will regenerate all values."
@@ -127,6 +129,14 @@ if [[ "$MODE" == "auto" && "$FORCE" != true ]]; then
     DEFAULT_DB_PASSWORD="$EXISTING_DB_PASSWORD"
     echo "  Reusing existing DB_PASSWORD (idempotent)"
   fi
+  if [[ -n "${EXISTING_MAAS_KEY:-}" && -z "${HUAWEI_MAAS_API_KEY:-}" ]]; then
+    DEFAULT_MAAS_KEY="$EXISTING_MAAS_KEY"
+    echo "  Reusing existing HUAWEI_MAAS_API_KEY (idempotent)"
+  fi
+  if [[ -n "${EXISTING_MAAS_BASE:-}" && -z "${HUAWEI_MAAS_API_BASE:-}" ]]; then
+    DEFAULT_MAAS_BASE="$EXISTING_MAAS_BASE"
+    echo "  Reusing existing HUAWEI_MAAS_API_BASE (idempotent)"
+  fi
 fi
 
 # ── Collect values ────────────────────────────────────────────────
@@ -136,7 +146,7 @@ echo ""
 MASTER_KEY=$(prompt_value "LITELLM_MASTER_KEY" "LITELLM_MASTER_KEY (admin key, must start with sk-)" "$DEFAULT_MASTER_KEY" "yes")
 SALT_KEY=$(prompt_value "LITELLM_SALT_KEY" "LITELLM_SALT_KEY (key encryption salt, immutable after first virtual key)" "$DEFAULT_SALT_KEY" "yes")
 DB_PASSWORD=$(prompt_value "DB_PASSWORD" "DB_PASSWORD (PostgreSQL llmproxy user)" "$DEFAULT_DB_PASSWORD" "yes")
-MAAS_API_KEY=$(prompt_value "HUAWEI_MAAS_API_KEY" "HUAWEI_MAAS_API_KEY (main key from ModelArts MaaS console, ap-southeast-1)" "" "yes")
+MAAS_API_KEY=$(prompt_value "HUAWEI_MAAS_API_KEY" "HUAWEI_MAAS_API_KEY (main key from ModelArts MaaS console, ap-southeast-1)" "${DEFAULT_MAAS_KEY:-}" "yes")
 MAAS_API_BASE=$(prompt_value "HUAWEI_MAAS_API_BASE" "HUAWEI_MAAS_API_BASE (MaaS endpoint URL)" "$DEFAULT_MAAS_BASE" "no")
 
 # ── Collect additional MaaS API keys ───────────

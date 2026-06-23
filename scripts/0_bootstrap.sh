@@ -187,6 +187,15 @@ else
 fi
 [ "$PREREQ_OK" = false ] && { echo ""; echo "ERROR: Prerequisites missing. Install them and re-run."; exit 1; }
 
+# ── Configure git hooks (prevent committing secrets) ──
+if [ -d "$PROJECT_DIR/.githooks" ]; then
+  CURRENT_HOOKS=$(git -C "$PROJECT_DIR" config --local core.hooksPath 2>/dev/null || true)
+  if [ "$CURRENT_HOOKS" != ".githooks" ]; then
+    git -C "$PROJECT_DIR" config core.hooksPath .githooks
+    echo "  ✓ Git hooks configured (.githooks/pre-commit blocks .env and secrets)"
+  fi
+fi
+
 export HUAWEI_MAAS_API_KEY="$MAAS_KEY"
 export HUAWEI_MAAS_API_KEY_0="$MAAS_KEY"
 
@@ -195,12 +204,15 @@ EXTRA_KEY_COUNT=0
 if [ "$AGENT_MODE" = true ]; then
   # Agent mode: read extra keys from env vars (HUAWEI_MAAS_API_KEY_1, _2, etc.)
   AUTO_COUNT="${HUAWEI_MAAS_API_KEY_COUNT:-1}"
+  SEQUENTIAL_IDX=1
   for i in $(seq 1 $((AUTO_COUNT - 1))); do
     VAR="HUAWEI_MAAS_API_KEY_$i"
     VAL="${!VAR:-}"
     if [ -n "$VAL" ]; then
-      EXTRA_KEY_COUNT=$i
-      export "HUAWEI_MAAS_API_KEY_$i=$VAL"
+      # Re-export with sequential numbering to avoid sparse indices
+      export "HUAWEI_MAAS_API_KEY_$SEQUENTIAL_IDX=$VAL"
+      EXTRA_KEY_COUNT=$SEQUENTIAL_IDX
+      SEQUENTIAL_IDX=$((SEQUENTIAL_IDX + 1))
     fi
   done
   if [ "$EXTRA_KEY_COUNT" -gt 0 ]; then
@@ -237,7 +249,7 @@ fi
 print_step "3" "Deploy LiteLLM"
 
 # ── Port conflict check ──
-for port in 4000; do
+for port in 4000 5432; do
   if command -v ss &>/dev/null && ss -tlnp 2>/dev/null | grep -q ":${port} "; then
     echo "  WARNING: Port $port is already in use. Docker Compose may fail."
   elif command -v netstat &>/dev/null && netstat -tlnp 2>/dev/null | grep -q ":${port} "; then
@@ -261,10 +273,40 @@ else
       echo "  Would update HUAWEI_MAAS_API_KEY in .env and regenerate config"
     else
       echo "  Updating HUAWEI_MAAS_API_KEY in .env (key changed)..."
-      sed -i "s|^HUAWEI_MAAS_API_KEY=.*|HUAWEI_MAAS_API_KEY=\"$MAAS_KEY\"|" "$PROJECT_DIR/.env"
-      sed -i "s|^HUAWEI_MAAS_API_KEY_0=.*|HUAWEI_MAAS_API_KEY_0=\"$MAAS_KEY\"|" "$PROJECT_DIR/.env" 2>/dev/null || true
+      # Safe .env update: replace key=value lines without sed injection risk
+      python3 -c "
+import sys
+key, val, path = sys.argv[1], sys.argv[2], sys.argv[3]
+lines = []
+with open(path) as f:
+    for line in f:
+        if line.startswith(key + '=') or line.startswith(key + '=\"'):
+            lines.append(f'{key}=\"{val}\"\n')
+        else:
+            lines.append(line)
+with open(path, 'w') as f:
+    f.writelines(lines)
+" HUAWEI_MAAS_API_KEY "$MAAS_KEY" "$PROJECT_DIR/.env"
+      python3 -c "
+import sys
+key, val, path = sys.argv[1], sys.argv[2], sys.argv[3]
+lines = []
+with open(path) as f:
+    for line in f:
+        if line.startswith(key + '=') or line.startswith(key + '=\"'):
+            lines.append(f'{key}=\"{val}\"\n')
+        else:
+            lines.append(line)
+with open(path, 'w') as f:
+    f.writelines(lines)
+" HUAWEI_MAAS_API_KEY_0 "$MAAS_KEY" "$PROJECT_DIR/.env"
       echo "  Regenerating litellm_config.yaml..."
       (cd "$PROJECT_DIR" && ./scripts/2_generate_config.sh)
+      # Warn about stale extra keys
+      ENV_KEY_COUNT=$(grep -oP '^HUAWEI_MAAS_API_KEY_COUNT=\K\d+' "$PROJECT_DIR/.env" 2>/dev/null || echo "1")
+      if [ "$ENV_KEY_COUNT" -gt 1 ]; then
+        echo "  NOTE: Extra MaaS keys (HUAWEI_MAAS_API_KEY_1..) were NOT updated. Rotate them manually if needed."
+      fi
     fi
   fi
   echo "  .env exists — skipping init_env.sh"

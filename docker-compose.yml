@@ -19,7 +19,10 @@ services:
       DATABASE_URL: "postgresql://llmproxy:${DB_PASSWORD:?DB_PASSWORD must be set in .env}@db:5432/litellm"
       STORE_MODEL_IN_DB: "True"
     # env_file passes all .env vars to the container.
-    # Acceptable — vars are container-local and not exposed.
+    # Acceptable because: (1) vars are container-local and not exposed to host,
+    # (2) HUAWEI_MAAS_API_KEY_* count is dynamic so can't enumerate in environment:,
+    # (3) .env should contain only vars needed by this stack.
+    # Do NOT add unrelated secrets to .env — they will leak into the container.
     env_file:
       - .env
     depends_on:

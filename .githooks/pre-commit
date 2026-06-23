@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Prevent committing secrets and generated files
+set -euo pipefail
+
+BLOCKED_FILES=(
+  .env
+  .master-key
+  configs/litellm_config.yaml
+)
+
+STAGED=$(git diff --cached --name-only 2>/dev/null || true)
+
+for file in "${BLOCKED_FILES[@]}"; do
+  if echo "$STAGED" | grep -q "^${file}$"; then
+    echo "ERROR: Blocked file '$file' is staged for commit."
+    echo "  This file contains secrets or is auto-generated."
+    echo "  Run: git reset HEAD -- '$file'"
+    exit 1
+  fi
+done
+
+exit 0

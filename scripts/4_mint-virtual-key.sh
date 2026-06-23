@@ -115,7 +115,7 @@ for attempt in $(seq 1 $MAX_ATTEMPTS); do
     -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
     -H "Content-Type: application/json" \
     -d "$BODY" 2>/dev/null) && break
-  if [ $attempt -lt $MAX_ATTEMPTS ]; then
+  if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
     DELAY=$((attempt * 5))
     echo "  Attempt $attempt failed. Retrying in ${DELAY}s..."
     sleep $DELAY

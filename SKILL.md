@@ -92,8 +92,8 @@ Switch at runtime: `/preset LiteLLM-Huawei-MaaS-Core`
 | Councillor | Model | Focus |
 |------------|-------|-------|
 | **alpha** | glm-5.2 | Deep reasoning, logical correctness, subtle bugs/edge cases |
-| **beta** | deepseek-v4-pro | Architecture, maintainability, trade-offs, long-term implications |
-| **gamma** | deepseek-v3.2 | Practical implementation, cost-efficiency, verification steps |
+| **beta** | glm-5.2 | Architecture, maintainability, trade-offs, long-term implications |
+| **gamma** | glm-5.2 | Practical implementation, cost-efficiency, verification steps |
 
 ## Models
 

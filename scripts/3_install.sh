@@ -212,10 +212,10 @@ if [ -z "$VIRTUAL_KEY" ] && [ -n "${LITELLM_MASTER_KEY:-}" ]; then
             if [ "$DRY_RUN" = true ]; then
               echo "   Would test existing key by alias: ${ALIAS_KEY:0:8}...${ALIAS_KEY: -4}"
               VIRTUAL_KEY="$ALIAS_KEY"
-             elif retry_curl -sf -m $CURL_TIMEOUT "http://127.0.0.1:4000/v1/chat/completions" \
-                  -H "Authorization: Bearer $ALIAS_KEY" \
-                  -H "Content-Type: application/json" \
-                  -d '{"model":"deepseek-v3.2","messages":[{"role":"user","content":"ok"}],"max_tokens":1}'; then
+            elif retry_curl -sf -m $CURL_TIMEOUT "http://127.0.0.1:4000/v1/chat/completions" \
+                 -H "Authorization: Bearer $ALIAS_KEY" \
+                 -H "Content-Type: application/json" \
+                 -d '{"model":"deepseek-v3.2","messages":[{"role":"user","content":"ok"}],"max_tokens":1}'; then
               echo "   Existing virtual key (alias 'opencode') is valid. Reusing: ${ALIAS_KEY:0:8}...${ALIAS_KEY: -4}"
               VIRTUAL_KEY="$ALIAS_KEY"
             fi

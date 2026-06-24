@@ -26,16 +26,16 @@ opencode
 
 ```
   opencode                LiteLLM (:4000)              Huawei MaaS
-  ────────                ──────────────              ────────────
-  orchestrator ─┐                              ┌───→ glm-5.2
-  oracle ───────┤                              ├───→ glm-5.1
-  council ──────┤  virtual key (sk-...)       ├───→ glm-5
-  librarian ────┤──────────────→ LiteLLM ─────├───→ deepseek-v4-pro
-  explorer ─────┤  (scoped, unlimited) │       ├───→ deepseek-v4-flash
-  designer ─────┤                    │       └───→ deepseek-v3.2
-  fixer ────────┘                    │
-                                     │    N API keys (load-balanced)
-                                     │
+  ────────                ───────────────              ────────────
+  orchestrator ─┐                                ┌───→ glm-5.2
+  oracle ───────┤                                ├───→ glm-5.1
+  council ──────┤  virtual key (sk-...)          ├───→ glm-5
+  librarian ────┤──────────────→ LiteLLM ────────├───→ deepseek-v4-pro
+  explorer ─────┤  (scoped, unlimited) │         ├───→ deepseek-v4-flash
+  designer ─────┤                      │         └───→ deepseek-v3.2
+  fixer ────────┘                      │
+                                       │    N API keys (load-balanced)
+                                       │
                                PostgreSQL (:5432)
 ```
 

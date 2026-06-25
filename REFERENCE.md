@@ -31,7 +31,7 @@ This is reference documentation. For the install procedure, read
 
 | # | Script | Purpose |
 |---|--------|---------|
-| 0 | `0_bootstrap.sh` | End-to-end orchestrator: prereqs → deploy → install → validate |
+| 0 | `0_bootstrap.sh` | End-to-end orchestrator: prereqs → deploy → install → validate. `--litellm-only` skips opencode, virtual key, and plugin install |
 | 1 | `1_init_env.sh` | Generate `.env` with secrets + MaaS keys |
 | 2 | `2_generate_config.sh` | Build `litellm_config.yaml` from `.env` |
 | 3 | `3_install.sh` | Install opencode + plugin + mint key + write config |

@@ -18,6 +18,7 @@ set -euo pipefail
 #   ./0_bootstrap.sh --maas-key=KEY                     # non-interactive (agent mode)
 #   ./0_bootstrap.sh --agent --maas-key=KEY             # agent mode: non-interactive, fail-fast, validate + summary
 #   ./0_bootstrap.sh --virtual-key=sk-...               # use existing virtual key (skip minting)
+#   ./0_bootstrap.sh --litellm-only                     # LiteLLM proxy only, skip opencode installation
 #   ./0_bootstrap.sh --dry-run                          # preview changes
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -32,6 +33,7 @@ MAAS_KEY=""
 VIRTUAL_KEY=""
 DRY_RUN=false
 AGENT_MODE=false
+LITELLM_ONLY=false
 
 # ── Parse command-line arguments ──
 for arg in "$@"; do
@@ -39,6 +41,7 @@ for arg in "$@"; do
     --maas-key=*)       MAAS_KEY="${arg#--maas-key=}" ;;
     --virtual-key=*)    VIRTUAL_KEY="${arg#--virtual-key=}" ;;
     --agent)            AGENT_MODE=true ;;
+    --litellm-only)     LITELLM_ONLY=true ;;
     --dry-run)          DRY_RUN=true ;;
     *)
       echo "ERROR: Unknown argument: $arg"
@@ -51,6 +54,12 @@ done
 # ── Agent mode validation ──
 if [ "$AGENT_MODE" = true ] && [ -z "$MAAS_KEY" ]; then
   echo "ERROR: --agent requires --maas-key=KEY"
+  exit 1
+fi
+
+# ── Mutual exclusion: --litellm-only and --virtual-key ──
+if [ "$LITELLM_ONLY" = true ] && [ -n "$VIRTUAL_KEY" ]; then
+  echo "ERROR: --litellm-only and --virtual-key are mutually exclusive."
   exit 1
 fi
 
@@ -160,8 +169,10 @@ check_prereq() {
   fi
 }
 
-check_prereq "bun"     bun     "install from https://bun.sh (needed for oh-my-opencode-slim plugin)"
-check_prereq "jq"      jq      "install from https://stedolan.github.io/jq/"
+if [ "$LITELLM_ONLY" = false ]; then
+  check_prereq "bun"   bun     "install from https://bun.sh (needed for oh-my-opencode-slim plugin)"
+  check_prereq "jq"    jq      "install from https://stedolan.github.io/jq/"
+fi
 check_prereq "docker"  docker  "install from https://docs.docker.com/engine/install/"
 check_prereq "git"     git     "install git"
 check_prereq "python3" python3 "install Python 3"
@@ -341,15 +352,19 @@ export LITELLM_MASTER_KEY="${LITELLM_MASTER_KEY:-}"
 # ──────────────────────────────────────────────────────────────────────────────
 print_step "4" "Install opencode, plugin, and configure"
 
-INSTALL_CMD=("$SCRIPT_DIR/3_install.sh")
-[ -n "$VIRTUAL_KEY" ] && INSTALL_CMD+=("--virtual-key=$VIRTUAL_KEY")
-[ "$DRY_RUN" = true ] && INSTALL_CMD+=("--dry-run")
-
-if [ "$DRY_RUN" = true ]; then
-  echo "  Would run: ${INSTALL_CMD[*]}"
+if [ "$LITELLM_ONLY" = true ]; then
+  echo "  (--litellm-only: skipping opencode installation)"
 else
-  "${INSTALL_CMD[@]}"
-  echo "  Installation and configuration complete."
+  INSTALL_CMD=("$SCRIPT_DIR/3_install.sh")
+  [ -n "$VIRTUAL_KEY" ] && INSTALL_CMD+=("--virtual-key=$VIRTUAL_KEY")
+  [ "$DRY_RUN" = true ] && INSTALL_CMD+=("--dry-run")
+
+  if [ "$DRY_RUN" = true ]; then
+    echo "  Would run: ${INSTALL_CMD[*]}"
+  else
+    "${INSTALL_CMD[@]}"
+    echo "  Installation and configuration complete."
+  fi
 fi
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -359,6 +374,7 @@ print_step "5" "Validate"
 
 VALIDATE_CMD=("$SCRIPT_DIR/5_validate.sh")
 [ "$DRY_RUN" = true ] && VALIDATE_CMD+=("--dry-run")
+[ "$LITELLM_ONLY" = true ] && VALIDATE_CMD+=("--litellm-only")
 
 if [ "$DRY_RUN" = true ]; then
   echo "  Would run: ${VALIDATE_CMD[*]}"
@@ -382,10 +398,21 @@ echo ""
 echo "Project dir:       $PROJECT_DIR"
 echo "LiteLLM proxy:     $LITELLM_URL"
 echo "LiteLLM Admin UI:  ${LITELLM_URL}/ui"
-echo "opencode config:    ~/.config/opencode/opencode.jsonc"
-echo "plugin config:      ~/.config/opencode/oh-my-opencode-slim.json"
-# Show virtual key (masked) from config
-FINAL_VK=$(python3 -c "
+if [ "$LITELLM_ONLY" = true ]; then
+  echo ""
+  echo "Mode:              LiteLLM-only (no opencode)"
+  echo ""
+  echo "Next steps:"
+  echo "  1. LiteLLM Admin UI: ${LITELLM_URL}/ui"
+  echo "  2. To add opencode later:"
+  echo "     ./scripts/0_bootstrap.sh --maas-key=\"\$KEY\""
+  echo "  3. Or mint a virtual key only:"
+  echo "     ./scripts/4_mint-virtual-key.sh"
+else
+  echo "opencode config:    ~/.config/opencode/opencode.jsonc"
+  echo "plugin config:      ~/.config/opencode/oh-my-opencode-slim.json"
+  # Show virtual key (masked) from config
+  FINAL_VK=$(python3 -c "
 import sys, json
 text = open(sys.argv[1]).read()
 # Quick JSONC strip: remove // line comments outside strings
@@ -406,27 +433,28 @@ while i < len(text):
 d = json.loads(''.join(result))
 print(d.get('provider',{}).get('LiteLLM',{}).get('options',{}).get('apiKey',''))
 " "$HOME/.config/opencode/opencode.jsonc" 2>/dev/null || true)
-if [ -n "$FINAL_VK" ]; then
-  echo "Virtual key:        ${FINAL_VK:0:8}...${FINAL_VK: -4}"
-fi
-echo ""
-if [ "$AGENT_MODE" = true ]; then
-  echo "Next steps:"
-  echo "  1. Run: opencode"
-  echo "  2. Switch preset: /preset LiteLLM-Huawei-MaaS-Core"
+  if [ -n "$FINAL_VK" ]; then
+    echo "Virtual key:        ${FINAL_VK:0:8}...${FINAL_VK: -4}"
+  fi
   echo ""
-  echo "⚠️  If any API keys were visible during installation, rotate them:"
-  echo "  1. Get new key from MaaS console"
-  echo "  2. Edit .env: replace HUAWEI_MAAS_API_KEY"
-  echo "  3. Run: ./scripts/2_generate_config.sh && docker compose restart litellm"
-  echo "  4. Run: ./scripts/5_validate.sh"
-else
-  echo "Preset: LiteLLM-Huawei-MaaS-Full (default) — all 6 models via LiteLLM"
-  echo "Core:    LiteLLM-Huawei-MaaS-Core — 4 models (no v4-pro/v4-flash)"
-  echo "Direct: Huawei-MaaS-Full / Huawei-MaaS-Core — bypass LiteLLM proxy"
-  echo ""
-  echo "Next steps:"
-  echo "  1. Run: opencode"
-  echo "  2. Verify preset: status bar should show LiteLLM-Huawei-MaaS-Full"
-  echo "  3. Switch preset: /preset LiteLLM-Huawei-MaaS-Core"
+  if [ "$AGENT_MODE" = true ]; then
+    echo "Next steps:"
+    echo "  1. Run: opencode"
+    echo "  2. Switch preset: /preset LiteLLM-Huawei-MaaS-Core"
+    echo ""
+    echo "⚠️  If any API keys were visible during installation, rotate them:"
+    echo "  1. Get new key from MaaS console"
+    echo "  2. Edit .env: replace HUAWEI_MAAS_API_KEY"
+    echo "  3. Run: ./scripts/2_generate_config.sh && docker compose restart litellm"
+    echo "  4. Run: ./scripts/5_validate.sh"
+  else
+    echo "Preset: LiteLLM-Huawei-MaaS-Full (default) — all 6 models via LiteLLM"
+    echo "Core:    LiteLLM-Huawei-MaaS-Core — 4 models (no v4-pro/v4-flash)"
+    echo "Direct: Huawei-MaaS-Full / Huawei-MaaS-Core — bypass LiteLLM proxy"
+    echo ""
+    echo "Next steps:"
+    echo "  1. Run: opencode"
+    echo "  2. Verify preset: status bar should show LiteLLM-Huawei-MaaS-Full"
+    echo "  3. Switch preset: /preset LiteLLM-Huawei-MaaS-Core"
+  fi
 fi

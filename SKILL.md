@@ -74,8 +74,14 @@ If creating `$PROJECT_DIR` fails with permission denied:
 sudo mkdir -p "$PROJECT_DIR" && sudo chown "$USER" "$PROJECT_DIR"
 ```
 
+Prompt user: `"Full install (LiteLLM + opencode) or LiteLLM-only? (default: full)"`
+
+If user presses Enter or chooses full: `INSTALL_MODE="full"`.
+If user chooses LiteLLM-only: `INSTALL_MODE="litellm-only"`.
+
 **Postcondition:** `uname -s` prints `Linux` AND `$PROJECT_DIR` is set and
-writable (`touch "$PROJECT_DIR/.test" && rm "$PROJECT_DIR/.test"` succeeds).
+writable (`touch "$PROJECT_DIR/.test" && rm "$PROJECT_DIR/.test"` succeeds)
+AND `$INSTALL_MODE` is set to `full` or `litellm-only`.
 
 **On failure:** If OS is not Linux: stop and report "This procedure supports
 Linux only." If dir creation fails even with sudo: escalate.
@@ -91,8 +97,8 @@ Linux only." If dir creation fails even with sudo: escalate.
 Check each tool:
 
 ```bash
-command -v bun     && bun --version
-command -v jq      && jq --version
+command -v bun     && bun --version          # only if INSTALL_MODE=full
+command -v jq      && jq --version           # only if INSTALL_MODE=full
 command -v git     && git --version
 command -v python3 && python3 --version
 command -v curl    && curl --version
@@ -100,6 +106,11 @@ command -v docker  && docker --version
 docker compose version              # V2 plugin
 command -v sudo                     # sudo available
 ```
+
+> **Note:** `bun` and `jq` are NOT required when `INSTALL_MODE=litellm-only`.
+> They are only used by `3_install.sh` (opencode plugin install) and
+> `5_validate.sh` Section B (opencode config checks), both skipped in
+> LiteLLM-only mode.
 
 Collect all missing tools. If any are missing:
 
@@ -326,10 +337,14 @@ Run the bootstrap:
 
 ```bash
 cd "$PROJECT_DIR"
-./scripts/0_bootstrap.sh --agent --maas-key="$MAAS_KEY"
+if [ "$INSTALL_MODE" = "litellm-only" ]; then
+  ./scripts/0_bootstrap.sh --agent --litellm-only --maas-key="$MAAS_KEY"
+else
+  ./scripts/0_bootstrap.sh --agent --maas-key="$MAAS_KEY"
+fi
 ```
 
-This is idempotent — safe to re-run. It will:
+This is idempotent — safe to re-run. In **full** mode it will:
 
 1. Generate `.env` (preserving existing immutable secrets)
 2. Generate `litellm_config.yaml`
@@ -339,14 +354,21 @@ This is idempotent — safe to re-run. It will:
 6. Write opencode config
 7. Run validation
 
+In **LiteLLM-only** mode it will:
+
+1. Generate `.env` (preserving existing immutable secrets)
+2. Generate `litellm_config.yaml`
+3. Start Docker Compose (LiteLLM + PostgreSQL)
+4. Run validation (`--litellm-only`)
+
 > **Notes:**
 > - **Docker image pull:** Step 3 pulls the LiteLLM image (~500 MB) and
 >   PostgreSQL image (~50 MB). On a slow connection this can take several
 >   minutes. Do not timeout or report failure during the pull — wait for
 >   `docker compose up -d` to complete.
-> - **npm registry:** Step 4 runs `bunx oh-my-opencode-slim install` which
->   downloads from the npm registry. If the registry is unreachable, this fails
->   with a network error.
+> - **npm registry** (full mode only): Step 4 runs `bunx oh-my-opencode-slim
+>   install` which downloads from the npm registry. If the registry is
+>   unreachable, this fails with a network error.
 > - **Git hooks:** Bootstrap configures `.githooks/pre-commit` to block
 >   committing `.env` and secrets. This is a side effect — no action needed.
 > - **Internal validation:** Bootstrap runs `5_validate.sh` internally as its
@@ -395,7 +417,11 @@ Escalate with log output.
 
 ```bash
 cd "$PROJECT_DIR"
-./scripts/5_validate.sh
+if [ "$INSTALL_MODE" = "litellm-only" ]; then
+  ./scripts/5_validate.sh --litellm-only
+else
+  ./scripts/5_validate.sh
+fi
 ```
 
 **Postcondition:** `5_validate.sh` exits 0 (all checks pass).
@@ -429,6 +455,8 @@ more than once.
 
 **Action:** Report to the user:
 
+If `INSTALL_MODE=full`:
+
 ```
 === Installation Complete ===
 
@@ -442,6 +470,23 @@ Next steps:
   1. Run: opencode
   2. Verify preset: status bar should show LiteLLM-Huawei-MaaS-Full
   3. Switch preset: /preset LiteLLM-Huawei-MaaS-Core
+```
+
+If `INSTALL_MODE=litellm-only`:
+
+```
+=== Installation Complete (LiteLLM-only) ===
+
+Project dir:       $PROJECT_DIR
+LiteLLM proxy:     http://127.0.0.1:4000
+LiteLLM Admin UI:  http://127.0.0.1:4000/ui
+
+Next steps:
+  1. LiteLLM Admin UI: http://127.0.0.1:4000/ui
+  2. To add opencode later:
+     ./scripts/0_bootstrap.sh --maas-key="$MAAS_KEY"
+  3. Or mint a virtual key only:
+     ./scripts/4_mint-virtual-key.sh
 ```
 
 **Postcondition:** Summary printed. Installation is complete.

@@ -24,6 +24,12 @@ cd oh-my-litellm-opencode
 opencode
 ```
 
+**LiteLLM-only?** Skip opencode and just deploy the proxy:
+
+```bash
+./scripts/0_bootstrap.sh --litellm-only    # LiteLLM proxy only, no opencode
+```
+
 ## One-Click Agent Install
 
 Copy and paste this prompt into any coding agent to install automatically:
@@ -43,6 +49,7 @@ SKILL.md exactly, top to bottom.
 5. Do NOT launch opencode. Report the summary from Step 10 and stop.
 
 You will need to ask me for:
+- Install mode: full (LiteLLM + opencode) or LiteLLM-only (default: full)
 - Install directory (default: /home/oh-my-litellm-opencode)
 - My Huawei MaaS API key (region: ap-southeast-1)
 - How many extra MaaS keys for load balancing (default: 0)

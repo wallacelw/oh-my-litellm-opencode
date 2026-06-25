@@ -217,6 +217,28 @@ if [ "$OPENCODE_ONLY" = false ]; then
     warn "litellm_config.yaml not found — run scripts/2_generate_config.sh"
   fi
 
+  # A5. Inference smoke test (runs in --litellm-only mode where Section B is skipped)
+  # Uses LITELLM_MASTER_KEY since no virtual key is minted in LiteLLM-only mode.
+  echo ""
+  echo "A5. Inference smoke test"
+  if [ "$DRY_RUN" = true ]; then
+    skip "Inference smoke test"
+  elif [ "$LITELLM_ONLY" = true ] && [ -n "${LITELLM_MASTER_KEY:-}" ]; then
+    SMOKE_MODEL="deepseek-v3.2"  # cheapest (700 RPM)
+    if curl -sf -m 30 "$LITELLM_URL/v1/chat/completions" \
+        -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+        -H "Content-Type: application/json" \
+        -d "{\"model\":\"$SMOKE_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"ok\"}],\"max_tokens\":1}" >/dev/null 2>&1; then
+      pass "Inference smoke test: $SMOKE_MODEL responded (master key)"
+    else
+      fail "Inference smoke test: $SMOKE_MODEL did not respond"
+    fi
+  elif [ "$LITELLM_ONLY" = true ] && [ -z "${LITELLM_MASTER_KEY:-}" ]; then
+    skip "Inference smoke test (LITELLM_MASTER_KEY not set)"
+  else
+    skip "Inference smoke test (runs in --litellm-only mode; full mode tests in B5)"
+  fi
+
   echo ""
 fi
 

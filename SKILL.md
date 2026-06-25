@@ -3,119 +3,452 @@ name: oh-my-litellm-opencode
 description: Deploy LiteLLM proxy (litellm + postgres) routing through Huawei MaaS with multi-key load balancing, then bootstrap opencode + oh-my-opencode-slim with virtual key and 4 presets.
 ---
 
-# oh-my-litellm-opencode
+# oh-my-litellm-opencode — Deterministic Install Procedure
 
 Deploy LiteLLM proxy → bootstrap opencode → mint virtual key → configure. **Idempotent.**
 
-## Installation Flow
+For reference documentation (architecture, presets, models, repair), see
+**[REFERENCE.md](./REFERENCE.md)**.
 
-**Start here.** Clone the repo, then follow these steps.
+---
 
-### What the agent does interactively
+## Section A: Idempotency & Re-run Contract
 
-**1. Check prerequisites** — for each missing tool, ask user "OK to install?" then install:
+- If any step's precondition is already met, skip the action and verify the
+  postcondition.
+- The entire procedure is safe to re-run from any step.
+- Re-running never destroys data or regenerates immutable secrets
+  (`LITELLM_MASTER_KEY`, `LITELLM_SALT_KEY`, `DB_PASSWORD`).
+- Only `1_init_env.sh --auto --force` regenerates secrets (for key rotation).
+  Never do this unless explicitly rotating keys.
 
-| Tool | Check | Install command | Version/source |
-|------|-------|-----------------|----------------|
-| bun | `command -v bun` | `curl -fsSL https://bun.sh/install \| bash` | Latest from bun.sh (restart shell after) |
-| jq | `command -v jq` | `sudo apt-get install -y jq` or `brew install jq` | OS package manager |
-| git | `command -v git` | `sudo apt-get install -y git` or `brew install git` | OS package manager (usually pre-installed) |
-| python3 | `command -v python3` | `sudo apt-get install -y python3` or `brew install python3` | OS package manager (usually pre-installed) |
-| curl | `command -v curl` | `sudo apt-get install -y curl` or `brew install curl` | OS package manager (usually pre-installed) |
-| docker | `command -v docker` | `curl -fsSL https://get.docker.com \| sudo sh` | Latest Docker Engine from get.docker.com |
-| docker compose | `docker compose version` | Included with Docker Engine 20.10+ | V2 plugin (not standalone `docker-compose`) |
+---
 
-opencode is NOT a prerequisite — it's installed automatically by `3_install.sh` via `curl -fsSL https://opencode.ai/install | bash`.
+## Section B: Key Contract
 
-**2. Check Docker running** — `docker info >/dev/null 2>&1` — if not, run `sudo systemctl start docker`
+| Env var | Set by | Read by | Format | Immutable? |
+|---------|--------|---------|--------|------------|
+| `HUAWEI_MAAS_API_KEY` | User (prompted, Step 5) | `1_init_env.sh`, `3_install.sh` | Non-empty, no placeholders, validated via live API call | No |
+| `HUAWEI_MAAS_API_KEY_COUNT` | Agent (Step 7) → recalculated by `0_bootstrap.sh` | `1_init_env.sh`, `2_generate_config.sh` | Integer ≥ 1 | No |
+| `HUAWEI_MAAS_API_KEY_0` | `0_bootstrap.sh` (auto, = main key) | `1_init_env.sh`, `2_generate_config.sh` | Non-empty | No |
+| `HUAWEI_MAAS_API_KEY_1..N` | User (prompted, Step 5) → agent exports (Step 7) | `0_bootstrap.sh` → `1_init_env.sh` | Non-empty | No |
+| `LITELLM_MASTER_KEY` | `1_init_env.sh` (auto-generated) | `0_bootstrap.sh`, `3_install.sh` | Must start with `sk-` | **Yes** — changing invalidates all virtual keys |
+| `LITELLM_SALT_KEY` | `1_init_env.sh` (auto-generated) | LiteLLM container | Random string | **Yes** — changing invalidates all virtual keys |
+| `DB_PASSWORD` | `1_init_env.sh` (auto-generated) | docker-compose, postgres | Random string | **Yes** — changing breaks DB auth |
 
-**3. Ask for MaaS key** — "What is your Huawei ModelArts MaaS API key? (region: ap-southeast-1, get from https://console.huaweicloud.com/modelarts/)"
+**Rules:**
 
-**4. Ask for extra keys** — "How many additional MaaS keys for load balancing? (0 for none)" — if >0, prompt one-by-one
+- Agent must NOT set `HUAWEI_MAAS_API_KEY_0` — bootstrap sets it from the main
+  key automatically.
+- Agent must export `HUAWEI_MAAS_API_KEY_COUNT` = 1 + number of extra keys.
+- Agent must export `HUAWEI_MAAS_API_KEY_1` through `HUAWEI_MAAS_API_KEY_N` for
+  extra keys only.
 
-**5. Check existing install** — if `/home/oh-my-litellm-opencode` exists, ask: "Existing installation found. Update in-place or fresh install?"
+---
 
-**6. Check port 4000** — if in use, ask user to stop the conflicting service
+## Section C: Installation Procedure
 
-### What the agent delegates to the script
+Execute every step in order. For each step: check **precondition** → run
+**action** → verify **postcondition**. If a step fails, run the documented
+**on failure** recovery. If recovery also fails, stop and report to the user.
+
+### Step 1: Detect Environment
+
+**Precondition:** Agent has filesystem and shell access on a Linux machine.
+
+**Action:**
 
 ```bash
-git clone https://github.com/wallacelw/oh-my-litellm-opencode /home/oh-my-litellm-opencode
-cd /home/oh-my-litellm-opencode
+uname -s   # must print "Linux"
+```
 
+Prompt user: `"Enter install directory (default: /home/oh-my-litellm-opencode):"`
+
+If user presses Enter or provides no input, set
+`PROJECT_DIR="/home/oh-my-litellm-opencode"`. Otherwise set `PROJECT_DIR` to
+the user's input.
+
+If creating `$PROJECT_DIR` fails with permission denied:
+
+```bash
+sudo mkdir -p "$PROJECT_DIR" && sudo chown "$USER" "$PROJECT_DIR"
+```
+
+**Postcondition:** `uname -s` prints `Linux` AND `$PROJECT_DIR` is set and
+writable (`touch "$PROJECT_DIR/.test" && rm "$PROJECT_DIR/.test"` succeeds).
+
+**On failure:** If OS is not Linux: stop and report "This procedure supports
+Linux only." If dir creation fails even with sudo: escalate.
+
+---
+
+### Step 2: Verify & Install Prerequisites
+
+**Precondition:** Step 1 passed.
+
+**Action:**
+
+Check each tool:
+
+```bash
+command -v bun     && bun --version
+command -v jq      && jq --version
+command -v git     && git --version
+command -v python3 && python3 --version
+command -v curl    && curl --version
+command -v docker  && docker --version
+docker compose version              # V2 plugin
+command -v sudo                     # sudo available
+```
+
+Collect all missing tools. If any are missing:
+
+1. List all missing tools to the user.
+2. Ask: `"OK to install all missing prerequisites? (y/n)"`
+3. If user declines: stop and report "Prerequisites are required. Install them
+   manually and re-run from Step 1."
+4. If user approves, install each missing tool:
+
+   First, refresh the package index (required on fresh systems):
+   ```bash
+   sudo apt-get update
+   ```
+
+   Then install each:
+   - `bun`:            `curl -fsSL https://bun.sh/install | bash`
+   - `jq`:             `sudo apt-get install -y jq`
+   - `git`:            `sudo apt-get install -y git`
+   - `python3`:        `sudo apt-get install -y python3`
+   - `curl`:           `sudo apt-get install -y curl`
+   - `docker`:         `curl -fsSL https://get.docker.com | sudo sh`
+   - `docker compose`: If `docker` exists but `docker compose version` fails:
+                         `sudo apt-get install -y docker-compose-v2`
+   - `sudo`:           If missing and running as root (`id -u` = 0), run
+                         commands directly without sudo. If missing and not root:
+                         escalate "sudo is required but not installed."
+
+After installing bun, source the bun env so it's on PATH:
+
+```bash
+export PATH="$HOME/.bun/bin:$PATH"
+```
+
+> **Note:** opencode is NOT a prerequisite. It is installed automatically during
+> Step 7 (bootstrap → `3_install.sh`). Do not install it separately.
+
+**Postcondition:** All of the following succeed:
+
+```bash
+command -v bun && command -v jq && command -v git \
+  && command -v python3 && command -v curl \
+  && command -v docker && docker compose version
+```
+
+**On failure:** Report which tool failed to install. Escalate.
+
+---
+
+### Step 3: Ensure Docker Daemon
+
+**Precondition:** Step 2 passed (`docker` and `docker compose` are installed).
+
+**Action:**
+
+```bash
+docker info >/dev/null 2>&1
+```
+
+If that fails:
+
+```bash
+sudo systemctl start docker
+```
+
+Wait 5 seconds, retry `docker info`.
+
+**Postcondition:** `docker info` exits 0.
+
+**On failure:** Escalate: `"Docker daemon won't start. Check: sudo journalctl -u docker --tail 20"`
+
+---
+
+### Step 4: Clone or Update Repository
+
+**Precondition:** Steps 1–3 passed. `$PROJECT_DIR` is set.
+
+**Action:**
+
+If `$PROJECT_DIR` does not exist:
+
+```bash
+git clone https://github.com/wallacelw/oh-my-litellm-opencode "$PROJECT_DIR"
+```
+
+If `$PROJECT_DIR` exists with a `.git` dir:
+
+Ask user: `"Existing installation found at $PROJECT_DIR. Update in-place or fresh install?"`
+
+- **Update:**
+
+  ```bash
+  git -C "$PROJECT_DIR" pull --ff-only
+  ```
+
+  If pull fails (local changes or diverged history):
+
+  Ask user: `"Pull failed. Reset to origin/main? (y/n)"`
+
+  If yes: `git -C "$PROJECT_DIR" reset --hard origin/main`
+
+- **Fresh:**
+
+  ```bash
+  cd "$PROJECT_DIR" && docker compose down -v
+  cd /
+  rm -rf "$PROJECT_DIR"
+  git clone https://github.com/wallacelw/oh-my-litellm-opencode "$PROJECT_DIR"
+  ```
+
+**Postcondition:** `$PROJECT_DIR/scripts/0_bootstrap.sh` exists and is
+executable (`test -x "$PROJECT_DIR/scripts/0_bootstrap.sh"`).
+
+**On failure:** Escalate: `"Failed to clone repository. Check network connectivity and GitHub access."`
+
+---
+
+### Step 5: Collect & Validate MaaS Keys
+
+**Precondition:** Step 4 passed.
+
+**Action:**
+
+Prompt user: `"What is your Huawei ModelArts MaaS API key? (region: ap-southeast-1, get from https://console.huaweicloud.com/modelarts/)"`
+
+Set `MAAS_KEY` to the user's input.
+
+Validate the key is non-empty and not a placeholder:
+
+```bash
+[ -n "$MAAS_KEY" ] \
+  && [[ "$MAAS_KEY" != *"change-me"* ]] \
+  && [[ "$MAAS_KEY" != *"xxx"* ]]
+```
+
+If invalid: re-prompt.
+
+Validate the key works via a live API call against the same OpenAI-compatible
+endpoint that LiteLLM will use:
+
+```bash
+curl -sf --max-time 30 -X POST \
+  "https://api-ap-southeast-1.modelarts-maas.com/openai/v1/chat/completions" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $MAAS_KEY" \
+  -d '{"model":"glm-5.2","messages":[{"role":"system","content":"You are a helpful assistant."},{"role":"user","content":"Ping! Answer with only Pong!"}]}'
+```
+
+If the API call fails: report `"The MaaS API key was rejected by the endpoint.
+Verify the key at https://console.huaweicloud.com/modelarts/ and that the
+region is ap-southeast-1."` Re-prompt for the key.
+
+Prompt user: `"How many additional MaaS keys for load balancing? (default: 0)"`
+
+If user enters 0 or presses Enter: `NUM_EXTRA_KEYS=0`, no extra keys.
+
+If user enters N > 0: prompt for each key one-by-one:
+
+```
+"Enter extra MaaS API key #1 (1/N):"
+"Enter extra MaaS API key #2 (2/N):"
+...
+```
+
+Validate each extra key the same way as the main key (non-empty + live API
+call). Store as `EXTRA_KEY_1` through `EXTRA_KEY_N`.
+
+**Postcondition:** `MAAS_KEY` is set and validated via live API call.
+`NUM_EXTRA_KEYS` is set (0 or positive integer).
+
+**On failure:** If the live API call fails after 3 retries with the same key:
+escalate `"MaaS API key validation failed. The key may be invalid, expired, or
+the region is wrong."`
+
+---
+
+### Step 6: Check Port 4000 Free
+
+**Precondition:** Step 5 passed.
+
+**Action:**
+
+```bash
+sudo ss -tlnp | grep ':4000 '
+```
+
+If the port is in use: report to user `"Port 4000 is in use by PID X (process
+name). Stop it or choose a different approach."` Wait for user to resolve. Do
+NOT auto-kill.
+
+Also check port 5432 (PostgreSQL):
+
+```bash
+sudo ss -tlnp | grep ':5432 '
+```
+
+If in use, warn the user (Docker Compose may fail).
+
+**Postcondition:** `sudo ss -tlnp | grep ':4000 '` returns no output.
+
+**On failure:** If user cannot free the port: escalate `"Port 4000 must be free
+for LiteLLM proxy."`
+
+---
+
+### Step 7: Run Bootstrap
+
+**Precondition:** Steps 1–6 passed.
+
+**Action:**
+
+Export the key environment variables:
+
+```bash
 export HUAWEI_MAAS_API_KEY="$MAAS_KEY"
-export HUAWEI_MAAS_API_KEY_COUNT="$TOTAL_KEYS"    # 1 + extra
-export HUAWEI_MAAS_API_KEY_1="$MAAS_KEY_1"        # if provided
-export HUAWEI_MAAS_API_KEY_2="$MAAS_KEY_2"        # if provided
+export HUAWEI_MAAS_API_KEY_COUNT="$((1 + NUM_EXTRA_KEYS))"
+# Export extra keys (if any). Do NOT export HUAWEI_MAAS_API_KEY_0 —
+# bootstrap sets it automatically from the main key.
+export HUAWEI_MAAS_API_KEY_1="$EXTRA_KEY_1"   # if NUM_EXTRA_KEYS >= 1
+export HUAWEI_MAAS_API_KEY_2="$EXTRA_KEY_2"   # if NUM_EXTRA_KEYS >= 2
+# ... and so on for each extra key
+```
 
+Run the bootstrap:
+
+```bash
+cd "$PROJECT_DIR"
 ./scripts/0_bootstrap.sh --agent --maas-key="$MAAS_KEY"
 ```
 
-`--agent` mode: non-interactive, fail-fast, reads extra keys from env vars, runs validate, prints summary with key rotation instructions.
+This is idempotent — safe to re-run. It will:
 
-## Scripts
+1. Generate `.env` (preserving existing immutable secrets)
+2. Generate `litellm_config.yaml`
+3. Start Docker Compose (LiteLLM + PostgreSQL)
+4. Install opencode + oh-my-opencode-slim plugin
+5. Mint a virtual key
+6. Write opencode config
+7. Run validation
 
-| # | Script | Purpose |
-|---|--------|---------|
-| 0 | `0_bootstrap.sh` | End-to-end orchestrator: prereqs → deploy → install → validate |
-| 1 | `1_init_env.sh` | Generate `.env` with secrets + MaaS keys |
-| 2 | `2_generate_config.sh` | Build `litellm_config.yaml` from `.env` |
-| 3 | `3_install.sh` | Install opencode + plugin + mint key + write config |
-| 4 | `4_mint-virtual-key.sh` | Mint a scoped virtual key (standalone) |
-| 5 | `5_validate.sh` | Validate all components (`--litellm-only` for proxy-only) |
+> **Notes:**
+> - **Docker image pull:** Step 3 pulls the LiteLLM image (~500 MB) and
+>   PostgreSQL image (~50 MB). On a slow connection this can take several
+>   minutes. Do not timeout or report failure during the pull — wait for
+>   `docker compose up -d` to complete.
+> - **npm registry:** Step 4 runs `bunx oh-my-opencode-slim install` which
+>   downloads from the npm registry. If the registry is unreachable, this fails
+>   with a network error.
+> - **Git hooks:** Bootstrap configures `.githooks/pre-commit` to block
+>   committing `.env` and secrets. This is a side effect — no action needed.
+> - **Internal validation:** Bootstrap runs `5_validate.sh` internally as its
+>   last step. Steps 8 and 9 below are postcondition confirmations of that
+>   internal work, not new operations.
 
-## Core Rules
+**Postcondition:** `0_bootstrap.sh` exits 0.
 
-- Never commit `.env` or real keys
-- Never change `LITELLM_SALT_KEY` after virtual keys exist
-- Model names are case-sensitive — must match MaaS console exactly
-- Config is generated by `2_generate_config.sh` — never edit `litellm_config.yaml` directly
-- Master key is admin-only — opencode uses virtual keys
-- LiteLLM baseURL: `http://127.0.0.1:4000` (no `/v1`)
-- MaaS region-locked to `ap-southeast-1`
+**On failure:** Run
+`docker compose -f "$PROJECT_DIR/docker-compose.yml" logs litellm --tail 50`.
+Escalate with the log output.
 
-## Presets
+---
 
-| Preset | Models | Route |
-|--------|--------|-------|
-| **LiteLLM-Huawei-MaaS-Full** (default) | All 6 | Proxy → MaaS |
-| **LiteLLM-Huawei-MaaS-Core** | 4 (no v4-pro/v4-flash) | Proxy → MaaS |
-| **Huawei-MaaS-Full** | All 6 | Direct → MaaS |
-| **Huawei-MaaS-Core** | 4 (no v4-pro/v4-flash) | Direct → MaaS |
+### Step 8: Wait for LiteLLM Healthy
 
-Switch at runtime: `/preset LiteLLM-Huawei-MaaS-Core`
+**Precondition:** Step 7 passed.
 
-## Council
+**Action:**
 
-3 councillors run in parallel, all using glm-5.2, each with a different focus:
+```bash
+# Poll every 5 seconds, up to 90 seconds
+for i in $(seq 1 18); do
+  if curl -sf -m 15 "http://127.0.0.1:4000/health/liveliness" >/dev/null 2>&1; then
+    echo "LiteLLM healthy"
+    break
+  fi
+  sleep 5
+done
+```
 
-| Councillor | Model | Focus |
-|------------|-------|-------|
-| **alpha** | glm-5.2 | Deep reasoning, logical correctness, subtle bugs/edge cases |
-| **beta** | glm-5.2 | Architecture, maintainability, trade-offs, long-term implications |
-| **gamma** | glm-5.2 | Practical implementation, cost-efficiency, verification steps |
+**Postcondition:** `curl -sf http://127.0.0.1:4000/health/liveliness` returns
+HTTP 200.
 
-## Models
+**On failure:** Run
+`docker compose -f "$PROJECT_DIR/docker-compose.yml" logs litellm --tail 50`.
+Escalate with log output.
 
-| Name | Input/Output | RPM | Cost (in/out per token) |
-|------|-------------|-----|------------------------|
-| `glm-5.2` | 192K/128K | 100 | $1.400 / $4.400 × 10⁻⁶ |
-| `glm-5.1` | 192K/128K | 30 | $1.078 / $3.774 × 10⁻⁶ |
-| `glm-5` | 192K/64K | 30 | $0.809 / $2.965 × 10⁻⁶ |
-| `deepseek-v4-pro` | 1M/128K | 3 | $1.617 / $3.235 × 10⁻⁶ |
-| `deepseek-v4-flash` | 1M/128K | 3 | $0.135 / $0.270 × 10⁻⁶ |
-| `deepseek-v3.2` | 128K/32K | 700 | $0.270 / $0.404 × 10⁻⁶ |
+---
 
-## Repair
+### Step 9: Run Validation
 
-| Symptom | Fix |
-|---------|-----|
-| `litellm` keeps restarting | Check `docker compose logs db`, verify `DB_PASSWORD` |
-| 401 Unauthorized | Key must start with `sk-` |
-| 404 model not found | Model name case-sensitive |
-| MaaS 403 | Verify key; region must be `ap-southeast-1` |
-| `unhealthy_count > 0` | Check MaaS key/model/region — may be transient |
-| Virtual key 403 | Check with `/key/info` — may be expired |
-| Port conflict | `ss -tlnp \| grep ':4000'` |
+**Precondition:** Step 8 passed.
 
-**Full reset:** `docker compose down -v; rm -f .env .master-key`
+**Action:**
+
+```bash
+cd "$PROJECT_DIR"
+./scripts/5_validate.sh
+```
+
+**Postcondition:** `5_validate.sh` exits 0 (all checks pass).
+
+**On failure:** Parse the FAIL lines from the output. Match on **keywords**
+(not exact strings) to find the recovery action:
+
+| FAIL line contains | Recovery |
+|--------------------|----------|
+| `.env not found` | Re-run from Step 7 |
+| `services running` and count `< 2` | `docker compose -f "$PROJECT_DIR/docker-compose.yml" up -d`, wait 30s, retry Step 9 |
+| `liveness probe` and not `200` | Re-run from Step 8 |
+| `opencode not found` | `curl -fsSL https://opencode.ai/install \| bash`, retry Step 9 |
+| `Model catalog not reachable` | Check virtual key in `~/.config/opencode/opencode.jsonc`, re-run from Step 7 |
+| `smoke test` and `did not respond` | Re-validate MaaS key via Step 5's API call. If key is valid, escalate. |
+
+> **Note:** `unhealthy_count > 0` is a **warning** in `5_validate.sh`, not a
+> failure — it does not cause a non-zero exit. If you see this warning, monitor
+> it but proceed. If inference fails later (smoke test), then investigate MaaS
+> key/model/region validity.
+
+After running the recovery command, re-run `5_validate.sh` **once**. If it
+still fails: escalate with the full validation output. Do not loop recovery
+more than once.
+
+---
+
+### Step 10: Print Summary
+
+**Precondition:** Step 9 passed (validation exited 0).
+
+**Action:** Report to the user:
+
+```
+=== Installation Complete ===
+
+Project dir:       $PROJECT_DIR
+LiteLLM proxy:     http://127.0.0.1:4000
+LiteLLM Admin UI:  http://127.0.0.1:4000/ui
+opencode config:   ~/.config/opencode/opencode.jsonc
+plugin config:     ~/.config/opencode/oh-my-opencode-slim.json
+
+Next steps:
+  1. Run: opencode
+  2. Verify preset: status bar should show LiteLLM-Huawei-MaaS-Full
+  3. Switch preset: /preset LiteLLM-Huawei-MaaS-Core
+```
+
+**Postcondition:** Summary printed. Installation is complete.
+
+**On failure:** N/A — this is the terminal step.
+
+---
+
+**The install is complete when Step 9 (`5_validate.sh`) exits 0.** Step 10 is
+informational only. Do NOT launch `opencode` — that is the user's next action.

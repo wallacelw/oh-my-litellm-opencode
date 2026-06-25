@@ -4,48 +4,58 @@ LiteLLM proxy → Huawei MaaS → opencode. Virtual keys, 4 presets, 6 models, m
 
 ## Quick Start
 
+**Prerequisites:** Linux, Docker, bun, jq.
+
 **1. Install prerequisites** (skip any you already have):
 
 ```bash
 curl -fsSL https://bun.sh/install | bash          # bun
-sudo apt-get install -y jq                         # jq (or: brew install jq)
+sudo apt-get install -y jq                         # jq
 # Docker: https://docs.docker.com/get-docker/     # then start the daemon
 ```
 
 **2. Deploy:**
 
 ```bash
-git clone https://github.com/wallacelw/oh-my-litellm-opencode /home/oh-my-litellm-opencode
-cd /home/oh-my-litellm-opencode
+git clone https://github.com/wallacelw/oh-my-litellm-opencode
+cd oh-my-litellm-opencode
 ./scripts/0_bootstrap.sh      # prompts for MaaS key, starts Docker, installs opencode
 ./scripts/5_validate.sh       # verify
 opencode
 ```
 
-## Architecture
+## One-Click Agent Install
+
+Copy and paste this prompt into any coding agent to install automatically:
 
 ```
-  opencode                LiteLLM (:4000)              Huawei MaaS
-  ────────                ───────────────              ────────────
-  orchestrator ─┐                                ┌───→ glm-5.2
-  oracle ───────┤                                ├───→ glm-5.1
-  council ──────┤  virtual key (sk-...)          ├───→ glm-5
-  librarian ────┤──────────────→ LiteLLM ────────├───→ deepseek-v4-pro
-  explorer ─────┤  (scoped, unlimited) │         ├───→ deepseek-v4-flash
-  designer ─────┤                      │         └───→ deepseek-v3.2
-  fixer ────────┘                      │
-                                       │    N API keys (load-balanced)
-                                       │
-                               PostgreSQL (:5432)
+Install oh-my-litellm-opencode on this machine by following the procedure in
+SKILL.md exactly, top to bottom.
+
+1. Fetch and read SKILL.md from:
+   https://raw.githubusercontent.com/wallacelw/oh-my-litellm-opencode/main/SKILL.md
+2. Follow the procedure in SKILL.md — execute every step in order.
+   For each step: check the precondition, run the action, verify the
+   postcondition. If a step fails, run the documented recovery. If recovery
+   also fails, stop and report the error to me.
+3. Step 4 handles cloning to the install directory (chosen in Step 1).
+4. The install is complete when scripts/5_validate.sh exits 0 (Step 9).
+5. Do NOT launch opencode. Report the summary from Step 10 and stop.
+
+You will need to ask me for:
+- Install directory (default: /home/oh-my-litellm-opencode)
+- My Huawei MaaS API key (region: ap-southeast-1)
+- How many extra MaaS keys for load balancing (default: 0)
+- Permission to install missing prerequisites (batch ask once)
+- My sudo password if the system prompts for it
+
+Rules:
+- Do not skip steps. Do not improvise. Do not launch opencode.
+- If anything is unclear, ask me before proceeding.
+- If an existing installation is found, ask me: update in-place or fresh install.
 ```
 
-## Endpoints
+## Documentation
 
-| Service | URL | Auth |
-|---------|-----|------|
-| LiteLLM Proxy | `http://127.0.0.1:4000` | Virtual key (`sk-...`) |
-| LiteLLM Admin UI | `http://127.0.0.1:4000/ui` | Master key |
-
-## For AI Agents
-
-Read **[SKILL.md](https://github.com/wallacelw/oh-my-litellm-opencode/blob/main/SKILL.md)** for the installation flow. Agent collects keys interactively, then calls `0_bootstrap.sh --agent --maas-key=KEY` for the non-interactive deploy.
+- **[SKILL.md](./SKILL.md)** — Deterministic install procedure (for agents and humans)
+- **[REFERENCE.md](./REFERENCE.md)** — Architecture, presets, models, repair guide

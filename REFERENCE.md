@@ -59,6 +59,21 @@ This is reference documentation. For the install procedure, read
 
 Switch at runtime: `/preset LiteLLM-Huawei-MaaS-Core`
 
+### Agent → Model Mapping by Preset
+
+`A → B` = fallback chain. `(variant)` = reasoning effort. Model names omit
+the provider prefix (preset name indicates LiteLLM proxy vs direct MaaS).
+
+| Agent | LiteLLM-Full | LiteLLM-Core | MaaS-Full | MaaS-Core |
+|-------|-------------|-------------|-----------|-----------|
+| orchestrator | `glm-5.2` (high) | `glm-5.2` (high) | `glm-5.2` (high) | `glm-5.2` (high) |
+| oracle | `deepseek-v4-pro` → `glm-5.2` (max) | `glm-5.2` → `deepseek-v3.2` (high) | `deepseek-v4-pro` → `glm-5.2` (max) | `glm-5.2` → `deepseek-v3.2` (high) |
+| council | `glm-5.2` → `deepseek-v4-pro` (high) | `glm-5.2` → `deepseek-v3.2` (high) | `glm-5.2` → `deepseek-v4-pro` (high) | `glm-5.2` → `deepseek-v3.2` (high) |
+| librarian | `deepseek-v3.2` (low) | `deepseek-v3.2` (low) | `deepseek-v3.2` (low) | `deepseek-v3.2` (low) |
+| explorer | `deepseek-v4-flash` → `deepseek-v3.2` (low) | `deepseek-v3.2` (medium) | `deepseek-v4-flash` → `deepseek-v3.2` (low) | `deepseek-v3.2` (medium) |
+| designer | `glm-5` (medium) | `glm-5` (medium) | `glm-5` (medium) | `glm-5` (medium) |
+| fixer | `deepseek-v4-flash` → `glm-5` (high) | `glm-5` → `deepseek-v3.2` (high) | `deepseek-v4-flash` → `glm-5` (high) | `glm-5` → `deepseek-v3.2` (high) |
+
 ## Council
 
 3 councillors run in parallel, all using glm-5.2, each with a different focus:

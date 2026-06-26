@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Section D (Upgrade Procedure) in `SKILL.md` — concise upgrade path with
   delta table showing differences from fresh install.
 - Port conflict check now covers all 4 services (4000, 5432, 9090, 3000).
+- Grafana credentials and restart opencode warning in bootstrap summary
+  and SKILL.md Step 10.
 
 ### Changed
 
@@ -43,6 +45,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SKILL.md` Step 9: recovery table expanded with Prometheus/Grafana entries.
 - `REFERENCE.md`: added Observability section, updated architecture diagram,
   endpoints table, and repair guide.
+- `SKILL.md` Step 10: summary synced with actual bootstrap output (header,
+  Grafana credentials, restart warning).
+- `SKILL.md` Section D: added Grafana hard restart instruction for upgrades.
 - Agent preset model assignments updated based on benchmark research:
   - **oracle**: `glm-5.2` primary (was `deepseek-v4-pro`) — best deep
     reasoning with tools (HLE +6.5, MCP +3.4, SWE-bench Pro +6.7).
@@ -71,6 +76,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `(expr * 60)[7d:5m]` — parentheses required before subquery operator.
 - `curl -sf` without `-L` on LiteLLM /metrics (307 redirect to /metrics/).
 - `curl` without `-g` on Prometheus query `up{job="litellm"}` (URL globbing).
+- Duplicate "MAAS API keys total" message in agent mode bootstrap output.
+- `5_validate.sh --litellm-only --opencode-only` was a silent no-op — now
+  errors with mutual exclusion message.
+- Empty duration display in `4_mint-virtual-key.sh` — now shows "unlimited".
+- Removed `.master-key` cache file — all secrets now live in `.env` only.
+  `0_bootstrap.sh` resolves `LITELLM_MASTER_KEY` from env var → `.env`
+  (removed `.master-key` lookup and cache-write logic).
 
 ## [0.1.0] - 2026-06-26
 

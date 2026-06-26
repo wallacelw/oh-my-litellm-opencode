@@ -28,6 +28,9 @@ This is reference documentation. For the install procedure, read
 |---------|-----|------|
 | LiteLLM Proxy | `http://127.0.0.1:4000` | Virtual key (`sk-...`) |
 | LiteLLM Admin UI | `http://127.0.0.1:4000/ui` | Master key |
+| LiteLLM Liveness | `http://127.0.0.1:4000/health/liveliness` | None |
+| LiteLLM Health | `http://127.0.0.1:4000/health` | Master key |
+| LiteLLM Metrics | `http://127.0.0.1:4000/metrics` | None (Prometheus format) |
 | Prometheus | `http://127.0.0.1:9090` | None (bound to localhost) |
 | Grafana | `http://127.0.0.1:3000` | Admin password (from `.env`) |
 
@@ -114,8 +117,20 @@ the provider prefix (preset name indicates LiteLLM proxy vs direct MaaS).
 | Prometheus rules error | `docker compose logs prometheus --tail 20` — look for "loading groups failed"; check PromQL syntax in `configs/prometheus_rules.yml` |
 | Grafana dashboard blank | Check datasource UID: `curl -u admin:$GRAFANA_ADMIN_PASSWORD http://127.0.0.1:3000/api/datasources/name/Prometheus \| jq .uid` — must be `prometheus` |
 | Grafana login failed | Check `GRAFANA_ADMIN_PASSWORD` in `.env`; `docker compose restart grafana` after changing |
+| Grafana dashboard stale after upgrade | `docker compose restart grafana` — hard restart picks up provisioning changes |
 
 **Full reset:** `docker compose down -v; rm -f .env`
+
+### Lifecycle
+
+| Action | Command |
+|--------|---------|
+| Graceful stop | `docker compose down` (preserves data volumes) |
+| Start | `docker compose up -d` |
+| Restart one service | `docker compose restart <service>` |
+| Restart all | `docker compose restart` |
+| View logs | `docker compose logs <service> --tail 50 -f` |
+| Full reset | `docker compose down -v; rm -f .env` (destroys all data) |
 
 ## Observability
 
@@ -174,3 +189,9 @@ Variables: `$model` (filter by model), `$api_key` (filter by API key alias).
 | `LitellmTTFTAnomaly` | TTFT P95 > 2× 7d baseline for 10m | warning |
 | `LitellmBudgetLow` | Budget remaining < 10% for 5m | warning |
 | `LitellmDeploymentOutage` | Deployment state > 0 for 2m | critical |
+
+> **Note:** No Alertmanager is configured. Alerts fire in Prometheus and are
+> visible in the Prometheus UI (`http://127.0.0.1:9090/alerts`) but no
+> notifications are sent (no email, Slack, etc.). Add an Alertmanager
+> service to `docker-compose.yml` and a `alertmanager` config block in
+`configs/prometheus.yml` to enable notifications.

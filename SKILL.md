@@ -580,6 +580,11 @@ follow Section C but with these modifications:
 - If `git pull` fails due to local changes: ask user
   `"Pull failed. Reset to origin/main? (y/n)"`. If yes:
   `git -C "$PROJECT_DIR" reset --hard origin/main`.
+- **Grafana dashboard updates:** If the dashboard JSON changed in the
+  update, hard-restart the Grafana container to pick up provisioning:
+  `docker compose -f "$PROJECT_DIR/docker-compose.yml" restart grafana`
+  (Grafana with `allowUiUpdates: true` won't overwrite UI-modified
+  dashboards with provisioned ones on its own).
 
 **Upgrade is complete when `5_validate.sh` exits 0.**
 

@@ -104,7 +104,7 @@ echo "Minting virtual key from LiteLLM..."
 echo "  Alias:   $ALIAS"
 echo "  Models:  ${MODELS:-all}"
 echo "  Budget:  $([ "$NO_BUDGET" = true ] && echo 'unlimited' || echo "\$${BUDGET}")"
-echo "  Duration: ${DURATION}"
+echo "  Duration: ${DURATION:-unlimited}"
 echo ""
 
 # Retry curl with backoff (3 attempts, 5s/10s/15s delay)

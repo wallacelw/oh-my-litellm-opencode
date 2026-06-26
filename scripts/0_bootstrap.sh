@@ -235,10 +235,12 @@ else
   done
 fi
 export HUAWEI_MAAS_API_KEY_COUNT=$((1 + EXTRA_KEY_COUNT))
-if [ "$EXTRA_KEY_COUNT" -gt 0 ]; then
-  echo "  ✓ $((1 + EXTRA_KEY_COUNT)) MaaS API keys total (main + $EXTRA_KEY_COUNT extra)"
-else
-  echo "  Using 1 MaaS API key (no load balancing)"
+if [ "$AGENT_MODE" = false ]; then
+  if [ "$EXTRA_KEY_COUNT" -gt 0 ]; then
+    echo "  ✓ $((1 + EXTRA_KEY_COUNT)) MaaS API keys total (main + $EXTRA_KEY_COUNT extra)"
+  else
+    echo "  Using 1 MaaS API key (no load balancing)"
+  fi
 fi
 
 # ──────────────────────────────────────────────────────────────────────────────

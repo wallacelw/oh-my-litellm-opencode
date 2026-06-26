@@ -463,32 +463,44 @@ more than once.
 If `INSTALL_MODE=full`:
 
 ```
-=== Installation Complete ===
+=== Bootstrap complete ===
 
 Project dir:       $PROJECT_DIR
 LiteLLM proxy:     http://127.0.0.1:4000
 LiteLLM Admin UI:  http://127.0.0.1:4000/ui
 Grafana:           http://127.0.0.1:3000
 Prometheus:        http://127.0.0.1:9090
+
+Grafana login:
+  Username:        admin
+  Password:        grep GRAFANA_ADMIN_PASSWORD .env
+
 opencode config:   ~/.config/opencode/opencode.jsonc
 plugin config:     ~/.config/opencode/oh-my-opencode-slim.json
 
 Next steps:
-  1. Run: opencode
-  2. Verify preset: status bar should show LiteLLM-Huawei-MaaS-Full
-  3. Switch preset: /preset LiteLLM-Huawei-MaaS-Core
+  1. Restart opencode to apply the new configuration:
+       - Exit any running opencode session (Ctrl+C or /exit)
+       - Start fresh: opencode
+  2. Switch preset: /preset LiteLLM-Huawei-MaaS-Core
 ```
 
 If `INSTALL_MODE=litellm-only`:
 
 ```
-=== Installation Complete (LiteLLM-only) ===
+=== Bootstrap complete ===
 
 Project dir:       $PROJECT_DIR
 LiteLLM proxy:     http://127.0.0.1:4000
 LiteLLM Admin UI:  http://127.0.0.1:4000/ui
 Grafana:           http://127.0.0.1:3000
 Prometheus:        http://127.0.0.1:9090
+
+Grafana login:
+  Username:        admin
+  Password:        grep GRAFANA_ADMIN_PASSWORD .env
+
+Mode:              LiteLLM-only (no opencode)
 
 Next steps:
   1. LiteLLM Admin UI: http://127.0.0.1:4000/ui
@@ -523,6 +535,11 @@ For `INSTALL_MODE=full`, also add:
 
 Do NOT show this warning for interactive (non-agent) installs — the human
 typed the keys directly, they were not shared with an agent.
+
+**Restart opencode (full mode only):** If opencode was already running,
+the user must exit it (`/exit` or Ctrl+C) and start fresh (`opencode`) to
+pick up the new configuration. The slim plugin and preset changes are not
+hot-reloaded.
 
 **Postcondition:** Summary printed. Installation is complete.
 

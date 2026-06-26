@@ -584,7 +584,7 @@
       "gridPos": {
         "x": 6,
         "y": 15,
-        "w": 10,
+        "w": 18,
         "h": 6
       },
       "targets": [
@@ -633,70 +633,6 @@
           "mode": "multi",
           "sort": "none"
         }
-      }
-    },
-    {
-      "id": 12,
-      "type": "gauge",
-      "title": "Budget remaining by key",
-      "description": "USD remaining before each API key hits its budget limit. Green > $30, yellow $10–30, red < $10. A key at $0 is exhausted.",
-      "gridPos": {
-        "x": 16,
-        "y": 15,
-        "w": 8,
-        "h": 6
-      },
-      "targets": [
-        {
-          "expr": "litellm_remaining_api_key_budget_metric{api_key_alias=~\"$api_key\"}",
-          "refId": "A",
-          "legendFormat": "",
-          "hide": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "range": true
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "$",
-          "min": 0,
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 10
-              },
-              {
-                "color": "green",
-                "value": 30
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true
       }
     },
     {
@@ -845,7 +781,7 @@
       "id": 16,
       "type": "row",
       "title": "Deployment & Health",
-      "description": "Per-instance health and load broken down by model deployment and the API key driving traffic.",
+      "description": "Model health state and total request volume per model.",
       "gridPos": {
         "x": 0,
         "y": 30,
@@ -857,83 +793,20 @@
     },
     {
       "id": 17,
-      "type": "table",
-      "title": "Model Instance \u00d7 API Key",
-      "description": "Table with one row per (model instance, API key) pair. Shows live request rate, cumulative spend, and deployment state so you can see which key is hitting which instance and whether it is healthy.",
+      "type": "stat",
+      "title": "Model health",
+      "description": "Health state per model from litellm_deployment_state. Green = healthy (1), red = unhealthy (0). A model is healthy if at least one deployment passes the background health check.",
       "gridPos": {
         "x": 0,
         "y": 31,
         "w": 24,
-        "h": 8
+        "h": 5
       },
       "targets": [
         {
-          "expr": "rate(litellm_deployment_total_requests_total{litellm_model_name=~\"$model\",api_key_alias=~\"$api_key\"}[5m]) * 60",
+          "expr": "max by (litellm_model_name) (litellm_deployment_state{litellm_model_name=~\"$model\"})",
           "refId": "A",
-          "legendFormat": "{{litellm_model_name}} ({{model_id}}) / {{api_key_alias}}",
-          "hide": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "range": true
-        },
-        {
-          "expr": "sum by (litellm_model_name, model_id, api_key_alias) (litellm_spend_metric_total{model=~\"$model\",api_key_alias=~\"$api_key\"})",
-          "refId": "B",
-          "legendFormat": "",
-          "hide": true,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "range": true
-        },
-        {
-          "expr": "litellm_deployment_state{litellm_model_name=~\"$model\",api_key_alias=~\"$api_key\"}",
-          "refId": "C",
-          "legendFormat": "",
-          "hide": true,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "range": true
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "options": {
-        "showHeader": true,
-        "footer": {
-          "show": false,
-          "reducer": [
-            "sum"
-          ]
-        }
-      }
-    },
-    {
-      "id": 18,
-      "type": "timeseries",
-      "title": "Requests per minute by model \u00d7 API key",
-      "description": "One colored line per (model, API key) combination. Shows which keys are driving load on which models over time. Use the legend table to isolate a specific pair.",
-      "gridPos": {
-        "x": 0,
-        "y": 39,
-        "w": 24,
-        "h": 8
-      },
-      "targets": [
-        {
-          "expr": "sum by (litellm_model_name, api_key_alias) (rate(litellm_deployment_total_requests_total{litellm_model_name=~\"$model\",api_key_alias=~\"$api_key\"}[5m])) * 60",
-          "refId": "A",
-          "legendFormat": "{{litellm_model_name}} / {{api_key_alias}}",
+          "legendFormat": "{{litellm_model_name}}",
           "hide": false,
           "datasource": {
             "type": "prometheus",
@@ -945,7 +818,84 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "req/min",
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "text": "Unhealthy",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "Healthy",
+                  "color": "green"
+                }
+              },
+              "type": "value"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 18,
+      "type": "timeseries",
+      "title": "Total requests per model",
+      "description": "Cumulative request count per model over time, one colored line per model. Steeper slopes mean heavier usage. Flat lines mean no traffic.",
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "sum by (litellm_model_name) (litellm_deployment_total_requests_total{litellm_model_name=~\"$model\"})",
+          "refId": "A",
+          "legendFormat": "{{litellm_model_name}}",
+          "hide": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
           "color": {
             "mode": "palette-classic"
           },

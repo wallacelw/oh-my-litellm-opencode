@@ -92,6 +92,7 @@ if [[ -f "$ENV_FILE" ]]; then
     EXISTING_MASTER_KEY="$(grep -oP '^LITELLM_MASTER_KEY="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
     EXISTING_SALT_KEY="$(grep -oP '^LITELLM_SALT_KEY="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
     EXISTING_DB_PASSWORD="$(grep -oP '^DB_PASSWORD="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
+    EXISTING_GRAFANA_PASSWORD="$(grep -oP '^GRAFANA_ADMIN_PASSWORD="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
     EXISTING_MAAS_KEY="$(grep -oP '^HUAWEI_MAAS_API_KEY="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
     EXISTING_MAAS_BASE="$(grep -oP '^HUAWEI_MAAS_API_BASE="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
     echo "WARNING: .env already exists. Overwriting in auto mode (preserving secrets if set)."
@@ -108,6 +109,7 @@ fi
 DEFAULT_MASTER_KEY=$(generate_master_key)
 DEFAULT_SALT_KEY=$(generate_secret)
 DEFAULT_DB_PASSWORD=$(generate_secret)
+DEFAULT_GRAFANA_PASSWORD=$(generate_secret)
 DEFAULT_MAAS_BASE="https://api-ap-southeast-1.modelarts-maas.com/openai/v1"
 
 # ── Idempotency: preserve secrets in auto mode ────────────────────
@@ -129,6 +131,10 @@ if [[ "$MODE" == "auto" && "$FORCE" != true ]]; then
     DEFAULT_DB_PASSWORD="$EXISTING_DB_PASSWORD"
     echo "  Reusing existing DB_PASSWORD (idempotent)"
   fi
+  if [[ -n "${EXISTING_GRAFANA_PASSWORD:-}" ]]; then
+    DEFAULT_GRAFANA_PASSWORD="$EXISTING_GRAFANA_PASSWORD"
+    echo "  Reusing existing GRAFANA_ADMIN_PASSWORD (idempotent)"
+  fi
   if [[ -n "${EXISTING_MAAS_KEY:-}" && -z "${HUAWEI_MAAS_API_KEY:-}" ]]; then
     DEFAULT_MAAS_KEY="$EXISTING_MAAS_KEY"
     echo "  Reusing existing HUAWEI_MAAS_API_KEY (idempotent)"
@@ -146,6 +152,7 @@ echo ""
 MASTER_KEY=$(prompt_value "LITELLM_MASTER_KEY" "LITELLM_MASTER_KEY (admin key, must start with sk-)" "$DEFAULT_MASTER_KEY" "yes")
 SALT_KEY=$(prompt_value "LITELLM_SALT_KEY" "LITELLM_SALT_KEY (key encryption salt, immutable after first virtual key)" "$DEFAULT_SALT_KEY" "yes")
 DB_PASSWORD=$(prompt_value "DB_PASSWORD" "DB_PASSWORD (PostgreSQL llmproxy user)" "$DEFAULT_DB_PASSWORD" "yes")
+GRAFANA_PASSWORD=$(prompt_value "GRAFANA_ADMIN_PASSWORD" "GRAFANA_ADMIN_PASSWORD (Grafana dashboard admin)" "$DEFAULT_GRAFANA_PASSWORD" "yes")
 MAAS_API_KEY=$(prompt_value "HUAWEI_MAAS_API_KEY" "HUAWEI_MAAS_API_KEY (main key from ModelArts MaaS console, ap-southeast-1)" "${DEFAULT_MAAS_KEY:-}" "yes")
 MAAS_API_BASE=$(prompt_value "HUAWEI_MAAS_API_BASE" "HUAWEI_MAAS_API_BASE (MaaS endpoint URL)" "$DEFAULT_MAAS_BASE" "no")
 
@@ -224,6 +231,9 @@ LITELLM_SALT_KEY="${SALT_KEY}"
 # ── Database ─────────────────────────────────────
 DB_PASSWORD="${DB_PASSWORD}"
 
+# ── Grafana ──────────────────────────────────────
+GRAFANA_ADMIN_PASSWORD="${GRAFANA_PASSWORD}"
+
 # ── Huawei MaaS ──────────────────────────────────
 HUAWEI_MAAS_API_KEY="${MAAS_API_KEY}"
 HUAWEI_MAAS_API_KEY_COUNT=${KEY_COUNT}
@@ -267,6 +277,7 @@ echo "  Values set:"
 echo "    LITELLM_MASTER_KEY  = ${MASTER_KEY:0:8}...${MASTER_KEY: -4}"
 echo "    LITELLM_SALT_KEY    = ${SALT_KEY:0:6}...${SALT_KEY: -4}"
 echo "    DB_PASSWORD         = ${DB_PASSWORD:0:6}...${DB_PASSWORD: -4}"
+echo "    GRAFANA_ADMIN_PASSWORD = ${GRAFANA_PASSWORD:0:6}...${GRAFANA_PASSWORD: -4}"
 echo "    HUAWEI_MAAS_API_KEY = ${MAAS_API_KEY:0:6}...${MAAS_API_KEY: -4}"
 echo "    MaaS API key count  = ${KEY_COUNT} (${KEY_COUNT} deployment(s) per model, $((KEY_COUNT * 6)) total)"
 if [[ "$KEY_COUNT" -gt 1 ]]; then

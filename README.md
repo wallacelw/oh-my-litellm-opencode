@@ -24,6 +24,8 @@ cd oh-my-litellm-opencode
 opencode
 ```
 
+After install, open the Grafana dashboard at `http://127.0.0.1:3000`.
+
 **LiteLLM-only?** Skip opencode and just deploy the proxy:
 
 ```bash

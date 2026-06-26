@@ -18,6 +18,8 @@ This is reference documentation. For the install procedure, read
                                        │    N API keys (load-balanced)
                                        │
                                PostgreSQL (:5432)
+
+  LiteLLM ──/metrics──→ Prometheus (:9090) ──→ Grafana (:3000)
 ```
 
 ## Endpoints
@@ -26,6 +28,8 @@ This is reference documentation. For the install procedure, read
 |---------|-----|------|
 | LiteLLM Proxy | `http://127.0.0.1:4000` | Virtual key (`sk-...`) |
 | LiteLLM Admin UI | `http://127.0.0.1:4000/ui` | Master key |
+| Prometheus | `http://127.0.0.1:9090` | None |
+| Grafana | `http://127.0.0.1:3000` | Admin password (from `.env`) |
 
 ## Scripts
 
@@ -108,3 +112,58 @@ the provider prefix (preset name indicates LiteLLM proxy vs direct MaaS).
 | Port conflict | `ss -tlnp \| grep ':4000'` |
 
 **Full reset:** `docker compose down -v; rm -f .env .master-key`
+
+## Observability
+
+### Architecture
+
+LiteLLM exposes a `/metrics` endpoint (Prometheus format). Prometheus
+scrapes it every 15s. Grafana visualizes the data with a pre-provisioned
+dashboard.
+
+LiteLLM config settings for observability:
+
+| Setting | Value | Purpose |
+|---------|-------|---------|
+| `callbacks: ["prometheus"]` | — | Enable Prometheus metrics export |
+| `prometheus_initialize_budget_metrics: true` | — | Emit budget metrics for all keys even without requests |
+| `require_auth_for_metrics_endpoint: false` | — | Allow unauthenticated `/metrics` access (Prometheus is on internal Docker network) |
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| Prometheus | 9090 | Metrics storage + querying + alerting |
+| Grafana | 3000 | Dashboard visualization |
+
+### Dashboard
+
+The main dashboard (`configs/grafana/dashboards/main.json`) has 12 panels
+across 5 rows:
+
+1. **At-a-glance** — Active Requests, RPM, TPM, Models Deployed
+2. **Latency** — TTFT by model (P50/P95 + 7d baseline), TPOT by model (P50/P95 + 7d baseline)
+3. **Cost & Budget** — Total cost, cost per model, budget remaining by key
+4. **Throughput** — RPM by model (+ 7d baseline), TPM by model (+ 7d baseline)
+5. **Deployment & Health** — Model instance × API key table
+
+Variables: `$model` (filter by model), `$api_key` (filter by API key alias).
+
+### Recording Rules
+
+4 pre-computed baselines (7-day rolling averages, updated every 5m):
+
+| Rule | Metric |
+|------|--------|
+| `litellm:ttft_p95:7d_avg` | TTFT P95 baseline |
+| `litellm:tpot_p50:7d_avg` | TPOT P50 baseline |
+| `litellm:rpm:7d_avg` | RPM baseline |
+| `litellm:tpm:7d_avg` | TPM baseline |
+
+### Alerting Rules
+
+3 dynamic alerts:
+
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| `LitellmTTFTAnomaly` | TTFT P95 > 2× 7d baseline for 10m | warning |
+| `LitellmBudgetLow` | Budget remaining < 10% for 5m | warning |
+| `LitellmDeploymentOutage` | Deployment state > 0 for 2m | critical |

@@ -1,0 +1,42 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Prometheus alerting rules — dynamic thresholds based on 7-day baselines
+# ─────────────────────────────────────────────────────────────────────────────
+
+groups:
+  - name: litellm_alerts
+    interval: 1m
+    rules:
+      # TTFT spiked >2x the 7-day baseline
+      - alert: LitellmTTFTAnomaly
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le, model) (rate(litellm_llm_api_time_to_first_token_metric_bucket[5m]))
+          ) > 2 * litellm:ttft_p95:7d_avg
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "TTFT P95 for {{ $labels.model }} is >2x the 7-day average"
+          description: "Current TTFT P95 is significantly higher than the historical baseline."
+
+      # Budget <10% remaining
+      - alert: LitellmBudgetLow
+        expr: |
+          litellm_remaining_api_key_budget_metric
+          / litellm_api_key_max_budget_metric < 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API key {{ $labels.api_key_alias }} has <10% budget remaining"
+          description: "Budget is nearly exhausted. Consider increasing the limit or rotating keys."
+
+      # Deployment in partial or full outage
+      - alert: LitellmDeploymentOutage
+        expr: litellm_deployment_state > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Deployment {{ $labels.litellm_model_name }} is in outage"
+          description: "Deployment state is {{ $value }} (0=healthy, 1=partial outage, 2=complete outage)."

@@ -432,7 +432,7 @@ fi
 | FAIL line contains | Recovery |
 |--------------------|----------|
 | `.env not found` | Re-run from Step 7 |
-| `services running` and count `< 2` | `docker compose -f "$PROJECT_DIR/docker-compose.yml" up -d`, wait 30s, retry Step 9 |
+| `services running` and count `< 4` | `docker compose -f "$PROJECT_DIR/docker-compose.yml" up -d`, wait 30s, retry Step 9 |
 | `liveness probe` and not `200` | Re-run from Step 8 |
 | `opencode not found` | `curl -fsSL https://opencode.ai/install \| bash`, retry Step 9 |
 | `Model catalog not reachable` | Check virtual key in `~/.config/opencode/opencode.jsonc`, re-run from Step 7 |
@@ -463,6 +463,8 @@ If `INSTALL_MODE=full`:
 Project dir:       $PROJECT_DIR
 LiteLLM proxy:     http://127.0.0.1:4000
 LiteLLM Admin UI:  http://127.0.0.1:4000/ui
+Grafana:           http://127.0.0.1:3000
+Prometheus:        http://127.0.0.1:9090
 opencode config:   ~/.config/opencode/opencode.jsonc
 plugin config:     ~/.config/opencode/oh-my-opencode-slim.json
 
@@ -480,6 +482,8 @@ If `INSTALL_MODE=litellm-only`:
 Project dir:       $PROJECT_DIR
 LiteLLM proxy:     http://127.0.0.1:4000
 LiteLLM Admin UI:  http://127.0.0.1:4000/ui
+Grafana:           http://127.0.0.1:3000
+Prometheus:        http://127.0.0.1:9090
 
 Next steps:
   1. LiteLLM Admin UI: http://127.0.0.1:4000/ui

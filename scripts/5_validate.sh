@@ -152,10 +152,10 @@ if [ "$OPENCODE_ONLY" = false ]; then
     skip "Docker service health"
   else
     RUNNING=$(docker compose -f "$PROJECT_DIR/docker-compose.yml" ps --services --filter "status=running" 2>/dev/null | wc -l)
-    if [ "$RUNNING" -ge 2 ]; then
+    if [ "$RUNNING" -ge 4 ]; then
       pass "$RUNNING services running"
     else
-      fail "Only $RUNNING services running (expected 2)"
+      fail "Only $RUNNING services running (expected 4: litellm, db, prometheus, grafana)"
     fi
   fi
 
@@ -412,6 +412,71 @@ if [ "$LITELLM_ONLY" = false ]; then
   fi
 
   echo ""
+fi
+
+# ════════════════════════════════════════════════════════════════════════════
+# SECTION C: Observability (Prometheus + Grafana)
+# ════════════════════════════════════════════════════════════════════════════
+echo ""
+echo "━━━ C. Observability ━━━"
+
+# C1. Prometheus reachable
+echo ""
+echo "C1. Prometheus"
+if [ "$DRY_RUN" = true ]; then
+  skip "Prometheus reachability"
+elif curl -sf -m 5 http://127.0.0.1:9090/-/ready >/dev/null 2>&1; then
+  pass "Prometheus reachable at :9090"
+else
+  fail "Prometheus not reachable at :9090"
+fi
+
+# C2. LiteLLM /metrics endpoint
+echo ""
+echo "C2. LiteLLM metrics endpoint"
+if [ "$DRY_RUN" = true ]; then
+  skip "LiteLLM /metrics endpoint"
+  elif curl -sf -L -m 5 http://127.0.0.1:4000/metrics >/dev/null 2>&1; then
+  METRIC_LINES=$(curl -sf -L -m 5 http://127.0.0.1:4000/metrics 2>/dev/null | grep -c '^litellm_' || true)
+  if [ "$METRIC_LINES" -gt 0 ]; then
+    pass "LiteLLM /metrics active ($METRIC_LINES metric series)"
+  else
+    warn "LiteLLM /metrics responds but no litellm_ metrics found"
+  fi
+else
+  fail "LiteLLM /metrics endpoint not responding"
+fi
+
+# C3. Prometheus scraping LiteLLM
+echo ""
+echo "C3. Prometheus scraping LiteLLM"
+if [ "$DRY_RUN" = true ]; then
+  skip "Prometheus scrape check"
+else
+  SCRAPE_COUNT=$(curl -sf -g -m 10 "http://127.0.0.1:9090/api/v1/query?query=up{job=\"litellm\"}" 2>/dev/null | jq -r '.data.result[0].value[1] // empty' 2>/dev/null || true)
+  if [ "$SCRAPE_COUNT" = "1" ]; then
+    pass "Prometheus is scraping LiteLLM (up=1)"
+  elif [ -n "$SCRAPE_COUNT" ]; then
+    fail "Prometheus scraping LiteLLM but target is down (up=$SCRAPE_COUNT)"
+  else
+    warn "Prometheus has not scraped LiteLLM yet — may need a few seconds"
+  fi
+fi
+
+# C4. Grafana reachable
+echo ""
+echo "C4. Grafana"
+if [ "$DRY_RUN" = true ]; then
+  skip "Grafana reachability"
+elif curl -sf -m 5 http://127.0.0.1:3000/api/health >/dev/null 2>&1; then
+  GRAFANA_DB_COUNT=$(curl -sf -m 5 -u "admin:${GRAFANA_ADMIN_PASSWORD:-admin}" "http://127.0.0.1:3000/api/search?query=oh-my-litellm" 2>/dev/null | jq 'length' 2>/dev/null || echo 0)
+  if [ "$GRAFANA_DB_COUNT" -gt 0 ]; then
+    pass "Grafana reachable with dashboard provisioned"
+  else
+    warn "Grafana reachable but dashboard not found — check provisioning"
+  fi
+else
+  fail "Grafana not reachable at :3000"
 fi
 
 # ── Summary ──

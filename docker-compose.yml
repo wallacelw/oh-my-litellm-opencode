@@ -68,6 +68,57 @@ services:
         reservations:
           memory: 128m
 
+  prometheus:
+    <<: *default
+    image: prom/prometheus:v3.2.1
+    container_name: litellm_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./configs/prometheus_rules.yml:/etc/prometheus/rules.yml:ro
+      - ./configs/prometheus_alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+        reservations:
+          memory: 128m
+
+  grafana:
+    <<: *default
+    image: grafana/grafana:11.5.2
+    container_name: litellm_grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./configs/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./configs/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      prometheus:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+        reservations:
+          memory: 64m
+
 volumes:
   postgres_data:
     name: litellm_postgres_data
+  prometheus_data:
+    name: litellm_prometheus_data
+  grafana_data:
+    name: litellm_grafana_data

@@ -108,6 +108,9 @@ litellm_settings:
   stream_timeout: 60 # TTFT only: 60s
   drop_params: True
   set_verbose: False
+  callbacks: ["prometheus"]
+  prometheus_initialize_budget_metrics: true
+  require_auth_for_metrics_endpoint: false
   ui_theme_config:
     logo_url: "https://upload.wikimedia.org/wikipedia/en/thumb/0/04/Huawei_Standard_logo.svg/3840px-Huawei_Standard_logo.svg.png"
     favicon_url: "https://upload.wikimedia.org/wikipedia/en/thumb/0/04/Huawei_Standard_logo.svg/3840px-Huawei_Standard_logo.svg.png"

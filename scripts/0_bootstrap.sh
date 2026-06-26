@@ -403,6 +403,8 @@ echo ""
 echo "Project dir:       $PROJECT_DIR"
 echo "LiteLLM proxy:     $LITELLM_URL"
 echo "LiteLLM Admin UI:  ${LITELLM_URL}/ui"
+echo "Grafana:           http://127.0.0.1:3000"
+echo "Prometheus:        http://127.0.0.1:9090"
 if [ "$LITELLM_ONLY" = true ]; then
   echo ""
   echo "Mode:              LiteLLM-only (no opencode)"

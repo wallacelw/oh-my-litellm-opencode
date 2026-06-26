@@ -568,7 +568,7 @@
     },
     {
       "id": 11,
-      "type": "barchart",
+      "type": "timeseries",
       "title": "Total cost per model",
       "gridPos": {
         "x": 6,
@@ -580,7 +580,7 @@
         {
           "expr": "sum by (model) (litellm_spend_metric_total{model=~\"$model\",api_key_alias=~\"$api_key\"})",
           "refId": "A",
-          "legendFormat": "",
+          "legendFormat": "{{model}}",
           "hide": false,
           "datasource": {
             "type": "prometheus",
@@ -594,23 +594,34 @@
         "defaults": {
           "unit": "$",
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
           }
         },
         "overrides": []
       },
       "options": {
-        "orientation": "vertical",
-        "xField": "Frame.name"
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       }
     },
     {
@@ -887,6 +898,65 @@
           "reducer": [
             "sum"
           ]
+        }
+      }
+    },
+    {
+      "id": 18,
+      "type": "timeseries",
+      "title": "Requests per minute by model \u00d7 API key",
+      "gridPos": {
+        "x": 0,
+        "y": 39,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "sum by (litellm_model_name, api_key_alias) (rate(litellm_deployment_total_requests_total{litellm_model_name=~\"$model\",api_key_alias=~\"$api_key\"}[5m])) * 60",
+          "refId": "A",
+          "legendFormat": "{{litellm_model_name}} / {{api_key_alias}}",
+          "hide": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "req/min",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
         }
       }
     }

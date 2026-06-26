@@ -1,4 +1,4 @@
-# AGENT.md — Development Rules for Coding Agents
+# agents.md — Development Rules for Coding Agents
 
 ## Workflow
 

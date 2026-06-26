@@ -60,6 +60,7 @@
       "id": 1,
       "type": "row",
       "title": "At-a-glance",
+      "description": "Snapshot of live proxy load: in-flight requests, request/token rates, and deployment count. Narrow with the model and api_key variables at the top.",
       "gridPos": {
         "x": 0,
         "y": 0,
@@ -73,6 +74,7 @@
       "id": 2,
       "type": "stat",
       "title": "Active Requests",
+      "description": "Number of requests currently in flight (being processed) by the proxy right now. Spikes indicate burst load or slow upstream models.",
       "gridPos": {
         "x": 0,
         "y": 1,
@@ -142,6 +144,7 @@
       "id": 3,
       "type": "stat",
       "title": "RPM",
+      "description": "Requests per minute over the last 1 minute, summed across all selected models and API keys. A hidden 7-day average is recorded for trending.",
       "gridPos": {
         "x": 6,
         "y": 1,
@@ -211,6 +214,7 @@
       "id": 4,
       "type": "stat",
       "title": "TPM",
+      "description": "Total tokens per minute (input + output) over the last 1 minute, summed across selected models and API keys.",
       "gridPos": {
         "x": 12,
         "y": 1,
@@ -280,6 +284,7 @@
       "id": 5,
       "type": "stat",
       "title": "Models Deployed",
+      "description": "Count of distinct model types currently registered and health-checked by the proxy. Uses litellm_deployment_state, refreshed every 5 min by the background health check. A drop means a model type has no healthy deployment.",
       "gridPos": {
         "x": 18,
         "y": 1,
@@ -288,7 +293,7 @@
       },
       "targets": [
         {
-          "expr": "count(count by (model_id) (litellm_deployment_total_requests_total{litellm_model_name=~\"$model\",api_key_alias=~\"$api_key\"}))",
+          "expr": "count(count by (litellm_model_name) (litellm_deployment_state{litellm_model_name=~\"$model\"}))",
           "refId": "A",
           "legendFormat": "",
           "hide": false,
@@ -337,6 +342,7 @@
       "id": 6,
       "type": "row",
       "title": "Latency",
+      "description": "Streaming latency percentiles per model. P50 is the typical experience, P95 is the slow tail. Compare against the 7d avg line to spot regressions.",
       "gridPos": {
         "x": 0,
         "y": 5,
@@ -350,6 +356,7 @@
       "id": 7,
       "type": "timeseries",
       "title": "TTFT by model",
+      "description": "Time To First Token in seconds — how long until the first token of a response arrives. P50 = median, P95 = slow tail, 7d avg = baseline. Rising TTFT means users wait longer before seeing output.",
       "gridPos": {
         "x": 0,
         "y": 6,
@@ -425,6 +432,7 @@
       "id": 8,
       "type": "timeseries",
       "title": "TPOT by model",
+      "description": "Time Per Output Token in seconds — gap between consecutive tokens during streaming. Lower is smoother and faster streaming. P50, P95, and 7d avg shown.",
       "gridPos": {
         "x": 12,
         "y": 6,
@@ -500,6 +508,7 @@
       "id": 9,
       "type": "row",
       "title": "Cost & Budget",
+      "description": "Spend accumulation and remaining budget per API key.",
       "gridPos": {
         "x": 0,
         "y": 14,
@@ -513,6 +522,7 @@
       "id": 10,
       "type": "stat",
       "title": "Total cost (all models)",
+      "description": "Cumulative USD spent across all selected models and API keys since metrics started. This is a running total, not a rate.",
       "gridPos": {
         "x": 0,
         "y": 15,
@@ -570,6 +580,7 @@
       "id": 11,
       "type": "timeseries",
       "title": "Total cost per model",
+      "description": "Cumulative USD spend over time, one colored curve per model. Steeper slopes mean faster spend. The legend table shows each model's latest total.",
       "gridPos": {
         "x": 6,
         "y": 15,
@@ -628,6 +639,7 @@
       "id": 12,
       "type": "gauge",
       "title": "Budget remaining by key",
+      "description": "USD remaining before each API key hits its budget limit. Green > $30, yellow $10–30, red < $10. A key at $0 is exhausted.",
       "gridPos": {
         "x": 16,
         "y": 15,
@@ -691,6 +703,7 @@
       "id": 13,
       "type": "row",
       "title": "Throughput",
+      "description": "Request and token rates over time per model, with a 7-day average baseline for comparison.",
       "gridPos": {
         "x": 0,
         "y": 21,
@@ -704,6 +717,7 @@
       "id": 14,
       "type": "timeseries",
       "title": "RPM by model",
+      "description": "Requests per minute per model (Current) vs the 7-day average (7d avg). Current above the baseline means elevated load; below means lighter usage.",
       "gridPos": {
         "x": 0,
         "y": 22,
@@ -767,6 +781,7 @@
       "id": 15,
       "type": "timeseries",
       "title": "TPM by model",
+      "description": "Tokens per minute per model (Current) vs the 7-day average (7d avg). Useful for spotting which model is driving token consumption.",
       "gridPos": {
         "x": 12,
         "y": 22,
@@ -830,6 +845,7 @@
       "id": 16,
       "type": "row",
       "title": "Deployment & Health",
+      "description": "Per-instance health and load broken down by model deployment and the API key driving traffic.",
       "gridPos": {
         "x": 0,
         "y": 30,
@@ -843,6 +859,7 @@
       "id": 17,
       "type": "table",
       "title": "Model Instance \u00d7 API Key",
+      "description": "Table with one row per (model instance, API key) pair. Shows live request rate, cumulative spend, and deployment state so you can see which key is hitting which instance and whether it is healthy.",
       "gridPos": {
         "x": 0,
         "y": 31,
@@ -905,6 +922,7 @@
       "id": 18,
       "type": "timeseries",
       "title": "Requests per minute by model \u00d7 API key",
+      "description": "One colored line per (model, API key) combination. Shows which keys are driving load on which models over time. Use the legend table to isolate a specific pair.",
       "gridPos": {
         "x": 0,
         "y": 39,

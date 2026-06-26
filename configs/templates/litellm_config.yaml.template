@@ -125,3 +125,5 @@ general_settings:
   database_connection_pool_limit: 10
   database_connection_timeout: 60
   allow_client_side_credentials: true
+  background_health_checks: true # periodically health-check all deployments
+  health_check_interval: 300 # seconds between background health checks

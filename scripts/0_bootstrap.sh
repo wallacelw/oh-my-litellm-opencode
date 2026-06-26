@@ -378,9 +378,14 @@ VALIDATE_CMD=("$SCRIPT_DIR/5_validate.sh")
 
 if [ "$DRY_RUN" = true ]; then
   echo "  Would run: ${VALIDATE_CMD[*]}"
+  VALIDATE_RC=0
 else
-  "${VALIDATE_CMD[@]}"
-  echo "  Validation complete."
+  "${VALIDATE_CMD[@]}" || VALIDATE_RC=$?
+  if [ "${VALIDATE_RC:-0}" -ne 0 ]; then
+    echo "  Validation FAILED (exit code $VALIDATE_RC)."
+  else
+    echo "  Validation complete."
+  fi
 fi
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -474,4 +479,9 @@ print(d.get('provider',{}).get('LiteLLM',{}).get('options',{}).get('apiKey',''))
     echo "  2. Verify preset: status bar should show LiteLLM-Huawei-MaaS-Full"
     echo "  3. Switch preset: /preset LiteLLM-Huawei-MaaS-Core"
   fi
+fi
+
+# If validation failed, exit with its code (after showing summary + warning)
+if [ "${VALIDATE_RC:-0}" -ne 0 ]; then
+  exit "$VALIDATE_RC"
 fi

@@ -794,8 +794,8 @@
     {
       "id": 17,
       "type": "stat",
-      "title": "Model health",
-      "description": "Health state per model from litellm_deployment_state. Green = healthy (1), red = unhealthy (0). A model is healthy if at least one deployment passes the background health check.",
+      "title": "Model health (successful responses)",
+      "description": "Total successful responses per model from litellm_deployment_success_responses_total. Green = model is healthy and has served traffic. Red/empty = no successful responses yet.",
       "gridPos": {
         "x": 0,
         "y": 31,
@@ -804,7 +804,7 @@
       },
       "targets": [
         {
-          "expr": "max by (litellm_model_name) (litellm_deployment_state{litellm_model_name=~\"$model\"})",
+          "expr": "sum by (litellm_model_name) (litellm_deployment_success_responses_total{litellm_model_name=~\"$model\"})",
           "refId": "A",
           "legendFormat": "{{litellm_model_name}}",
           "hide": false,
@@ -834,22 +834,7 @@
                 "value": 1
               }
             ]
-          },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "text": "Unhealthy",
-                  "color": "red"
-                },
-                "1": {
-                  "text": "Healthy",
-                  "color": "green"
-                }
-              },
-              "type": "value"
-            }
-          ]
+          }
         },
         "overrides": []
       },

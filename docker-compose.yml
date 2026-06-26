@@ -11,10 +11,12 @@ services:
     <<: *default
     container_name: litellm_proxy
     image: ghcr.io/berriai/litellm:v1.89.3
+    entrypoint: ["/app/entrypoint.sh"]
     ports:
       - "127.0.0.1:4000:4000"
     volumes:
       - ./configs/litellm_config.yaml:/app/config.yaml:ro
+      - ./configs/litellm_entrypoint.sh:/app/entrypoint.sh:ro
     environment:
       DATABASE_URL: "postgresql://llmproxy:${DB_PASSWORD:?DB_PASSWORD must be set in .env}@db:5432/litellm"
       STORE_MODEL_IN_DB: "True"

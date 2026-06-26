@@ -65,6 +65,35 @@ Rules:
 - After install: I will rotate my MaaS keys (they were shared with you).
 ```
 
+## One-Click Agent Upgrade
+
+Already installed and want to update to the latest version? Copy and paste:
+
+```
+Upgrade oh-my-litellm-opencode on this machine by following Section D
+(Upgrade Procedure) in SKILL.md.
+
+1. Fetch and read SKILL.md from:
+   https://raw.githubusercontent.com/wallacelw/oh-my-litellm-opencode/main/SKILL.md
+2. Find the existing install directory (default: /home/oh-my-litellm-opencode).
+   Look for a .git directory inside it.
+3. Read the MaaS API key from .env in the install directory — do NOT ask me
+   for it. If .env is missing or the key is not there, stop and report.
+4. Run: git -C "$PROJECT_DIR" pull --ff-only
+   If pull fails, ask me: "Reset to origin/main? (y/n)"
+5. Run bootstrap with the key from .env:
+   ./scripts/0_bootstrap.sh --agent --maas-key="$MAAS_KEY"
+   (add --litellm-only if the existing install is LiteLLM-only)
+   Bootstrap is idempotent — it preserves all existing secrets and data.
+6. The upgrade is complete when scripts/5_validate.sh exits 0.
+7. Do NOT launch opencode. Report the summary and stop.
+
+Rules:
+- Do not skip steps. Do not improvise. Do not launch opencode.
+- If validation fails, follow the recovery table in Step 9 of SKILL.md.
+- After upgrade: I will rotate my MaaS keys if they were shared with you.
+```
+
 ## Documentation
 
 - **[SKILL.md](./SKILL.md)** — Deterministic install procedure (for agents and humans)

@@ -364,9 +364,9 @@ In **LiteLLM-only** mode it will:
 
 > **Notes:**
 > - **Docker image pull:** Step 3 pulls 4 images: LiteLLM (~500 MB),
-> >   PostgreSQL (~50 MB), Prometheus (~200 MB), Grafana (~300 MB). On a slow
-> >   connection this can take several minutes. Do not timeout or report failure
-> >   during the pull — wait for `docker compose up -d` to complete.
+>   PostgreSQL (~50 MB), Prometheus (~200 MB), Grafana (~300 MB). On a slow
+>   connection this can take several minutes. Do not timeout or report failure
+>   during the pull — wait for `docker compose up -d` to complete.
 > - **npm registry** (full mode only): Step 4 runs `bunx oh-my-opencode-slim
 >   install` which downloads from the npm registry. If the registry is
 >   unreachable, this fails with a network error.
@@ -532,3 +532,36 @@ typed the keys directly, they were not shared with an agent.
 
 **The install is complete when Step 9 (`5_validate.sh`) exits 0.** Step 10 is
 informational only. Do NOT launch `opencode` — that is the user's next action.
+
+---
+
+## Section D: Upgrade Procedure
+
+When the project is already installed and needs updating to a newer version,
+follow Section C but with these modifications:
+
+| Step | Fresh install | Upgrade |
+|------|--------------|---------|
+| 1 | Detect environment + prompt install dir | Detect existing install dir (look for `$PROJECT_DIR/.git`) |
+| 2 | Verify & install prerequisites | Quick verify only (prereqs already installed) |
+| 3 | Ensure Docker daemon | Quick verify only |
+| 4 | Clone | `git -C "$PROJECT_DIR" pull --ff-only` (update in-place) |
+| 5 | Prompt for MaaS key + validate | Read `HUAWEI_MAAS_API_KEY` from `$PROJECT_DIR/.env` — do NOT prompt |
+| 6 | Check ports free | Skip — ports are in use by existing containers (expected) |
+| 7 | Run bootstrap | Same — `0_bootstrap.sh` is idempotent, preserves all secrets |
+| 8–10 | Same | Same |
+
+**Key points:**
+
+- Bootstrap is idempotent — it preserves `LITELLM_MASTER_KEY`,
+  `LITELLM_SALT_KEY`, `DB_PASSWORD`, `GRAFANA_ADMIN_PASSWORD`, and
+  `PROMETHEUS_RETENTION` from the existing `.env`.
+- Config is regenerated from templates — any new config options (e.g.
+  observability settings) are picked up automatically.
+- Docker Compose recreates containers as needed — existing data volumes
+  (`postgres_data`, `prometheus_data`, `grafana_data`) are preserved.
+- If `git pull` fails due to local changes: ask user
+  `"Pull failed. Reset to origin/main? (y/n)"`. If yes:
+  `git -C "$PROJECT_DIR" reset --hard origin/main`.
+
+**Upgrade is complete when `5_validate.sh` exits 0.**

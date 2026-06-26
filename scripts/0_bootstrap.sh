@@ -320,7 +320,23 @@ with open(path, 'w') as f:
       fi
     fi
   fi
-  echo "  .env exists — skipping init_env.sh"
+  # Check for missing env vars (e.g. upgrading from an older version)
+  MISSING_VARS=""
+  for required_var in GRAFANA_ADMIN_PASSWORD PROMETHEUS_RETENTION; do
+    if ! grep -q "^${required_var}=" "$PROJECT_DIR/.env" 2>/dev/null; then
+      MISSING_VARS="$MISSING_VARS $required_var"
+    fi
+  done
+  if [ -n "$MISSING_VARS" ]; then
+    if [ "$DRY_RUN" = true ]; then
+      echo "  Would run init_env.sh --auto to add missing vars:$MISSING_VARS"
+    else
+      echo "  Missing env vars:$MISSING_VARS — running init_env.sh --auto to fill in (preserves existing secrets)..."
+      (cd "$PROJECT_DIR" && ./scripts/1_init_env.sh --auto)
+    fi
+  else
+    echo "  .env exists — skipping init_env.sh"
+  fi
 fi
 
 # ── 3b. Start Docker Compose (idempotent) ──

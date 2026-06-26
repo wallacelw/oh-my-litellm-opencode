@@ -73,26 +73,12 @@ resolve_master_key() {
     return 0
   fi
 
-  # 2. .master-key file
-  if [ -f "$PROJECT_DIR/.master-key" ]; then
-    local found_key
-    found_key="$(cat "$PROJECT_DIR/.master-key")"
-    if [ -n "$found_key" ]; then
-      echo "  Found LITELLM_MASTER_KEY in $PROJECT_DIR/.master-key" >&2
-      echo "$found_key"
-      return 0
-    fi
-  fi
-
-  # 3. .env file
+  # 2. .env file
   if [ -f "$PROJECT_DIR/.env" ]; then
     local found_key
     found_key="$(grep -oP '^LITELLM_MASTER_KEY="?\K[^"]+' "$PROJECT_DIR/.env" 2>/dev/null || true)"
     if [ -n "$found_key" ]; then
       echo "  Found LITELLM_MASTER_KEY in $PROJECT_DIR/.env" >&2
-      # Cache to .master-key for faster future resolution
-      echo "$found_key" > "$PROJECT_DIR/.master-key"
-      chmod 600 "$PROJECT_DIR/.master-key"
       echo "$found_key"
       return 0
     fi
@@ -108,7 +94,7 @@ prompt_master_key() {
     exit 1
   fi
   if [ -z "${LITELLM_MASTER_KEY:-}" ]; then
-    echo "  LITELLM_MASTER_KEY not found in env, .master-key, or .env files."
+    echo "  LITELLM_MASTER_KEY not found in env or .env files."
     echo "  Enter LITELLM_MASTER_KEY (or Ctrl+C to abort):"
     read -r LITELLM_MASTER_KEY < /dev/tty
     if [ -z "$LITELLM_MASTER_KEY" ]; then

@@ -4,7 +4,6 @@ set -euo pipefail
 
 BLOCKED_FILES=(
   .env
-  .master-key
   configs/litellm_config.yaml
 )
 

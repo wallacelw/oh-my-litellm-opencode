@@ -2,9 +2,6 @@
 .env
 configs/litellm_config.yaml
 
-# ── Master key files ──
-.master-key
-
 # ── Backups created by scripts ──
 *.bak
 *.bak.*

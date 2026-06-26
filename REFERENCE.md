@@ -115,7 +115,7 @@ the provider prefix (preset name indicates LiteLLM proxy vs direct MaaS).
 | Grafana dashboard blank | Check datasource UID: `curl -u admin:$GRAFANA_ADMIN_PASSWORD http://127.0.0.1:3000/api/datasources/name/Prometheus \| jq .uid` — must be `prometheus` |
 | Grafana login failed | Check `GRAFANA_ADMIN_PASSWORD` in `.env`; `docker compose restart grafana` after changing |
 
-**Full reset:** `docker compose down -v; rm -f .env .master-key`
+**Full reset:** `docker compose down -v; rm -f .env`
 
 ## Observability
 

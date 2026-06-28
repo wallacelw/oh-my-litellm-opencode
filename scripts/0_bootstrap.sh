@@ -361,8 +361,7 @@ with open(path) as f:
 with open(path, 'w') as f:
     f.writelines(lines)
 " HUAWEI_MAAS_API_KEY_0 "$MAAS_KEY" "$PROJECT_DIR/.env"
-      echo "  Regenerating litellm_config.yaml..."
-      (cd "$PROJECT_DIR" && ./scripts/2_deploy_litellm.sh)
+      echo "  Config will be regenerated in Step 3."
       # Warn about stale extra keys
       ENV_KEY_COUNT=$(grep -oP '^HUAWEI_MAAS_API_KEY_COUNT=\K\d+' "$PROJECT_DIR/.env" 2>/dev/null || echo "1")
       if [ "$ENV_KEY_COUNT" -gt 1 ]; then
@@ -389,19 +388,12 @@ with open(path, 'w') as f:
   fi
 fi
 
-# ── 3b. Start Docker Compose (idempotent) ──
+# ── 3b. Deploy LiteLLM (config + Docker Compose) ──
 if [ "$DRY_RUN" = true ]; then
-  echo "  Would run: docker compose up -d"
+  echo "  Would run: 2_deploy_litellm.sh --dry-run"
   LITELLM_MASTER_KEY="<LITELLM_MASTER_KEY>"
 else
-  echo "  Starting Docker Compose (idempotent — no-op if already running)..."
-  docker compose -f "$PROJECT_DIR/docker-compose.yml" up -d
-  # Only wait if not already healthy
-  if curl -sf -m "$CURL_TIMEOUT" "$LITELLM_URL/health/liveliness" &>/dev/null; then
-    echo "  LiteLLM already healthy."
-  else
-    wait_for_litellm
-  fi
+  (cd "$PROJECT_DIR" && ./scripts/2_deploy_litellm.sh)
 fi
 
 # ── 3c. Resolve master key ──

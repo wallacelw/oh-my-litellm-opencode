@@ -303,11 +303,8 @@ if [[ "$MODE" == "auto" && "$FORCE" == true ]]; then
   echo "Existing virtual keys are invalidated — re-run install.sh to mint new ones."
 fi
 
-# ── Generate litellm_config.yaml ─────────────────────────────────
-echo ""
-echo "Generating litellm_config.yaml..."
-"$SCRIPT_DIR/2_deploy_litellm.sh"
-echo "Config generation successful."
+# ── Config generation deferred to 2_deploy_litellm.sh ──
+# (called by 0_bootstrap.sh after .env is ready, so Docker Compose can start)
 
 # ── Summary ───────────────────────────────────────────────────────
 echo ""

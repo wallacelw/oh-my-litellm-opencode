@@ -22,11 +22,13 @@ CONFIG_FILE="$PROJECT_ROOT/configs/litellm/config.yaml"
 
 # ── Parse args ────────────────────────────────────────────────────
 ROUTING_STRATEGY="simple-shuffle"
+DRY_RUN=false
 for arg in "$@"; do
   case "$arg" in
     --routing-strategy=*) ROUTING_STRATEGY="${arg#--routing-strategy=}" ;;
+    --dry-run)            DRY_RUN=true ;;
     *)
-      echo "Usage: $0 [--routing-strategy=STRATEGY]" >&2
+      echo "Usage: $0 [--routing-strategy=STRATEGY] [--dry-run]" >&2
       echo "  Strategies: simple-shuffle, least-busy, latency-based-routing, usage-based-routing, cost-based-routing" >&2
       exit 1
       ;;
@@ -193,3 +195,34 @@ if [ "$KEY_COUNT" -gt 1 ]; then
   done
 fi
 echo "══════════════════════════════════════════════════════"
+
+# ── Deploy Docker Compose ──
+echo ""
+echo "Starting Docker Compose (idempotent — no-op if already running)..."
+if [ "${DRY_RUN:-false}" = true ]; then
+  echo "  Would run: docker compose up -d"
+else
+  docker compose -f "$PROJECT_ROOT/docker-compose.yml" up -d
+  # Wait for LiteLLM to become healthy
+  LITELLM_URL="http://127.0.0.1:4000"
+  if curl -sf -m 15 "$LITELLM_URL/health/liveliness" &>/dev/null; then
+    echo "  ✓ LiteLLM already healthy."
+  else
+    echo "  Waiting for LiteLLM to become healthy (up to 90s)..."
+    local_waited=0
+    while [ $local_waited -lt 90 ]; do
+      if curl -sf -m 15 "$LITELLM_URL/health/liveliness" &>/dev/null; then
+        echo "  ✓ LiteLLM healthy after ~${local_waited}s."
+        break
+      fi
+      printf "  ."
+      sleep 5
+      local_waited=$((local_waited + 5))
+    done
+    if [ $local_waited -ge 90 ]; then
+      echo ""
+      echo "ERROR: LiteLLM did not become healthy within 90s. Check: docker compose logs"
+      exit 1
+    fi
+  fi
+fi

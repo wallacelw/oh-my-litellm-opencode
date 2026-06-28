@@ -614,10 +614,16 @@ if [ "$RUN_CODEX" = true ]; then
   # D4. Responses API smoke test
   echo ""
   echo "D4. Responses API smoke test"
+  CODEX_VK=""
+  if [ -f "$HOME/.codex/.env" ]; then
+    CODEX_VK=$(grep -oP '^LITELLM_CODEX_API_KEY=\K.*' "$HOME/.codex/.env" 2>/dev/null || true)
+  fi
+  if [ -z "$CODEX_VK" ] && [ -n "${LITELLM_CODEX_API_KEY:-}" ]; then
+    CODEX_VK="$LITELLM_CODEX_API_KEY"
+  fi
   if [ "$DRY_RUN" = true ]; then
     skip "Responses API smoke test"
-  elif [ -n "${LITELLM_CODEX_API_KEY:-}" ]; then
-    CODEX_VK="$LITELLM_CODEX_API_KEY"
+  elif [ -n "$CODEX_VK" ]; then
     SMOKE_MODEL="deepseek-v3.2"
     if curl -sf -m 30 "$LITELLM_URL/v1/responses" \
         -H "Authorization: Bearer $CODEX_VK" \
@@ -628,7 +634,7 @@ if [ "$RUN_CODEX" = true ]; then
       fail "Responses API smoke test: $SMOKE_MODEL did not respond"
     fi
   else
-    skip "Responses API smoke test (LITELLM_CODEX_API_KEY not set)"
+    skip "Responses API smoke test (no API key found in ~/.codex/.env or env)"
   fi
 
   echo ""

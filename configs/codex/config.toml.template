@@ -16,7 +16,7 @@
 #
 # Config is written to ~/.codex/config.toml
 # The API key is read from the LITELLM_CODEX_API_KEY environment variable,
-# which is set by the install script in the shell profile.
+# which is stored in ~/.codex/.env (loaded automatically by Codex CLI).
 #
 # The model catalog JSON provides metadata (context window, max tokens, etc.)
 # for Huawei MaaS models so Codex CLI doesn't fall back to default metadata.

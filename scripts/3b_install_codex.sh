@@ -142,8 +142,24 @@ if [ -z "$VIRTUAL_KEY" ] && [ -n "${LITELLM_MASTER_KEY:-}" ]; then
   fi
 fi
 
-# Try to reuse existing key from environment or shell profile
-if [ -z "$VIRTUAL_KEY" ] && [ -n "${LITELLM_CODEX_API_KEY:-}" ]; then
+# Try to reuse existing key from ~/.codex/.env or environment
+if [ -z "$VIRTUAL_KEY" ] && [ -f "$CODEX_DIR/.env" ]; then
+  EXISTING_KEY=$(grep -oP '^LITELLM_CODEX_API_KEY=\K.*' "$CODEX_DIR/.env" 2>/dev/null || true)
+  if [ -n "$EXISTING_KEY" ] && [[ "$EXISTING_KEY" == sk-* ]]; then
+    if [ "$DRY_RUN" = true ]; then
+      echo "   Would test existing key from .env: ${EXISTING_KEY:0:8}...${EXISTING_KEY: -4}"
+      VIRTUAL_KEY="$EXISTING_KEY"
+    elif retry_curl -sf -m $CURL_TIMEOUT "$LITELLM_URL/v1/responses" \
+         -H "Authorization: Bearer $EXISTING_KEY" \
+         -H "Content-Type: application/json" \
+         -d '{"model":"deepseek-v3.2","input":"ok"}'; then
+      echo "   Existing virtual key from .env is valid. Reusing: ${EXISTING_KEY:0:8}...${EXISTING_KEY: -4}"
+      VIRTUAL_KEY="$EXISTING_KEY"
+    else
+      echo "   Existing virtual key from .env is invalid or expired. Minting new key."
+    fi
+  fi
+elif [ -z "$VIRTUAL_KEY" ] && [ -n "${LITELLM_CODEX_API_KEY:-}" ]; then
   EXISTING_KEY="$LITELLM_CODEX_API_KEY"
   if [[ "$EXISTING_KEY" == sk-* ]]; then
     if [ "$DRY_RUN" = true ]; then
@@ -200,8 +216,7 @@ echo "4. Writing Codex CLI config..."
 if [ "$DRY_RUN" = true ]; then
   echo "   Would write: $CODEX_CONFIG (chmod 600)"
   echo "   Would write: $CODEX_DIR/model_catalog.json"
-  echo "   Template: $PROJECT_DIR/configs/codex/config.toml.template"
-  echo "   Would set LITELLM_CODEX_API_KEY in shell profile"
+  echo "   Would write: $CODEX_DIR/.env (chmod 600)"
   echo ""
   echo "=== Dry run complete — no changes made ==="
   exit 0
@@ -233,28 +248,25 @@ else
 fi
 echo ""
 
-# ── 5. Set API key in shell profile ──
-echo "5. Setting LITELLM_CODEX_API_KEY in shell profile..."
-ENV_LINE="export LITELLM_CODEX_API_KEY=\"$VIRTUAL_KEY\""
+# ── 5. Write API key to ~/.codex/.env ──
+echo "5. Writing API key to $CODEX_DIR/.env..."
+ENV_FILE="$CODEX_DIR/.env"
+NEW_ENV="LITELLM_CODEX_API_KEY=$VIRTUAL_KEY"
 
-# Write to ~/.bashrc and ~/.zshrc (whichever exists)
-for RC_FILE in "$HOME/.bashrc" "$HOME/.zshrc"; do
-  if [ -f "$RC_FILE" ]; then
-    # Remove any existing LITELLM_CODEX_API_KEY line
-    if grep -q 'LITELLM_CODEX_API_KEY' "$RC_FILE" 2>/dev/null; then
-      sed -i '/LITELLM_CODEX_API_KEY/d' "$RC_FILE"
-      echo "$ENV_LINE" >> "$RC_FILE"
-      echo "   Updated: $RC_FILE"
-    else
-      echo "$ENV_LINE" >> "$RC_FILE"
-      echo "   Added: $RC_FILE"
-    fi
+if [ -f "$ENV_FILE" ]; then
+  EXISTING_ENV=$(cat "$ENV_FILE")
+  if [ "$NEW_ENV" = "$EXISTING_ENV" ]; then
+    echo "   .env unchanged — skipping write"
+  else
+    echo "$NEW_ENV" > "$ENV_FILE"
+    chmod 600 "$ENV_FILE"
+    echo "   Updated: $ENV_FILE (chmod 600)"
   fi
-done
-
-# Also export for current session
-export LITELLM_CODEX_API_KEY="$VIRTUAL_KEY"
-echo "   Exported for current session"
+else
+  echo "$NEW_ENV" > "$ENV_FILE"
+  chmod 600 "$ENV_FILE"
+  echo "   Written: $ENV_FILE (chmod 600)"
+fi
 echo ""
 
 # ── 6. Summary ──
@@ -263,7 +275,7 @@ echo ""
 echo "Config files:"
 echo "  Codex CLI:  $CODEX_CONFIG (chmod 600)"
 echo "  Catalog:    $CODEX_DIR/model_catalog.json"
-echo "  API key:    LITELLM_CODEX_API_KEY env var (set in shell profile)"
+echo "  API key:    $CODEX_DIR/.env (chmod 600)"
 echo ""
 echo "Versions:"
 command -v codex &>/dev/null && echo "  codex:      $(codex --version 2>/dev/null || echo 'unknown')"

@@ -21,6 +21,7 @@ set -euo pipefail
 #   ./0_bootstrap.sh --litellm-only                     # LiteLLM proxy only, skip tool installation
 #   ./0_bootstrap.sh --opencode-only                    # LiteLLM + opencode (skip Codex CLI)
 #   ./0_bootstrap.sh --codex-only                       # LiteLLM + Codex CLI (skip opencode)
+#   ./0_bootstrap.sh --claude-code-only                   # LiteLLM + Claude Code CLI (skip opencode + Codex)
 #   ./0_bootstrap.sh --dry-run                          # preview changes
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -38,6 +39,7 @@ AGENT_MODE=false
 LITELLM_ONLY=false
 OPENCODE_ONLY=false
 CODEX_ONLY=false
+CLAUDE_CODE_ONLY=false
 
 # ── Parse command-line arguments ──
 for arg in "$@"; do
@@ -48,10 +50,11 @@ for arg in "$@"; do
     --litellm-only)     LITELLM_ONLY=true ;;
     --opencode-only)    OPENCODE_ONLY=true ;;
     --codex-only)       CODEX_ONLY=true ;;
+    --claude-code-only)  CLAUDE_CODE_ONLY=true ;;
     --dry-run)          DRY_RUN=true ;;
     *)
       echo "ERROR: Unknown argument: $arg"
-      echo "Usage: $0 [--maas-key=KEY] [--agent] [--virtual-key=sk-...] [--litellm-only|--opencode-only|--codex-only] [--dry-run]"
+      echo "Usage: $0 [--maas-key=KEY] [--agent] [--virtual-key=sk-...] [--litellm-only|--opencode-only|--codex-only|--claude-code-only] [--dry-run]"
       exit 1
       ;;
   esac
@@ -62,8 +65,9 @@ MODE_COUNT=0
 [ "$LITELLM_ONLY" = true ] && MODE_COUNT=$((MODE_COUNT + 1))
 [ "$OPENCODE_ONLY" = true ] && MODE_COUNT=$((MODE_COUNT + 1))
 [ "$CODEX_ONLY" = true ] && MODE_COUNT=$((MODE_COUNT + 1))
+[ "$CLAUDE_CODE_ONLY" = true ] && MODE_COUNT=$((MODE_COUNT + 1))
 if [ "$MODE_COUNT" -gt 1 ]; then
-  echo "ERROR: --litellm-only, --opencode-only, and --codex-only are mutually exclusive."
+  echo "ERROR: --litellm-only, --opencode-only, --codex-only, and --claude-code-only are mutually exclusive."
   exit 1
 fi
 
@@ -71,13 +75,20 @@ fi
 # Default (no flags): install everything
 INSTALL_OPENCODE=true
 INSTALL_CODEX=true
+INSTALL_CLAUDE_CODE=true
 if [ "$LITELLM_ONLY" = true ]; then
   INSTALL_OPENCODE=false
   INSTALL_CODEX=false
+  INSTALL_CLAUDE_CODE=false
 elif [ "$OPENCODE_ONLY" = true ]; then
   INSTALL_CODEX=false
+  INSTALL_CLAUDE_CODE=false
 elif [ "$CODEX_ONLY" = true ]; then
   INSTALL_OPENCODE=false
+  INSTALL_CLAUDE_CODE=false
+elif [ "$CLAUDE_CODE_ONLY" = true ]; then
+  INSTALL_OPENCODE=false
+  INSTALL_CODEX=false
 fi
 
 # ── Agent mode validation ──
@@ -95,6 +106,11 @@ fi
 # ── Virtual key only applies to opencode ──
 if [ "$CODEX_ONLY" = true ] && [ -n "$VIRTUAL_KEY" ]; then
   echo "ERROR: --codex-only and --virtual-key are mutually exclusive (--virtual-key is for opencode)."
+  exit 1
+fi
+
+if [ "$CLAUDE_CODE_ONLY" = true ] && [ -n "$VIRTUAL_KEY" ]; then
+  echo "ERROR: --claude-code-only and --virtual-key are mutually exclusive (--virtual-key is for opencode)."
   exit 1
 fi
 
@@ -196,6 +212,10 @@ if [ "$INSTALL_OPENCODE" = true ]; then
 fi
 if [ "$INSTALL_CODEX" = true ]; then
   check_prereq "npm"   npm     "install from https://nodejs.org/ (needed for Codex CLI)"
+  check_prereq "jq"    jq      "install from https://stedolan.github.io/jq/"
+fi
+if [ "$INSTALL_CLAUDE_CODE" = true ]; then
+  check_prereq "npm"   npm     "install from https://nodejs.org/ (needed for Claude Code CLI)"
   check_prereq "jq"    jq      "install from https://stedolan.github.io/jq/"
 fi
 check_prereq "docker"  docker  "install from https://docs.docker.com/engine/install/"
@@ -430,6 +450,23 @@ else
   echo "  (skipping Codex CLI installation)"
 fi
 
+# ── 4c. Claude Code CLI ──
+if [ "$INSTALL_CLAUDE_CODE" = true ]; then
+  echo "  ── Claude Code CLI ──"
+  CLAUDE_CMD=("$SCRIPT_DIR/3c_install_claude_code.sh")
+  [ "$DRY_RUN" = true ] && CLAUDE_CMD+=("--dry-run")
+
+  if [ "$DRY_RUN" = true ]; then
+    echo "  Would run: ${CLAUDE_CMD[*]}"
+  else
+    "${CLAUDE_CMD[@]}"
+    echo "  Claude Code CLI installation and configuration complete."
+  fi
+  echo ""
+else
+  echo "  (skipping Claude Code CLI installation)"
+fi
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Step 5: Validate
 # ──────────────────────────────────────────────────────────────────────────────
@@ -437,11 +474,13 @@ print_step "5" "Validate"
 
 VALIDATE_CMD=("$SCRIPT_DIR/5_validate.sh")
 [ "$DRY_RUN" = true ] && VALIDATE_CMD+=("--dry-run")
-if [ "$INSTALL_OPENCODE" = false ] && [ "$INSTALL_CODEX" = false ]; then
+if [ "$INSTALL_OPENCODE" = false ] && [ "$INSTALL_CODEX" = false ] && [ "$INSTALL_CLAUDE_CODE" = false ]; then
   VALIDATE_CMD+=("--litellm-only")
-elif [ "$INSTALL_OPENCODE" = false ]; then
+elif [ "$INSTALL_OPENCODE" = false ] && [ "$INSTALL_CODEX" = false ]; then
+  VALIDATE_CMD+=("--claude-code-only")
+elif [ "$INSTALL_OPENCODE" = false ] && [ "$INSTALL_CLAUDE_CODE" = false ]; then
   VALIDATE_CMD+=("--codex-only")
-elif [ "$INSTALL_CODEX" = false ]; then
+elif [ "$INSTALL_CODEX" = false ] && [ "$INSTALL_CLAUDE_CODE" = false ]; then
   VALIDATE_CMD+=("--opencode-only")
 fi
 
@@ -488,7 +527,9 @@ if [ "$LITELLM_ONLY" = true ]; then
   echo "     ./scripts/0_bootstrap.sh --maas-key=\"\$KEY\" --opencode-only"
   echo "  3. To add Codex CLI later:"
   echo "     ./scripts/0_bootstrap.sh --maas-key=\"\$KEY\" --codex-only"
-  echo "  4. Or mint a virtual key only:"
+  echo "  4. To add Claude Code CLI later:"
+  echo "     ./scripts/0_bootstrap.sh --maas-key=\"\$KEY\" --claude-code-only"
+  echo "  5. Or mint a virtual key only:"
   echo "     ./scripts/4_mint-virtual-key.sh"
   if [ "$AGENT_MODE" = true ]; then
     echo ""
@@ -541,6 +582,16 @@ print(d.get('provider',{}).get('LiteLLM',{}).get('options',{}).get('apiKey',''))
       echo "Codex CLI key:      ${CODEX_VK:0:8}...${CODEX_VK: -4}"
     fi
   fi
+  if [ "$INSTALL_CLAUDE_CODE" = true ]; then
+    echo "Claude Code config: ~/.claude-code/.env"
+    CLAUDE_VK=""
+    if [ -f "$HOME/.claude-code/.env" ]; then
+      CLAUDE_VK=$(grep -oP '^ANTHROPIC_API_KEY="?\K[^"]+' "$HOME/.claude-code/.env" 2>/dev/null || true)
+    fi
+    if [ -n "$CLAUDE_VK" ]; then
+      echo "Claude Code key:    ${CLAUDE_VK:0:8}...${CLAUDE_VK: -4}"
+    fi
+  fi
   echo ""
   if [ "$AGENT_MODE" = true ]; then
     echo "Next steps:"
@@ -552,6 +603,9 @@ print(d.get('provider',{}).get('LiteLLM',{}).get('options',{}).get('apiKey',''))
     fi
     if [ "$INSTALL_CODEX" = true ]; then
       echo "  ${INSTALL_OPENCODE:+3}. Run Codex CLI: codex"
+    fi
+    if [ "$INSTALL_CLAUDE_CODE" = true ]; then
+      echo "  - Run Claude Code CLI: source ~/.claude-code/.env && claude"
     fi
     echo ""
     echo "⚠️  Security: API keys were shared with the agent via command line"

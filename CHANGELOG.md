@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Claude Code CLI integration via `3c_install_claude_code.sh` — installs
+  Claude Code CLI, mints virtual key (alias "claude-code", unlimited budget),
+  writes `~/.claude-code/.env`.
+- `configs/claude-code/.env.template` — Claude Code CLI env config template
+  (`ANTHROPIC_BASE_URL`, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`,
+  `ANTHROPIC_SMALL_FAST_MODEL`).
+- Huawei MaaS Anthropic-compatible endpoint support
+  (`HUAWEI_MAAS_ANTHROPIC_API_BASE`).
+- `2_generate_config.sh` now generates dual-format deployments: OpenAI
+  (`openai/` prefix, `/openai/v1/chat/completions`) + Anthropic
+  (`anthropic/` prefix, `/anthropic/v1/messages`) for all 6 models.
+- `--claude-code-only` flag for `0_bootstrap.sh` and `5_validate.sh`.
+- `CLAUDE_CODE_VIRTUAL_KEY` placeholder in `.env.template`.
+- Validation Section E: Claude Code CLI checks (binary, config, provider,
+  Messages API smoke test).
+
+### Changed
+
+- Total deployment count doubled: 6 OpenAI + 6 Anthropic per API key
+  (12 × N total, was 6 × N).
+- Models now exposed via two API formats with the same `model_name`:
+  LiteLLM routes `/v1/chat/completions` to OpenAI deployments and
+  `/v1/messages` to Anthropic deployments.
+- `REFERENCE.md`: added Claude Code CLI section, Anthropic endpoint to
+  architecture diagram and endpoints table, dual-format architecture
+  documentation.
+
 ## [0.3.0] - 2026-06-28
 
 ### Added

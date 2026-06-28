@@ -74,7 +74,7 @@ MODELS=(
 )
 
 MODEL_COUNT=${#MODELS[@]}
-TOTAL_DEPLOYMENTS=$((KEY_COUNT * MODEL_COUNT))
+TOTAL_DEPLOYMENTS=$((KEY_COUNT * MODEL_COUNT * 2))
 
 # ── Backup existing config ───────────────────────────────────────
 if [ -f "$CONFIG_FILE" ]; then
@@ -87,7 +87,7 @@ fi
 {
   echo "model_list:"
   echo ""
-  echo "  # ───────── Huawei MaaS Models (${KEY_COUNT} deployment(s) per model, ${TOTAL_DEPLOYMENTS} total) ───────────"
+  echo "  # ───────── Huawei MaaS OpenAI Models (${KEY_COUNT} deployment(s) per model, ${KEY_COUNT} * ${MODEL_COUNT} total) ───────────"
   echo ""
 
   for model_entry in "${MODELS[@]}"; do
@@ -103,6 +103,36 @@ fi
       echo "      api_base: os.environ/HUAWEI_MAAS_API_BASE"
       echo "      api_key: os.environ/HUAWEI_MAAS_API_KEY_$i"
       echo "      use_chat_completions_api: true"
+      echo "      tpm: $tpm"
+      echo "      rpm: $rpm"
+      echo "    model_info:"
+      echo "      max_tokens: $max_tokens"
+      echo "      max_input_tokens: $max_input"
+      echo "      max_output_tokens: $max_output"
+      echo "      input_cost_per_token: $input_cost"
+      echo "      output_cost_per_token: $output_cost"
+      echo ""
+    done
+  done
+
+  echo ""
+  echo "  # ───────── Huawei MaaS Anthropic Models (for Claude Code CLI) ───────────"
+  echo "  # Anthropic-compatible endpoint (/anthropic/v1/messages)"
+  echo "  # Same model names, anthropic/ provider prefix, no use_chat_completions_api"
+  echo ""
+
+  for model_entry in "${MODELS[@]}"; do
+    IFS=':' read -r model_name tpm rpm max_tokens max_input max_output input_cost output_cost <<< "$model_entry"
+
+    for i in $(seq 0 $((KEY_COUNT - 1))); do
+      if [ "$KEY_COUNT" -gt 1 ]; then
+        echo "  # ── deployment $i (key _${i}) ──"
+      fi
+      echo "  - model_name: $model_name"
+      echo "    litellm_params:"
+      echo "      model: anthropic/$model_name"
+      echo "      api_base: os.environ/HUAWEI_MAAS_ANTHROPIC_API_BASE"
+      echo "      api_key: os.environ/HUAWEI_MAAS_API_KEY_$i"
       echo "      tpm: $tpm"
       echo "      rpm: $rpm"
       echo "    model_info:"
@@ -148,7 +178,7 @@ fi
 echo ""
 echo "══════════════════════════════════════════════════════"
 echo "  Generated: $CONFIG_FILE"
-echo "  Deployments: ${TOTAL_DEPLOYMENTS} total (${KEY_COUNT} per model × ${MODEL_COUNT} models)"
+  echo "  Deployments: ${TOTAL_DEPLOYMENTS} total (${KEY_COUNT} per model × ${MODEL_COUNT} models × 2 formats)"
 echo "  Routing strategy: $ROUTING_STRATEGY"
 if [ "$KEY_COUNT" -gt 1 ]; then
   echo ""

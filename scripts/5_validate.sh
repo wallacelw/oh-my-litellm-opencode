@@ -20,6 +20,7 @@ DRY_RUN=false
 LITELLM_ONLY=false
 OPENCODE_ONLY=false
 CODEX_ONLY=false
+CLAUDE_CODE_ONLY=false
 LITELLM_URL="http://127.0.0.1:4000"
 
 for arg in "$@"; do
@@ -28,6 +29,7 @@ for arg in "$@"; do
     --litellm-only)   LITELLM_ONLY=true ;;
     --opencode-only)  OPENCODE_ONLY=true ;;
     --codex-only)     CODEX_ONLY=true ;;
+    --claude-code-only) CLAUDE_CODE_ONLY=true ;;
   esac
 done
 
@@ -36,8 +38,9 @@ MODE_COUNT=0
 [ "$LITELLM_ONLY" = true ] && MODE_COUNT=$((MODE_COUNT + 1))
 [ "$OPENCODE_ONLY" = true ] && MODE_COUNT=$((MODE_COUNT + 1))
 [ "$CODEX_ONLY" = true ] && MODE_COUNT=$((MODE_COUNT + 1))
+[ "$CLAUDE_CODE_ONLY" = true ] && MODE_COUNT=$((MODE_COUNT + 1))
 if [ "$MODE_COUNT" -gt 1 ]; then
-  echo "ERROR: --litellm-only, --opencode-only, and --codex-only are mutually exclusive."
+  echo "ERROR: --litellm-only, --opencode-only, --codex-only, and --claude-code-only are mutually exclusive."
   exit 1
 fi
 
@@ -46,13 +49,16 @@ fi
 RUN_LITELLM=true
 RUN_OPENCODE=true
 RUN_CODEX=true
+RUN_CLAUDE_CODE=true
 RUN_OBSERVABILITY=true
 if [ "$LITELLM_ONLY" = true ]; then
-  RUN_OPENCODE=false; RUN_CODEX=false
+  RUN_OPENCODE=false; RUN_CODEX=false; RUN_CLAUDE_CODE=false
 elif [ "$OPENCODE_ONLY" = true ]; then
-  RUN_CODEX=false
+  RUN_CODEX=false; RUN_CLAUDE_CODE=false
 elif [ "$CODEX_ONLY" = true ]; then
-  RUN_OPENCODE=false
+  RUN_OPENCODE=false; RUN_CLAUDE_CODE=false
+elif [ "$CLAUDE_CODE_ONLY" = true ]; then
+  RUN_OPENCODE=false; RUN_CODEX=false
 fi
 
 # ── Colors ──
@@ -241,11 +247,11 @@ print(f'{moderation_errors} {other_errors} {len(unhealthy)}')
   if [ -f "$CONFIG_FILE" ]; then
     pass "litellm_config.yaml exists (generated)"
     DEPLOYMENT_COUNT=$(grep -c '^\s*- model_name:' "$CONFIG_FILE" 2>/dev/null || echo "0")
-    EXPECTED_DEPLOYMENTS=$((KEY_COUNT * 6))
+    EXPECTED_DEPLOYMENTS=$((KEY_COUNT * 12))
     if [ "$DEPLOYMENT_COUNT" = "$EXPECTED_DEPLOYMENTS" ]; then
-      pass "Deployment count: $DEPLOYMENT_COUNT (6 models × $KEY_COUNT keys)"
+      pass "Deployment count: $DEPLOYMENT_COUNT (6 models × $KEY_COUNT keys × 2 formats)"
     else
-      warn "Deployment count: $DEPLOYMENT_COUNT (expected $EXPECTED_DEPLOYMENTS)"
+      warn "Deployment count: $DEPLOYMENT_COUNT (expected $EXPECTED_DEPLOYMENTS = 6 models × $KEY_COUNT keys × 2 formats)"
     fi
     # Check for model catalog drift between template and generated config
     if [ -f "$TEMPLATE_FILE" ]; then
@@ -635,6 +641,95 @@ if [ "$RUN_CODEX" = true ]; then
     fi
   else
     skip "Responses API smoke test (no API key found in ~/.codex/.env or env)"
+  fi
+
+  echo ""
+fi
+
+# ════════════════════════════════════════════════════════════════════════════
+# SECTION E: Claude Code CLI Configuration Validation
+# ════════════════════════════════════════════════════════════════════════════
+if [ "$RUN_CLAUDE_CODE" = true ]; then
+  echo ""
+  echo "━━━ E. Claude Code CLI Configuration ━━━"
+
+  CLAUDE_DIR="$HOME/.claude-code"
+  CLAUDE_ENV="$CLAUDE_DIR/.env"
+
+  # E1. Claude Code CLI binary
+  echo ""
+  echo "E1. Claude Code CLI binary"
+  if command -v claude &>/dev/null; then
+    pass "claude installed: $(claude --version 2>/dev/null || echo 'unknown')"
+  else
+    fail "claude not found — run: npm install -g @anthropic-ai/claude-code"
+  fi
+
+  # E2. Config file (.env)
+  echo ""
+  echo "E2. Config file"
+  if [ -f "$CLAUDE_ENV" ]; then
+    pass ".env exists: $CLAUDE_ENV"
+  else
+    fail ".env not found in $CLAUDE_DIR"
+  fi
+
+  # E3. Provider configuration
+  echo ""
+  echo "E3. Provider configuration"
+  if [ -f "$CLAUDE_ENV" ]; then
+    if grep -q 'ANTHROPIC_BASE_URL\s*=\s*"http://127.0.0.1:4000"' "$CLAUDE_ENV"; then
+      pass "ANTHROPIC_BASE_URL points to LiteLLM proxy"
+    else
+      fail "ANTHROPIC_BASE_URL not pointing to LiteLLM proxy"
+    fi
+
+    if grep -qP '^ANTHROPIC_API_KEY\s*=\s*"sk-\S+"' "$CLAUDE_ENV"; then
+      pass "ANTHROPIC_API_KEY set (starts with sk-)"
+    else
+      fail "ANTHROPIC_API_KEY not set or invalid"
+    fi
+
+    if grep -qP '^ANTHROPIC_MODEL\s*=\s*"\S+"' "$CLAUDE_ENV"; then
+      CLAUDE_MODEL=$(grep -oP '^ANTHROPIC_MODEL\s*=\s*"\K[^"]+' "$CLAUDE_ENV" 2>/dev/null || true)
+      pass "default model set: $CLAUDE_MODEL"
+    else
+      fail "default model not set"
+    fi
+
+    PERMS=$(stat -c '%a' "$CLAUDE_ENV" 2>/dev/null || stat -f '%Lp' "$CLAUDE_ENV" 2>/dev/null)
+    if [ "$PERMS" = "600" ]; then
+      pass "Config file permissions 600"
+    else
+      warn "Config file permissions $PERMS (expected 600)"
+    fi
+  else
+    fail "No Claude Code config — skipping provider checks"
+    FAIL=$((FAIL + 4))
+  fi
+
+  # E4. Messages API smoke test
+  echo ""
+  echo "E4. Messages API smoke test"
+  CLAUDE_VK=""
+  if [ -f "$CLAUDE_ENV" ]; then
+    CLAUDE_VK=$(grep -oP '^ANTHROPIC_API_KEY="?\K[^"]+' "$CLAUDE_ENV" 2>/dev/null || true)
+  fi
+  if [ "$DRY_RUN" = true ]; then
+    skip "Messages API smoke test"
+  elif [ -n "$CLAUDE_VK" ]; then
+    SMOKE_MODEL="deepseek-v3.2"
+    if curl -sf -m 30 "$LITELLM_URL/v1/messages" \
+        -H "x-api-key: $CLAUDE_VK" \
+        -H "Content-Type: application/json" \
+        -H "anthropic-version: 2023-06-01" \
+        -d "{\"model\":\"$SMOKE_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"ok\"}],\"max_tokens\":1}" >/dev/null 2>&1; then
+      pass "Messages API smoke test: $SMOKE_MODEL responded"
+    else
+      fail "Messages API smoke test: $SMOKE_MODEL did not respond"
+    fi
+  else
+    skip "Messages API smoke test (no API key found in ~/.claude-code/.env)"
   fi
 
   echo ""

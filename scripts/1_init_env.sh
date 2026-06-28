@@ -96,6 +96,7 @@ if [[ -f "$ENV_FILE" ]]; then
     EXISTING_PROM_RETENTION="$(grep -oP '^PROMETHEUS_RETENTION="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
     EXISTING_MAAS_KEY="$(grep -oP '^HUAWEI_MAAS_API_KEY="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
     EXISTING_MAAS_BASE="$(grep -oP '^HUAWEI_MAAS_API_BASE="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
+    EXISTING_MAAS_ANTHROPIC_BASE="$(grep -oP '^HUAWEI_MAAS_ANTHROPIC_API_BASE="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
     echo "WARNING: .env already exists. Overwriting in auto mode (preserving secrets if set)."
   else
     echo "WARNING: .env already exists. Overwriting will regenerate all values."
@@ -113,6 +114,7 @@ DEFAULT_DB_PASSWORD=$(generate_secret)
 DEFAULT_GRAFANA_PASSWORD=$(generate_secret)
 DEFAULT_PROM_RETENTION="30d"
 DEFAULT_MAAS_BASE="https://api-ap-southeast-1.modelarts-maas.com/openai/v1"
+DEFAULT_MAAS_ANTHROPIC_BASE="https://api-ap-southeast-1.modelarts-maas.com/anthropic"
 
 # ── Idempotency: preserve secrets in auto mode ────────────────────
 # Changing these breaks existing deployments:
@@ -149,6 +151,10 @@ if [[ "$MODE" == "auto" && "$FORCE" != true ]]; then
     DEFAULT_MAAS_BASE="$EXISTING_MAAS_BASE"
     echo "  Reusing existing HUAWEI_MAAS_API_BASE (idempotent)"
   fi
+  if [[ -n "${EXISTING_MAAS_ANTHROPIC_BASE:-}" && -z "${HUAWEI_MAAS_ANTHROPIC_API_BASE:-}" ]]; then
+    DEFAULT_MAAS_ANTHROPIC_BASE="$EXISTING_MAAS_ANTHROPIC_BASE"
+    echo "  Reusing existing HUAWEI_MAAS_ANTHROPIC_API_BASE (idempotent)"
+  fi
 fi
 
 # ── Collect values ────────────────────────────────────────────────
@@ -162,6 +168,7 @@ GRAFANA_PASSWORD=$(prompt_value "GRAFANA_ADMIN_PASSWORD" "GRAFANA_ADMIN_PASSWORD
 PROM_RETENTION=$(prompt_value "PROMETHEUS_RETENTION" "PROMETHEUS_RETENTION (Prometheus TSDB retention, min 7d for baselines)" "$DEFAULT_PROM_RETENTION" "no")
 MAAS_API_KEY=$(prompt_value "HUAWEI_MAAS_API_KEY" "HUAWEI_MAAS_API_KEY (main key from ModelArts MaaS console, ap-southeast-1)" "${DEFAULT_MAAS_KEY:-}" "yes")
 MAAS_API_BASE=$(prompt_value "HUAWEI_MAAS_API_BASE" "HUAWEI_MAAS_API_BASE (MaaS endpoint URL)" "$DEFAULT_MAAS_BASE" "no")
+MAAS_ANTHROPIC_BASE=$(prompt_value "HUAWEI_MAAS_ANTHROPIC_API_BASE" "HUAWEI_MAAS_ANTHROPIC_API_BASE (MaaS Anthropic endpoint URL)" "$DEFAULT_MAAS_ANTHROPIC_BASE" "no")
 
 # ── Collect additional MaaS API keys ───────────
 EXTRA_KEYS=()
@@ -280,6 +287,12 @@ cat >> "$ENV_FILE" <<EOF
 HUAWEI_MAAS_API_BASE="${MAAS_API_BASE}"
 EOF
 
+cat >> "$ENV_FILE" <<EOF
+
+# ── MaaS Anthropic Endpoint ───────────────────────
+HUAWEI_MAAS_ANTHROPIC_API_BASE="${MAAS_ANTHROPIC_BASE}"
+EOF
+
 chmod 600 "$ENV_FILE"
 
 # ── Warn if --force was used ──────────────────────────────────────
@@ -316,6 +329,7 @@ if [[ "$KEY_COUNT" -gt 1 ]]; then
   done
 fi
 echo "    HUAWEI_MAAS_API_BASE= $MAAS_API_BASE"
+echo "    HUAWEI_MAAS_ANTHROPIC_API_BASE= $MAAS_ANTHROPIC_BASE"
 echo ""
 echo "  Next steps:"
 echo "    docker compose up -d"

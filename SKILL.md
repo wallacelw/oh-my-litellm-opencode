@@ -38,6 +38,8 @@ For reference documentation (architecture, presets, models, repair), see
 | `GRAFANA_ADMIN_PASSWORD` | `1_init_env.sh` (auto-generated) | docker-compose, `5_validate.sh` | Random string | No — rotating changes dashboard login only |
 | `PROMETHEUS_RETENTION` | `1_init_env.sh` (default `30d`) | docker-compose | Prometheus duration (`Nd`/`Nh`/`Nw`), ≥ `7d` | No |
 | `CODEX_VIRTUAL_KEY` | `3b_install_codex.sh` (minted) | `~/.codex/.env` as `LITELLM_CODEX_API_KEY` | Virtual key starting with `sk-` | No — tied to `LITELLM_MASTER_KEY` |
+| `HUAWEI_MAAS_ANTHROPIC_API_BASE` | `1_init_env.sh` (default `https://api-ap-southeast-1.modelarts-maas.com/anthropic`) | `2_generate_config.sh` | URL | No |
+| `CLAUDE_CODE_VIRTUAL_KEY` | `3c_install_claude_code.sh` (minted) | `~/.claude-code/.env` as `ANTHROPIC_API_KEY` | Virtual key starting with `sk-` | No — tied to `LITELLM_MASTER_KEY` |
 
 **Rules:**
 
@@ -345,6 +347,8 @@ elif [ "$INSTALL_MODE" = "opencode-only" ]; then
   ./scripts/0_bootstrap.sh --agent --opencode-only --maas-key="$MAAS_KEY"
 elif [ "$INSTALL_MODE" = "codex-only" ]; then
   ./scripts/0_bootstrap.sh --agent --codex-only --maas-key="$MAAS_KEY"
+elif [ "$INSTALL_MODE" = "claude-code-only" ]; then
+  ./scripts/0_bootstrap.sh --agent --claude-code-only --maas-key="$MAAS_KEY"
 else
   ./scripts/0_bootstrap.sh --agent --maas-key="$MAAS_KEY"
 fi
@@ -360,7 +364,9 @@ This is idempotent — safe to re-run. In **full** mode it will:
 6. Write opencode config
 7. Install Codex CLI + mint virtual key (alias "codex")
 8. Write Codex CLI config (`~/.codex/config.toml` + `model_catalog.json` + `.env`)
-9. Run validation
+9. Install Claude Code CLI + mint virtual key (alias "claude-code")
+10. Write Claude Code CLI config (`~/.claude-code/.env`)
+11. Run validation
 
 In **LiteLLM-only** mode it will:
 
@@ -449,6 +455,8 @@ fi
 | `rules not loaded` | Check `configs/prometheus/rules.yml` and `configs/prometheus/alerts.yml` syntax: `docker compose logs prometheus --tail 20` |
 | `Grafana not reachable` | `docker compose -f "$PROJECT_DIR/docker-compose.yml" up -d grafana`, wait 20s, retry Step 9 |
 | `dashboard not found` | Check provisioning: `docker compose logs grafana --tail 20` |
+| `claude not found` | `npm install -g @anthropic-ai/claude-code`, retry Step 9 |
+| `Messages API smoke test` and `did not respond` | Check virtual key in `~/.claude-code/.env`, verify Anthropic endpoint in config.yaml |
 
 > **Note:** `unhealthy_count > 0` is a **warning** in `5_validate.sh`, not a
 > failure — it does not cause a non-zero exit. If you see this warning, monitor
@@ -487,6 +495,7 @@ plugin config:     ~/.config/opencode/oh-my-opencode-slim.json
 Codex CLI config:  ~/.codex/config.toml
 Codex catalog:     ~/.codex/model_catalog.json
 Codex API key:     ~/.codex/.env
+Claude Code config: ~/.claude-code/.env
 
 Next steps:
   1. Restart opencode to apply the new configuration:
@@ -494,6 +503,7 @@ Next steps:
        - Start fresh: opencode
   2. Switch preset: /preset LiteLLM-Huawei-MaaS-Core
   3. Or use Codex CLI: codex
+  4. Or use Claude Code CLI: source ~/.claude-code/.env && claude
 ```
 
 If `INSTALL_MODE=litellm-only`:

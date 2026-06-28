@@ -39,7 +39,7 @@ For reference documentation (architecture, presets, models, repair), see
 | `PROMETHEUS_RETENTION` | `1_init_env.sh` (default `30d`) | docker-compose | Prometheus duration (`Nd`/`Nh`/`Nw`), ≥ `7d` | No |
 | `CODEX_VIRTUAL_KEY` | `3b_install_codex.sh` (minted) | `~/.codex/.env` as `LITELLM_CODEX_API_KEY` | Virtual key starting with `sk-` | No — tied to `LITELLM_MASTER_KEY` |
 | `HUAWEI_MAAS_ANTHROPIC_API_BASE` | `1_init_env.sh` (default `https://api-ap-southeast-1.modelarts-maas.com/anthropic`) | `2_generate_config.sh` | URL | No |
-| `CLAUDE_CODE_VIRTUAL_KEY` | `3c_install_claude_code.sh` (minted) | `~/.claude-code/.env` as `ANTHROPIC_API_KEY` | Virtual key starting with `sk-` | No — tied to `LITELLM_MASTER_KEY` |
+| `CLAUDE_CODE_VIRTUAL_KEY` | `3c_install_claude_code.sh` (minted) | `~/.claude/settings.json` env block as `ANTHROPIC_API_KEY` | Virtual key starting with `sk-` | No — tied to `LITELLM_MASTER_KEY` |
 
 **Rules:**
 
@@ -495,7 +495,7 @@ plugin config:     ~/.config/opencode/oh-my-opencode-slim.json
 Codex CLI config:  ~/.codex/config.toml
 Codex catalog:     ~/.codex/model_catalog.json
 Codex API key:     ~/.codex/.env
-Claude Code config: ~/.claude-code/.env
+Claude Code config: ~/.claude/settings.json
 
 Next steps:
   1. Restart opencode to apply the new configuration:
@@ -503,7 +503,7 @@ Next steps:
        - Start fresh: opencode
   2. Switch preset: /preset LiteLLM-Huawei-MaaS-Core
   3. Or use Codex CLI: codex
-  4. Or use Claude Code CLI: source ~/.claude-code/.env && claude
+  4. Or use Claude Code CLI: claude --bare
 ```
 
 If `INSTALL_MODE=litellm-only`:

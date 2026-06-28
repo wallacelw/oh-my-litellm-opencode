@@ -36,7 +36,7 @@ This is reference documentation. For the install procedure, read
 | Prometheus | `http://127.0.0.1:9090` | None (bound to localhost) |
 | Grafana | `http://127.0.0.1:3000` | Admin password (from `.env`) |
 | Codex CLI | `http://127.0.0.1:4000/v1` | Virtual key in `~/.codex/.env` |
-| Claude Code CLI | `http://127.0.0.1:4000/v1/messages` | Virtual key in `~/.claude-code/.env` |
+| Claude Code CLI | `http://127.0.0.1:4000/v1/messages` | Virtual key in `~/.claude/settings.json` |
 | Huawei MaaS Anthropic | `https://api-ap-southeast-1.modelarts-maas.com/anthropic/v1/messages` | MaaS API key (`x-api-key` header) |
 
 ## Scripts
@@ -121,16 +121,20 @@ endpoint (`/anthropic/v1/messages`) using the `anthropic/` provider prefix.
 
 ### Configuration
 
-Config lives in `~/.claude-code/.env` (chmod 600). Source before running:
+Config lives in `~/.claude/settings.json` (chmod 600). Claude Code reads
+this file automatically on startup — no `source` or `export` needed.
+
+Run with `--bare` flag to skip keychain/OAuth checks:
 
 ```bash
-source ~/.claude-code/.env
-claude
+claude --bare
 ```
 
-Or add to shell profile: `echo 'source ~/.claude-code/.env' >> ~/.bashrc`
+Or add an alias: `alias claude='claude --bare'`
 
 ### Environment Variables
+
+Set in the `env` block of `~/.claude/settings.json`:
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
@@ -183,7 +187,7 @@ with no OpenAI format conversion.
 | Grafana login failed | Check `GRAFANA_ADMIN_PASSWORD` in `.env`; `docker compose restart grafana` after changing |
 | Grafana dashboard stale after upgrade | `docker compose restart grafana` — hard restart picks up provisioning changes |
 | Claude Code `claude not found` | `npm install -g @anthropic-ai/claude-code` |
-| Claude Code 401 | Check `ANTHROPIC_API_KEY` in `~/.claude-code/.env` — must start with `sk-` |
+| Claude Code 401 | Check `ANTHROPIC_API_KEY` in `~/.claude/settings.json` env block — must start with `sk-` |
 | Claude Code model rejected | Model name case-sensitive — use exact Huawei MaaS names |
 
 **Full reset:** `docker compose down -v; rm -f .env`

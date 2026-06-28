@@ -4,11 +4,14 @@ set -euo pipefail
 # ─── Claude Code CLI installer for Huawei MaaS via LiteLLM ───────────────
 #
 # Installs Claude Code CLI, mints a LiteLLM virtual key (alias "claude-code"),
-# and writes ~/.claude-code/.env pointing to the LiteLLM proxy.
+# and writes ~/.claude/settings.json pointing to the LiteLLM proxy.
 #
 # Claude Code CLI uses the Anthropic Messages API (/v1/messages). LiteLLM
 # forwards to Huawei MaaS's Anthropic-compatible endpoint
 # (/anthropic/v1/messages) via anthropic/ provider deployments in config.yaml.
+#
+# Configuration is written to ~/.claude/settings.json (Claude Code's native
+# settings file) using the env block. No shell exports or source needed.
 #
 # Prerequisites:
 #   - LiteLLM proxy running on 127.0.0.1:4000
@@ -22,8 +25,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-CLAUDE_DIR="$HOME/.claude-code"
-CLAUDE_ENV="$CLAUDE_DIR/.env"
+CLAUDE_CONFIG_DIR="$HOME/.claude"
+CLAUDE_SETTINGS="$CLAUDE_CONFIG_DIR/settings.json"
 LITELLM_URL="http://127.0.0.1:4000"
 CURL_TIMEOUT=15
 
@@ -103,9 +106,9 @@ echo ""
 # ── 3. Acquire virtual key (idempotent — reuse existing if valid) ──
 echo "3. Configuring LiteLLM virtual key..."
 
-# Try to reuse existing key from ~/.claude-code/.env (fast, local)
-if [ -z "$VIRTUAL_KEY" ] && [ -f "$CLAUDE_ENV" ]; then
-  EXISTING_KEY=$(grep -oP '^export ANTHROPIC_API_KEY="?\K[^"]+' "$CLAUDE_ENV" 2>/dev/null || true)
+# Try to reuse existing key from ~/.claude/settings.json (fast, local)
+if [ -z "$VIRTUAL_KEY" ] && [ -f "$CLAUDE_SETTINGS" ]; then
+  EXISTING_KEY=$(jq -r '.env.ANTHROPIC_API_KEY // empty' "$CLAUDE_SETTINGS" 2>/dev/null || true)
   if [ -n "$EXISTING_KEY" ] && [[ "$EXISTING_KEY" == sk-* ]]; then
     if [ "$DRY_RUN" = true ]; then
       echo "   Would test existing key from .env: ${EXISTING_KEY:0:8}...${EXISTING_KEY: -4}"
@@ -114,7 +117,7 @@ if [ -z "$VIRTUAL_KEY" ] && [ -f "$CLAUDE_ENV" ]; then
          -H "x-api-key: $EXISTING_KEY" \
          -H "Content-Type: application/json" \
          -H "anthropic-version: 2023-06-01" \
-         -d '{"model":"deepseek-v3.2","messages":[{"role":"user","content":"ok"}],"max_tokens":1}'; then
+         -d '{"model":"claude-deepseek-v3.2","messages":[{"role":"user","content":"ok"}],"max_tokens":1}'; then
       echo "   Existing virtual key from .env is valid. Reusing: ${EXISTING_KEY:0:8}...${EXISTING_KEY: -4}"
       VIRTUAL_KEY="$EXISTING_KEY"
     else
@@ -134,7 +137,7 @@ if [ -z "$VIRTUAL_KEY" ] && [ -n "${ANTHROPIC_API_KEY:-}" ]; then
          -H "x-api-key: $EXISTING_KEY" \
          -H "Content-Type: application/json" \
          -H "anthropic-version: 2023-06-01" \
-         -d '{"model":"deepseek-v3.2","messages":[{"role":"user","content":"ok"}],"max_tokens":1}'; then
+         -d '{"model":"claude-deepseek-v3.2","messages":[{"role":"user","content":"ok"}],"max_tokens":1}'; then
       echo "   Existing virtual key from env is valid. Reusing: ${EXISTING_KEY:0:8}...${EXISTING_KEY: -4}"
       VIRTUAL_KEY="$EXISTING_KEY"
     else
@@ -166,7 +169,7 @@ if [ -z "$VIRTUAL_KEY" ] && [ -n "${LITELLM_MASTER_KEY:-}" ]; then
                  -H "x-api-key: $ALIAS_KEY" \
                  -H "Content-Type: application/json" \
                  -H "anthropic-version: 2023-06-01" \
-                 -d '{"model":"deepseek-v3.2","messages":[{"role":"user","content":"ok"}],"max_tokens":1}'; then
+                 -d '{"model":"claude-deepseek-v3.2","messages":[{"role":"user","content":"ok"}],"max_tokens":1}'; then
               echo "   Existing virtual key (alias 'claude-code') is valid. Reusing: ${ALIAS_KEY:0:8}...${ALIAS_KEY: -4}"
               VIRTUAL_KEY="$ALIAS_KEY"
             else
@@ -213,37 +216,41 @@ if [ -z "$VIRTUAL_KEY" ]; then
 fi
 echo ""
 
-# ── 4. Write .env ──
+# ── 4. Write settings.json ──
 echo "4. Writing Claude Code CLI config..."
 
 if [ "$DRY_RUN" = true ]; then
-  echo "   Would write: $CLAUDE_ENV (chmod 600)"
+  echo "   Would write: $CLAUDE_SETTINGS (chmod 600)"
   echo ""
   echo "=== Dry run complete — no changes made ==="
   exit 0
 fi
 
-mkdir -p "$CLAUDE_DIR"
+mkdir -p "$CLAUDE_CONFIG_DIR"
 
-NEW_ENV="export ANTHROPIC_BASE_URL=\"http://127.0.0.1:4000\"
-export ANTHROPIC_API_KEY=\"$VIRTUAL_KEY\"
-export ANTHROPIC_MODEL=\"claude-glm-5.2\"
-export ANTHROPIC_SMALL_FAST_MODEL=\"claude-deepseek-v3.2\""
+# Build settings.json — Claude Code's native config format
+# The env block sets ANTHROPIC_* vars without needing shell exports
+NEW_SETTINGS=$(jq -n \
+  --arg base_url "http://127.0.0.1:4000" \
+  --arg api_key "$VIRTUAL_KEY" \
+  --arg model "claude-glm-5.2" \
+  --arg fast_model "claude-deepseek-v3.2" \
+  '{env: {ANTHROPIC_BASE_URL: $base_url, ANTHROPIC_API_KEY: $api_key, ANTHROPIC_MODEL: $model, ANTHROPIC_SMALL_FAST_MODEL: $fast_model}}')
 
-if [ -f "$CLAUDE_ENV" ]; then
-  EXISTING_ENV=$(cat "$CLAUDE_ENV")
-  if [ "$NEW_ENV" = "$EXISTING_ENV" ]; then
-    echo "   .env unchanged — skipping write"
+if [ -f "$CLAUDE_SETTINGS" ]; then
+  EXISTING_SETTINGS=$(cat "$CLAUDE_SETTINGS")
+  if [ "$NEW_SETTINGS" = "$EXISTING_SETTINGS" ]; then
+    echo "   settings.json unchanged — skipping write"
   else
-    cp "$CLAUDE_ENV" "$CLAUDE_ENV.bak.$(date +%Y%m%d%H%M%S)"
-    echo "$NEW_ENV" > "$CLAUDE_ENV"
-    chmod 600 "$CLAUDE_ENV"
-    echo "   Updated: $CLAUDE_ENV (backup saved)"
+    cp "$CLAUDE_SETTINGS" "$CLAUDE_SETTINGS.bak.$(date +%Y%m%d%H%M%S)"
+    echo "$NEW_SETTINGS" > "$CLAUDE_SETTINGS"
+    chmod 600 "$CLAUDE_SETTINGS"
+    echo "   Updated: $CLAUDE_SETTINGS (backup saved)"
   fi
 else
-  echo "$NEW_ENV" > "$CLAUDE_ENV"
-  chmod 600 "$CLAUDE_ENV"
-  echo "   Written: $CLAUDE_ENV (chmod 600)"
+  echo "$NEW_SETTINGS" > "$CLAUDE_SETTINGS"
+  chmod 600 "$CLAUDE_SETTINGS"
+  echo "   Written: $CLAUDE_SETTINGS (chmod 600)"
 fi
 echo ""
 
@@ -251,7 +258,7 @@ echo ""
 echo "=== Installation complete ==="
 echo ""
 echo "Config files:"
-echo "  Claude Code: $CLAUDE_ENV (chmod 600)"
+echo "  Claude Code: $CLAUDE_SETTINGS (chmod 600)"
 echo ""
 echo "Versions:"
 command -v claude &>/dev/null && echo "  claude:     $(claude --version 2>/dev/null || echo 'unknown')"
@@ -262,6 +269,5 @@ echo "All 6 models available via LiteLLM proxy (Anthropic Messages API)"
 echo "LiteLLM proxy URL: $LITELLM_URL"
 echo ""
 echo "Next steps:"
-echo "  1. Source the env:  source $CLAUDE_ENV"
-echo "  2. Run:              claude"
-echo "  3. Validate:         $SCRIPT_DIR/5_validate.sh"
+echo "  1. Run:              claude"
+echo "  2. Validate:         $SCRIPT_DIR/5_validate.sh"

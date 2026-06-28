@@ -653,8 +653,8 @@ if [ "$RUN_CLAUDE_CODE" = true ]; then
   echo ""
   echo "━━━ E. Claude Code CLI Configuration ━━━"
 
-  CLAUDE_DIR="$HOME/.claude-code"
-  CLAUDE_ENV="$CLAUDE_DIR/.env"
+  CLAUDE_CONFIG_DIR="$HOME/.claude"
+  CLAUDE_SETTINGS="$CLAUDE_CONFIG_DIR/settings.json"
 
   # E1. Claude Code CLI binary
   echo ""
@@ -665,39 +665,41 @@ if [ "$RUN_CLAUDE_CODE" = true ]; then
     fail "claude not found — run: npm install -g @anthropic-ai/claude-code"
   fi
 
-  # E2. Config file (.env)
+  # E2. Config file (settings.json)
   echo ""
   echo "E2. Config file"
-  if [ -f "$CLAUDE_ENV" ]; then
-    pass ".env exists: $CLAUDE_ENV"
+  if [ -f "$CLAUDE_SETTINGS" ]; then
+    pass "settings.json exists: $CLAUDE_SETTINGS"
   else
-    fail ".env not found in $CLAUDE_DIR"
+    fail "settings.json not found in $CLAUDE_CONFIG_DIR"
   fi
 
   # E3. Provider configuration
   echo ""
   echo "E3. Provider configuration"
-  if [ -f "$CLAUDE_ENV" ]; then
-    if grep -q 'ANTHROPIC_BASE_URL\s*=\s*"http://127.0.0.1:4000"' "$CLAUDE_ENV"; then
+  if [ -f "$CLAUDE_SETTINGS" ]; then
+    CLAUDE_BASE_URL=$(jq -r '.env.ANTHROPIC_BASE_URL // empty' "$CLAUDE_SETTINGS" 2>/dev/null || true)
+    if [ "$CLAUDE_BASE_URL" = "http://127.0.0.1:4000" ]; then
       pass "ANTHROPIC_BASE_URL points to LiteLLM proxy"
     else
-      fail "ANTHROPIC_BASE_URL not pointing to LiteLLM proxy"
+      fail "ANTHROPIC_BASE_URL not pointing to LiteLLM proxy (got: $CLAUDE_BASE_URL)"
     fi
 
-    if grep -qP '^export ANTHROPIC_API_KEY\s*=\s*"sk-\S+"' "$CLAUDE_ENV"; then
+    CLAUDE_VK=$(jq -r '.env.ANTHROPIC_API_KEY // empty' "$CLAUDE_SETTINGS" 2>/dev/null || true)
+    if [[ "$CLAUDE_VK" == sk-* ]]; then
       pass "ANTHROPIC_API_KEY set (starts with sk-)"
     else
       fail "ANTHROPIC_API_KEY not set or invalid"
     fi
 
-    if grep -qP '^export ANTHROPIC_MODEL\s*=\s*"\S+"' "$CLAUDE_ENV"; then
-      CLAUDE_MODEL=$(grep -oP '^export ANTHROPIC_MODEL\s*=\s*"\K[^"]+' "$CLAUDE_ENV" 2>/dev/null || true)
+    CLAUDE_MODEL=$(jq -r '.env.ANTHROPIC_MODEL // empty' "$CLAUDE_SETTINGS" 2>/dev/null || true)
+    if [ -n "$CLAUDE_MODEL" ]; then
       pass "default model set: $CLAUDE_MODEL"
     else
       fail "default model not set"
     fi
 
-    PERMS=$(stat -c '%a' "$CLAUDE_ENV" 2>/dev/null || stat -f '%Lp' "$CLAUDE_ENV" 2>/dev/null)
+    PERMS=$(stat -c '%a' "$CLAUDE_SETTINGS" 2>/dev/null || stat -f '%Lp' "$CLAUDE_SETTINGS" 2>/dev/null)
     if [ "$PERMS" = "600" ]; then
       pass "Config file permissions 600"
     else
@@ -706,15 +708,12 @@ if [ "$RUN_CLAUDE_CODE" = true ]; then
   else
     fail "No Claude Code config — skipping provider checks"
     FAIL=$((FAIL + 4))
+    CLAUDE_VK=""
   fi
 
   # E4. Messages API smoke test
   echo ""
   echo "E4. Messages API smoke test"
-  CLAUDE_VK=""
-  if [ -f "$CLAUDE_ENV" ]; then
-    CLAUDE_VK=$(grep -oP '^export ANTHROPIC_API_KEY="?\K[^"]+' "$CLAUDE_ENV" 2>/dev/null || true)
-  fi
   if [ "$DRY_RUN" = true ]; then
     skip "Messages API smoke test"
   elif [ -n "$CLAUDE_VK" ]; then
@@ -729,7 +728,7 @@ if [ "$RUN_CLAUDE_CODE" = true ]; then
       fail "Messages API smoke test: $SMOKE_MODEL did not respond"
     fi
   else
-    skip "Messages API smoke test (no API key found in ~/.claude-code/.env)"
+    skip "Messages API smoke test (no API key found in ~/.claude/settings.json)"
   fi
 
   echo ""

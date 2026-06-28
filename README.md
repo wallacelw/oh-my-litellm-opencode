@@ -21,7 +21,7 @@ git clone https://github.com/wallacelw/oh-my-litellm-opencode
 cd oh-my-litellm-opencode
 ./scripts/0_bootstrap.sh      # prompts for MaaS key, starts Docker, installs opencode + Codex CLI
 ./scripts/5_validate.sh       # verify
-opencode                      # or: codex  or:  source ~/.claude-code/.env && claude
+opencode                      # or: codex  or:  claude --bare
 ```
 
 After install, open the Grafana dashboard at `http://127.0.0.1:3000`

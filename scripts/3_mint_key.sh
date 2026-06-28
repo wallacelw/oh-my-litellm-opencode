@@ -9,7 +9,9 @@ set -euo pipefail
 #   ./3_mint_key.sh --budget=50 --duration=7d          # custom budget + duration
 #   ./3_mint_key.sh --models=glm-5.1 --budget=10       # model-scoped with budget
 #   ./3_mint_key.sh --alias=my-key                     # custom alias
-#   ./3_mint_key.sh --no-budget                        # unlimited budget (dangerous)
+#   ./3_mint_key.sh --no-budget                        # unlimited budget
+#   ./3_mint_key.sh --alias=xxx --no-budget --quiet    # callable from scripts (outputs key to stdout)
+#   ./3_mint_key.sh --dry-run                          # preview without minting
 
 # ── Parse args ──
 MODELS=""
@@ -17,6 +19,8 @@ BUDGET="100"
 DURATION=""
 ALIAS="opencode"
 NO_BUDGET=false
+DRY_RUN=false
+QUIET=false
 for arg in "$@"; do
   case "$arg" in
     --models=*)     MODELS="${arg#--models=}" ;;
@@ -24,6 +28,8 @@ for arg in "$@"; do
     --duration=*)   DURATION="${arg#--duration=}" ;;
     --alias=*)      ALIAS="${arg#--alias=}" ;;
     --no-budget)    NO_BUDGET=true ;;
+    --dry-run)      DRY_RUN=true ;;
+    --quiet)        QUIET=true ;;
   esac
 done
 
@@ -85,27 +91,33 @@ if [ -n "$EXISTING_KEY" ] && [[ "$EXISTING_KEY" == sk-* ]]; then
      -H "Authorization: Bearer $EXISTING_KEY" \
      -H "Content-Type: application/json" \
      -d '{"model":"deepseek-v3.2","messages":[{"role":"user","content":"ok"}],"max_tokens":1}' &>/dev/null; then
-    echo "Existing virtual key with alias '$ALIAS' is valid. Reusing:"
-    echo "  Key:    ${EXISTING_KEY:0:8}...${EXISTING_KEY: -4}"
-    echo ""
-    echo "To use this key, set it in opencode.jsonc:"
-    echo "  .provider.LiteLLM.options.apiKey = \"$EXISTING_KEY\""
-    echo ""
-    echo "Or re-run 4a_install_opencode.sh:"
-    echo "  ./4a_install_opencode.sh --virtual-key=$EXISTING_KEY"
+    if [ "$QUIET" = true ]; then
+      echo "$EXISTING_KEY"
+    else
+      echo "Existing virtual key with alias '$ALIAS' is valid. Reusing:"
+      echo "  Key:    ${EXISTING_KEY:0:8}...${EXISTING_KEY: -4}"
+    fi
     exit 0
   else
-    echo "Existing key with alias '$ALIAS' is invalid or expired. Minting new key."
+    [ "$QUIET" = false ] && echo "Existing key with alias '$ALIAS' is invalid or expired. Minting new key."
   fi
 fi
 
 # ── Mint the key ──
-echo "Minting virtual key from LiteLLM..."
-echo "  Alias:   $ALIAS"
-echo "  Models:  ${MODELS:-all}"
-echo "  Budget:  $([ "$NO_BUDGET" = true ] && echo 'unlimited' || echo "\$${BUDGET}")"
-echo "  Duration: ${DURATION:-unlimited}"
-echo ""
+if [ "$DRY_RUN" = true ]; then
+  echo "Would mint key: alias=$ALIAS models=${MODELS:-all} budget=$([ "$NO_BUDGET" = true ] && echo 'unlimited' || echo "\$${BUDGET}") duration=${DURATION:-unlimited}"
+  echo "sk-dryrun-placeholder"
+  exit 0
+fi
+
+if [ "$QUIET" = false ]; then
+  echo "Minting virtual key from LiteLLM..."
+  echo "  Alias:   $ALIAS"
+  echo "  Models:  ${MODELS:-all}"
+  echo "  Budget:  $([ "$NO_BUDGET" = true ] && echo 'unlimited' || echo "\$${BUDGET}")"
+  echo "  Duration: ${DURATION:-unlimited}"
+  echo ""
+fi
 
 # Retry curl with backoff (3 attempts, 5s/10s/15s delay)
 MAX_ATTEMPTS=3
@@ -117,11 +129,11 @@ for attempt in $(seq 1 $MAX_ATTEMPTS); do
     -d "$BODY" 2>/dev/null) && break
   if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
     DELAY=$((attempt * 5))
-    echo "  Attempt $attempt failed. Retrying in ${DELAY}s..."
+    [ "$QUIET" = false ] && echo "  Attempt $attempt failed. Retrying in ${DELAY}s..."
     sleep $DELAY
   else
-    echo "ERROR: Failed to mint virtual key after $MAX_ATTEMPTS attempts."
-    echo "  Check that LiteLLM is healthy and LITELLM_MASTER_KEY is correct."
+    echo "ERROR: Failed to mint virtual key after $MAX_ATTEMPTS attempts." >&2
+    echo "  Check that LiteLLM is healthy and LITELLM_MASTER_KEY is correct." >&2
     exit 1
   fi
 done
@@ -130,17 +142,15 @@ KEY=$(echo "$RESPONSE" | jq -r '.key')
 KEY_ID=$(echo "$RESPONSE" | jq -r '.key_id // empty')
 
 if [ -z "$KEY" ] || [ "$KEY" = "null" ]; then
-  echo "ERROR: Failed to mint virtual key."
-  echo "Response: $RESPONSE"
+  echo "ERROR: Failed to mint virtual key." >&2
+  echo "Response: $RESPONSE" >&2
   exit 1
 fi
 
-echo "Virtual key minted successfully:"
-echo "  Key:    ${KEY:0:8}...${KEY: -4}"
-[ -n "$KEY_ID" ] && echo "  Key ID: $KEY_ID"
-echo ""
-echo "To use this key, set it in opencode.jsonc:"
-echo "  .provider.LiteLLM.options.apiKey = \"$KEY\""
-echo ""
-echo "Or re-run 4a_install_opencode.sh:"
-echo "  ./4a_install_opencode.sh --virtual-key=$KEY"
+if [ "$QUIET" = true ]; then
+  echo "$KEY"
+else
+  echo "Virtual key minted successfully:"
+  echo "  Key:    ${KEY:0:8}...${KEY: -4}"
+  [ -n "$KEY_ID" ] && echo "  Key ID: $KEY_ID"
+fi

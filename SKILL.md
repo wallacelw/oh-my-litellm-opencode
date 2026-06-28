@@ -28,11 +28,11 @@ For reference documentation (architecture, presets, models, repair), see
 
 | Env var | Set by | Read by | Format | Immutable? |
 |---------|--------|---------|--------|------------|
-| `HUAWEI_MAAS_API_KEY` | User (prompted, Step 5) | `1_init_env.sh`, `3_install.sh` | Non-empty, no placeholders, validated via live API call | No |
+| `HUAWEI_MAAS_API_KEY` | User (prompted, Step 5) | `1_init_env.sh`, `3a_install_opencode.sh` | Non-empty, no placeholders, validated via live API call | No |
 | `HUAWEI_MAAS_API_KEY_COUNT` | Agent (Step 7) → recalculated by `0_bootstrap.sh` | `1_init_env.sh`, `2_generate_config.sh` | Integer ≥ 1 | No |
 | `HUAWEI_MAAS_API_KEY_0` | `0_bootstrap.sh` (auto, = main key) | `1_init_env.sh`, `2_generate_config.sh` | Non-empty | No |
 | `HUAWEI_MAAS_API_KEY_1..N` | User (prompted, Step 5) → agent exports (Step 7) | `0_bootstrap.sh` → `1_init_env.sh` | Non-empty | No |
-| `LITELLM_MASTER_KEY` | `1_init_env.sh` (auto-generated) | `0_bootstrap.sh`, `3_install.sh` | Must start with `sk-` | **Yes** — changing invalidates all virtual keys |
+| `LITELLM_MASTER_KEY` | `1_init_env.sh` (auto-generated) | `0_bootstrap.sh`, `3a_install_opencode.sh` | Must start with `sk-` | **Yes** — changing invalidates all virtual keys |
 | `LITELLM_SALT_KEY` | `1_init_env.sh` (auto-generated) | LiteLLM container | Random string | **Yes** — changing invalidates all virtual keys |
 | `DB_PASSWORD` | `1_init_env.sh` (auto-generated) | docker-compose, postgres | Random string | **Yes** — changing breaks DB auth |
 | `GRAFANA_ADMIN_PASSWORD` | `1_init_env.sh` (auto-generated) | docker-compose, `5_validate.sh` | Random string | No — rotating changes dashboard login only |
@@ -110,7 +110,7 @@ command -v sudo                     # sudo available
 ```
 
 > **Note:** `bun` and `jq` are NOT required when `INSTALL_MODE=litellm-only`.
-> They are only used by `3_install.sh` (opencode plugin install) and
+> They are only used by `3a_install_opencode.sh` (opencode plugin install) and
 > `5_validate.sh` Section B (opencode config checks), both skipped in
 > LiteLLM-only mode.
 
@@ -147,7 +147,7 @@ export PATH="$HOME/.bun/bin:$PATH"
 ```
 
 > **Note:** opencode is NOT a prerequisite. It is installed automatically during
-> Step 7 (bootstrap → `3_install.sh`). Do not install it separately.
+> Step 7 (bootstrap → `3a_install_opencode.sh`). Do not install it separately.
 
 **Postcondition:** All of the following succeed:
 

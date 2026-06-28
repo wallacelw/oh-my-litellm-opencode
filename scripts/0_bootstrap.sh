@@ -398,7 +398,7 @@ print_step "4" "Install tools and configure"
 # ── 4a. opencode ──
 if [ "$INSTALL_OPENCODE" = true ]; then
   echo "  ── opencode + oh-my-opencode-slim ──"
-  INSTALL_CMD=("$SCRIPT_DIR/3_install.sh")
+  INSTALL_CMD=("$SCRIPT_DIR/3a_install_opencode.sh")
   [ -n "$VIRTUAL_KEY" ] && INSTALL_CMD+=("--virtual-key=$VIRTUAL_KEY")
   [ "$DRY_RUN" = true ] && INSTALL_CMD+=("--dry-run")
 

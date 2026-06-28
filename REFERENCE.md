@@ -41,7 +41,7 @@ This is reference documentation. For the install procedure, read
 | 0 | `0_bootstrap.sh` | End-to-end orchestrator: prereqs → deploy → install → validate. `--litellm-only`, `--opencode-only`, `--codex-only` for modular installs |
 | 1 | `1_init_env.sh` | Generate `.env` with secrets + MaaS keys |
 | 2 | `2_generate_config.sh` | Build `configs/litellm/config.yaml` from `.env` |
-| 3 | `3_install.sh` | Install opencode + plugin + mint key + write config |
+| 3a | `3a_install_opencode.sh` | Install opencode + plugin + mint key + write config |
 | 3b | `3b_install_codex.sh` | Install Codex CLI + mint key + write `~/.codex/config.toml` |
 | 4 | `4_mint-virtual-key.sh` | Mint a scoped virtual key (standalone) |
 | 5 | `5_validate.sh` | Validate all components (`--litellm-only`, `--opencode-only`, `--codex-only` for scoped checks) |

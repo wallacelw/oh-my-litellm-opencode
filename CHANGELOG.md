@@ -124,7 +124,7 @@ Initial release.
 
 ### Fixed
 
-- `set -e` traps in `3_install.sh` and `5_validate.sh` — command
+- `set -e` traps in `3a_install_opencode.sh` and `5_validate.sh` — command
   substitutions in assignments could trigger `set -e` before error
   handlers could print messages, causing silent script death on API
   failures (virtual key minting, model catalog fetch, liveness probe).

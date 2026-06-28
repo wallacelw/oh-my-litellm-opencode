@@ -91,8 +91,8 @@ if [ -n "$EXISTING_KEY" ] && [[ "$EXISTING_KEY" == sk-* ]]; then
     echo "To use this key, set it in opencode.jsonc:"
     echo "  .provider.LiteLLM.options.apiKey = \"$EXISTING_KEY\""
     echo ""
-    echo "Or re-run 3_install.sh:"
-    echo "  ./3_install.sh --virtual-key=$EXISTING_KEY"
+    echo "Or re-run 3a_install_opencode.sh:"
+    echo "  ./3a_install_opencode.sh --virtual-key=$EXISTING_KEY"
     exit 0
   else
     echo "Existing key with alias '$ALIAS' is invalid or expired. Minting new key."
@@ -142,5 +142,5 @@ echo ""
 echo "To use this key, set it in opencode.jsonc:"
 echo "  .provider.LiteLLM.options.apiKey = \"$KEY\""
 echo ""
-echo "Or re-run 3_install.sh:"
-echo "  ./3_install.sh --virtual-key=$KEY"
+echo "Or re-run 3a_install_opencode.sh:"
+echo "  ./3a_install_opencode.sh --virtual-key=$KEY"

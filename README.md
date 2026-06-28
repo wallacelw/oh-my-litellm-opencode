@@ -8,7 +8,7 @@ and Prometheus + Grafana observability.
 
 - **LiteLLM proxy** on `:4000` — load balancing, virtual keys, budget tracking
 - **opencode** — 4 presets, 7 agents, `oh-my-opencode-slim` plugin
-- **Codex CLI** — OpenAI Responses API bridged to Huawei MaaS
+- **Codex CLI** — OpenAI Responses API bridged to Chat Completions by LiteLLM
 - **Claude Code CLI** — Anthropic Messages API via LiteLLM proxy
 - **Prometheus + Grafana** on `:9090` / `:3000` — 12-panel dashboard, no login
 - **6 models** — glm-5.2, glm-5.1, glm-5, deepseek-v4-pro, deepseek-v4-flash, deepseek-v3.2

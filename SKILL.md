@@ -39,6 +39,7 @@ For reference documentation (architecture, presets, models, repair), see
 | `PROMETHEUS_RETENTION` | `1_init_env.sh` (default `30d`) | docker-compose | Prometheus duration (`Nd`/`Nh`/`Nw`), ≥ `7d` | No |
 | `CODEX_VIRTUAL_KEY` | `3b_install_codex.sh` (minted) | `~/.codex/.env` as `LITELLM_CODEX_API_KEY` | Virtual key starting with `sk-` | No — tied to `LITELLM_MASTER_KEY` |
 | `HUAWEI_MAAS_ANTHROPIC_API_BASE` | `1_init_env.sh` (default `https://api-ap-southeast-1.modelarts-maas.com/anthropic`) | `2_generate_config.sh` | URL | No |
+| `HUAWEI_MAAS_API_BASE` | `1_init_env.sh` (default `https://api-ap-southeast-1.modelarts-maas.com/openai`) | `2_generate_config.sh` | URL | No |
 | `CLAUDE_CODE_VIRTUAL_KEY` | `3c_install_claude_code.sh` (minted) | `~/.claude/settings.json` env block as `ANTHROPIC_API_KEY` | Virtual key starting with `sk-` | No — tied to `LITELLM_MASTER_KEY` |
 
 **Rules:**
@@ -104,22 +105,24 @@ Linux only." If dir creation fails even with sudo: escalate.
 Check each tool:
 
 ```bash
-command -v bun     && bun --version          # only if INSTALL_MODE=full
-command -v jq      && jq --version           # only if INSTALL_MODE=full
+command -v bun     && bun --version          # if INSTALL_MODE ∈ {full, opencode-only}
+command -v jq      && jq --version           # if INSTALL_MODE != litellm-only
+command -v npm     && npm --version          # if INSTALL_MODE ∈ {full, codex-only, claude-code-only}
+command -v bwrap   && bwrap --version        # if INSTALL_MODE ∈ {full, codex-only}
 command -v git     && git --version
 command -v python3 && python3 --version
 command -v curl    && curl --version
 command -v docker  && docker --version
 docker compose version              # V2 plugin
 command -v sudo                     # sudo available
-command -v npm     && npm --version          # only if INSTALL_MODE != litellm-only
 ```
 
-> **Note:** `bun`, `jq`, and `npm` are NOT required when
-> `INSTALL_MODE=litellm-only`. `bun` and `jq` are used by opencode install and
-> validation; `npm` is used by Codex CLI (`npm install -g @openai/codex`) and
-> Claude Code CLI (`npm install -g @anthropic-ai/claude-code`). All are skipped
-> in LiteLLM-only mode.
+> **Note:** None of `bun`, `jq`, `npm`, or `bwrap` are required when
+> `INSTALL_MODE=litellm-only`. `bun` is needed by opencode plugin install
+> (`{full, opencode-only}`). `jq` is needed by all tool installs and validation
+> (`{not litellm-only}`). `npm` is needed by Codex CLI and Claude Code CLI
+> (`{full, codex-only, claude-code-only}`). `bwrap` (bubblewrap) is needed by
+> Codex CLI for sandboxing (`{full, codex-only}`).
 
 Collect all missing tools. If any are missing:
 
@@ -462,6 +465,7 @@ fi
 | `liveness probe` and not `200` | Re-run from Step 8 |
 | `opencode not found` | `curl -fsSL https://opencode.ai/install \| bash`, retry Step 9 |
 | `codex not found` | `npm install -g @openai/codex`, retry Step 9 |
+| `bwrap not found` | `sudo apt-get install -y bubblewrap`, retry Step 9 |
 | `Model catalog not reachable` | Check virtual key in `~/.config/opencode/opencode.jsonc`, re-run from Step 7 |
 | `smoke test` and `did not respond` | Re-validate MaaS key via Step 5's API call. If key is valid, escalate. |
 | `Prometheus not reachable` | `docker compose -f "$PROJECT_DIR/docker-compose.yml" up -d prometheus`, wait 10s, retry Step 9 |

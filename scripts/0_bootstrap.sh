@@ -218,6 +218,9 @@ if [ "$INSTALL_CLAUDE_CODE" = true ]; then
   check_prereq "npm"   npm     "install from https://nodejs.org/ (needed for Claude Code CLI)"
   check_prereq "jq"    jq      "install from https://stedolan.github.io/jq/"
 fi
+if [ "$INSTALL_CODEX" = true ]; then
+  check_prereq "bwrap" bwrap   "install with: apt-get install -y bubblewrap (needed for Codex CLI sandboxing)"
+fi
 check_prereq "docker"  docker  "install from https://docs.docker.com/engine/install/"
 check_prereq "git"     git     "install git"
 check_prereq "python3" python3 "install Python 3"

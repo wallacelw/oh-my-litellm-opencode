@@ -4,7 +4,7 @@ LiteLLM proxy → Huawei MaaS → opencode + Codex CLI + Claude Code CLI. Virtua
 
 ## Quick Start
 
-**Prerequisites:** Linux, Docker, bun, jq.
+**Prerequisites:** Linux, Docker, bun, jq, npm, bubblewrap.
 
 **1. Install prerequisites** (skip any you already have):
 
@@ -105,7 +105,8 @@ Upgrade oh-my-litellm-opencode on this machine by following Section D
    If pull fails, ask me: "Reset to origin/main? (y/n)"
 5. Run bootstrap with the key from .env:
    ./scripts/0_bootstrap.sh --agent --maas-key="$MAAS_KEY"
-   (add --litellm-only if the existing install is LiteLLM-only)
+   (add --litellm-only, --opencode-only, --codex-only, or --claude-code-only
+   if the existing install used one of those modes)
    Bootstrap is idempotent — it preserves all existing secrets and data.
 6. The upgrade is complete when scripts/5_validate.sh exits 0.
 7. Do NOT launch opencode. Report the summary and stop.

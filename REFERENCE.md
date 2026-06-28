@@ -33,6 +33,7 @@ This is reference documentation. For the install procedure, read
 | LiteLLM Metrics | `http://127.0.0.1:4000/metrics` | None (Prometheus format) |
 | Prometheus | `http://127.0.0.1:9090` | None (bound to localhost) |
 | Grafana | `http://127.0.0.1:3000` | Admin password (from `.env`) |
+| Codex CLI | `http://127.0.0.1:4000/v1` | Virtual key in `~/.codex/.env` |
 
 ## Scripts
 
@@ -42,7 +43,7 @@ This is reference documentation. For the install procedure, read
 | 1 | `1_init_env.sh` | Generate `.env` with secrets + MaaS keys |
 | 2 | `2_generate_config.sh` | Build `configs/litellm/config.yaml` from `.env` |
 | 3a | `3a_install_opencode.sh` | Install opencode + plugin + mint key + write config |
-| 3b | `3b_install_codex.sh` | Install Codex CLI + mint key + write `~/.codex/config.toml` |
+| 3b | `3b_install_codex.sh` | Install Codex CLI + mint key + write `~/.codex/config.toml` + `model_catalog.json` + `.env` |
 | 4 | `4_mint-virtual-key.sh` | Mint a scoped virtual key (standalone) |
 | 5 | `5_validate.sh` | Validate all components (`--litellm-only`, `--opencode-only`, `--codex-only` for scoped checks) |
 

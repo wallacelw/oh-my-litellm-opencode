@@ -32,11 +32,12 @@ For reference documentation (architecture, presets, models, repair), see
 | `HUAWEI_MAAS_API_KEY_COUNT` | Agent (Step 7) → recalculated by `0_bootstrap.sh` | `1_init_env.sh`, `2_generate_config.sh` | Integer ≥ 1 | No |
 | `HUAWEI_MAAS_API_KEY_0` | `0_bootstrap.sh` (auto, = main key) | `1_init_env.sh`, `2_generate_config.sh` | Non-empty | No |
 | `HUAWEI_MAAS_API_KEY_1..N` | User (prompted, Step 5) → agent exports (Step 7) | `0_bootstrap.sh` → `1_init_env.sh` | Non-empty | No |
-| `LITELLM_MASTER_KEY` | `1_init_env.sh` (auto-generated) | `0_bootstrap.sh`, `3a_install_opencode.sh` | Must start with `sk-` | **Yes** — changing invalidates all virtual keys |
+| `LITELLM_MASTER_KEY` | `1_init_env.sh` (auto-generated) | `0_bootstrap.sh`, `3a_install_opencode.sh`, `3b_install_codex.sh` | Must start with `sk-` | **Yes** — changing invalidates all virtual keys |
 | `LITELLM_SALT_KEY` | `1_init_env.sh` (auto-generated) | LiteLLM container | Random string | **Yes** — changing invalidates all virtual keys |
 | `DB_PASSWORD` | `1_init_env.sh` (auto-generated) | docker-compose, postgres | Random string | **Yes** — changing breaks DB auth |
 | `GRAFANA_ADMIN_PASSWORD` | `1_init_env.sh` (auto-generated) | docker-compose, `5_validate.sh` | Random string | No — rotating changes dashboard login only |
 | `PROMETHEUS_RETENTION` | `1_init_env.sh` (default `30d`) | docker-compose | Prometheus duration (`Nd`/`Nh`/`Nw`), ≥ `7d` | No |
+| `CODEX_VIRTUAL_KEY` | `3b_install_codex.sh` (minted) | `~/.codex/.env` as `LITELLM_CODEX_API_KEY` | Virtual key starting with `sk-` | No — tied to `LITELLM_MASTER_KEY` |
 
 **Rules:**
 
@@ -483,12 +484,16 @@ Grafana login:
 
 opencode config:   ~/.config/opencode/opencode.jsonc
 plugin config:     ~/.config/opencode/oh-my-opencode-slim.json
+Codex CLI config:  ~/.codex/config.toml
+Codex catalog:     ~/.codex/model_catalog.json
+Codex API key:     ~/.codex/.env
 
 Next steps:
   1. Restart opencode to apply the new configuration:
        - Exit any running opencode session (Ctrl+C or /exit)
        - Start fresh: opencode
   2. Switch preset: /preset LiteLLM-Huawei-MaaS-Core
+  3. Or use Codex CLI: codex
 ```
 
 If `INSTALL_MODE=litellm-only`:

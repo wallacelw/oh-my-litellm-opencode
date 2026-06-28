@@ -1,6 +1,6 @@
 # oh-my-litellm-opencode
 
-LiteLLM proxy → Huawei MaaS → opencode. Virtual keys, 4 presets, 6 models, multi-key load balancing, Prometheus + Grafana observability.
+LiteLLM proxy → Huawei MaaS → opencode + Codex CLI. Virtual keys, 4 presets, 6 models, multi-key load balancing, Prometheus + Grafana observability.
 
 ## Quick Start
 
@@ -19,9 +19,9 @@ sudo apt-get install -y jq                         # jq
 ```bash
 git clone https://github.com/wallacelw/oh-my-litellm-opencode
 cd oh-my-litellm-opencode
-./scripts/0_bootstrap.sh      # prompts for MaaS key, starts Docker, installs opencode
+./scripts/0_bootstrap.sh      # prompts for MaaS key, starts Docker, installs opencode + Codex CLI
 ./scripts/5_validate.sh       # verify
-opencode
+opencode                      # or: codex
 ```
 
 After install, open the Grafana dashboard at `http://127.0.0.1:3000`
@@ -30,10 +30,16 @@ After install, open the Grafana dashboard at `http://127.0.0.1:3000`
 If opencode was already running, exit it (`/exit` or Ctrl+C) and start fresh
 to pick up the new configuration.
 
-**LiteLLM-only?** Skip opencode and just deploy the proxy:
+**LiteLLM-only?** Skip opencode and Codex CLI, just deploy the proxy:
 
 ```bash
-./scripts/0_bootstrap.sh --litellm-only    # LiteLLM proxy only, no opencode
+./scripts/0_bootstrap.sh --litellm-only    # LiteLLM proxy only
+```
+
+**Codex CLI only?** Skip opencode:
+
+```bash
+./scripts/0_bootstrap.sh --codex-only      # LiteLLM proxy + Codex CLI
 ```
 
 ## One-Click Agent Install
@@ -55,7 +61,7 @@ SKILL.md exactly, top to bottom.
 5. Do NOT launch opencode. Report the summary from Step 10 and stop.
 
 You will need to ask me for:
-- Install mode: full (LiteLLM + opencode) or LiteLLM-only (default: full)
+- Install mode: full (LiteLLM + opencode + Codex CLI), litellm-only, opencode-only, or codex-only (default: full)
 - Install directory (default: /home/oh-my-litellm-opencode)
 - My Huawei MaaS API key (region: ap-southeast-1)
 - How many extra MaaS keys for load balancing (default: 0)

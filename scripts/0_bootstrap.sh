@@ -533,7 +533,10 @@ print(d.get('provider',{}).get('LiteLLM',{}).get('options',{}).get('apiKey',''))
   fi
   if [ "$INSTALL_CODEX" = true ]; then
     echo "Codex CLI config:   ~/.codex/config.toml"
-    CODEX_VK=$(grep -oP '^openai_api_key\s*=\s*"\K[^"]+' "$HOME/.codex/config.toml" 2>/dev/null || true)
+    CODEX_VK="${LITELLM_CODEX_API_KEY:-}"
+    if [ -z "$CODEX_VK" ] && [ -f "$HOME/.bashrc" ]; then
+      CODEX_VK=$(grep -oP 'export LITELLM_CODEX_API_KEY="\K[^"]+' "$HOME/.bashrc" 2>/dev/null || true)
+    fi
     if [ -n "$CODEX_VK" ]; then
       echo "Codex CLI key:      ${CODEX_VK:0:8}...${CODEX_VK: -4}"
     fi

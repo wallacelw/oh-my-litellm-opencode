@@ -2,18 +2,35 @@
 # Codex CLI Config Template
 #
 # Codex CLI uses the OpenAI Responses API (/v1/responses) exclusively.
-# LiteLLM auto-bridges Responses API → Chat Completions for custom_openai
-# providers, so Codex CLI works with Huawei MaaS models through LiteLLM.
+# LiteLLM bridges Responses API → Chat Completions via use_chat_completions_api
+# flag in config.yaml, so Codex CLI works with Huawei MaaS models through LiteLLM.
 #
-# This template is processed by scripts/3b_install_codex.sh which substitutes:
-#   <LITELLM_VIRTUAL_KEY> → minted virtual key (alias "codex")
+# A custom model provider is used instead of the built-in openai provider to
+# set wire_api = "responses" (HTTP SSE). The built-in openai provider defaults
+# to WebSocket (responses_websocket) which has a bug in LiteLLM v1.89.3 when
+# bridging to Chat Completions. Codex CLI rejects overriding the reserved
+# openai provider, so we use a custom provider with env_key instead.
+#
+# The multi_agent feature is disabled because it sends type: "namespace" tools
+# that Huawei MaaS does not support (only type: "function" is accepted).
 #
 # Config is written to ~/.codex/config.toml
+# The API key is read from the LITELLM_CODEX_API_KEY environment variable,
+# which is set by the install script in the shell profile.
+#
+# The model catalog JSON provides metadata (context window, max tokens, etc.)
+# for Huawei MaaS models so Codex CLI doesn't fall back to default metadata.
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Default model for Codex CLI
 model = "glm-5.2"
+model_provider = "litellm_proxy"
+model_catalog_json = "<CODEX_HOME>/model_catalog.json"
 
-# LiteLLM proxy as the OpenAI-compatible endpoint
-openai_base_url = "http://127.0.0.1:4000/v1"
-openai_api_key = "<LITELLM_VIRTUAL_KEY>"
+[model_providers.litellm_proxy]
+name = "LiteLLM Proxy"
+base_url = "http://127.0.0.1:4000/v1"
+env_key = "LITELLM_CODEX_API_KEY"
+wire_api = "responses"
+
+[features]
+multi_agent = false

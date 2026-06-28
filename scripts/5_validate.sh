@@ -575,16 +575,22 @@ if [ "$RUN_CODEX" = true ]; then
   echo ""
   echo "D3. Provider configuration"
   if [ -f "$CODEX_CONFIG" ]; then
-    if grep -q '^openai_base_url\s*=\s*"http://127.0.0.1:4000/v1"' "$CODEX_CONFIG"; then
-      pass "openai_base_url points to LiteLLM proxy"
+    if grep -q 'base_url\s*=\s*"http://127.0.0.1:4000/v1"' "$CODEX_CONFIG"; then
+      pass "model provider base_url points to LiteLLM proxy"
     else
-      fail "openai_base_url not pointing to LiteLLM proxy"
+      fail "model provider base_url not pointing to LiteLLM proxy"
     fi
 
-    if grep -qP '^openai_api_key\s*=\s*"sk-' "$CODEX_CONFIG"; then
-      pass "openai_api_key set (starts with sk-)"
+    if grep -qP 'env_key\s*=\s*"LITELLM_CODEX_API_KEY"' "$CODEX_CONFIG"; then
+      pass "env_key set to LITELLM_CODEX_API_KEY"
     else
-      fail "openai_api_key not set or invalid"
+      fail "env_key not set to LITELLM_CODEX_API_KEY"
+    fi
+
+    if grep -qP 'wire_api\s*=\s*"responses"' "$CODEX_CONFIG"; then
+      pass "wire_api set to responses (HTTP SSE)"
+    else
+      fail "wire_api not set to responses"
     fi
 
     if grep -qP '^model\s*=\s*"\S+"' "$CODEX_CONFIG"; then
@@ -602,7 +608,7 @@ if [ "$RUN_CODEX" = true ]; then
     fi
   else
     fail "No Codex config file — skipping provider checks"
-    FAIL=$((FAIL + 4))
+    FAIL=$((FAIL + 5))
   fi
 
   # D4. Responses API smoke test
@@ -610,23 +616,19 @@ if [ "$RUN_CODEX" = true ]; then
   echo "D4. Responses API smoke test"
   if [ "$DRY_RUN" = true ]; then
     skip "Responses API smoke test"
-  elif [ -f "$CODEX_CONFIG" ]; then
-    CODEX_VK=$(grep -oP '^openai_api_key\s*=\s*"\K[^"]+' "$CODEX_CONFIG" 2>/dev/null || true)
-    if [ -z "$CODEX_VK" ]; then
-      fail "No API key for Responses API test"
+  elif [ -n "${LITELLM_CODEX_API_KEY:-}" ]; then
+    CODEX_VK="$LITELLM_CODEX_API_KEY"
+    SMOKE_MODEL="deepseek-v3.2"
+    if curl -sf -m 30 "$LITELLM_URL/v1/responses" \
+        -H "Authorization: Bearer $CODEX_VK" \
+        -H "Content-Type: application/json" \
+        -d "{\"model\":\"$SMOKE_MODEL\",\"input\":\"ok\"}" >/dev/null 2>&1; then
+      pass "Responses API smoke test: $SMOKE_MODEL responded"
     else
-      SMOKE_MODEL="deepseek-v3.2"
-      if curl -sf -m 30 "$LITELLM_URL/v1/responses" \
-          -H "Authorization: Bearer $CODEX_VK" \
-          -H "Content-Type: application/json" \
-          -d "{\"model\":\"$SMOKE_MODEL\",\"input\":\"ok\"}" >/dev/null 2>&1; then
-        pass "Responses API smoke test: $SMOKE_MODEL responded"
-      else
-        fail "Responses API smoke test: $SMOKE_MODEL did not respond"
-      fi
+      fail "Responses API smoke test: $SMOKE_MODEL did not respond"
     fi
   else
-    skip "Responses API smoke test (no config file)"
+    skip "Responses API smoke test (LITELLM_CODEX_API_KEY not set)"
   fi
 
   echo ""

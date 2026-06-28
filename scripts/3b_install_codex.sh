@@ -7,8 +7,13 @@ set -euo pipefail
 # and writes ~/.codex/config.toml pointing to the LiteLLM proxy.
 #
 # Codex CLI uses the Responses API (/v1/responses) exclusively. LiteLLM
-# auto-bridges Responses → Chat Completions for custom_openai providers,
-# so no custom workaround is needed.
+# bridges Responses → Chat Completions via use_chat_completions_api: true
+# in config.yaml, so no custom workaround is needed.
+#
+# A custom model provider (litellm_proxy) is used instead of the built-in
+# openai provider to set wire_api = "responses" (HTTP SSE), avoiding the
+# WebSocket transport that has a bug in LiteLLM v1.89.3. The API key is
+# read from the LITELLM_CODEX_API_KEY environment variable.
 #
 # Prerequisites:
 #   - LiteLLM proxy running on 127.0.0.1:4000
@@ -137,21 +142,21 @@ if [ -z "$VIRTUAL_KEY" ] && [ -n "${LITELLM_MASTER_KEY:-}" ]; then
   fi
 fi
 
-# Try to reuse existing key from current Codex config
-if [ -z "$VIRTUAL_KEY" ] && [ -f "$CODEX_CONFIG" ]; then
-  EXISTING_KEY=$(grep -oP '^openai_api_key\s*=\s*"\K[^"]+' "$CODEX_CONFIG" 2>/dev/null || true)
-  if [ -n "$EXISTING_KEY" ] && [[ "$EXISTING_KEY" == sk-* ]]; then
+# Try to reuse existing key from environment or shell profile
+if [ -z "$VIRTUAL_KEY" ] && [ -n "${LITELLM_CODEX_API_KEY:-}" ]; then
+  EXISTING_KEY="$LITELLM_CODEX_API_KEY"
+  if [[ "$EXISTING_KEY" == sk-* ]]; then
     if [ "$DRY_RUN" = true ]; then
-      echo "   Would test existing key: ${EXISTING_KEY:0:8}...${EXISTING_KEY: -4}"
+      echo "   Would test existing key from env: ${EXISTING_KEY:0:8}...${EXISTING_KEY: -4}"
       VIRTUAL_KEY="$EXISTING_KEY"
     elif retry_curl -sf -m $CURL_TIMEOUT "$LITELLM_URL/v1/responses" \
          -H "Authorization: Bearer $EXISTING_KEY" \
          -H "Content-Type: application/json" \
          -d '{"model":"deepseek-v3.2","input":"ok"}'; then
-      echo "   Existing virtual key is valid. Reusing: ${EXISTING_KEY:0:8}...${EXISTING_KEY: -4}"
+      echo "   Existing virtual key from env is valid. Reusing: ${EXISTING_KEY:0:8}...${EXISTING_KEY: -4}"
       VIRTUAL_KEY="$EXISTING_KEY"
     else
-      echo "   Existing virtual key is invalid or expired. Minting new key."
+      echo "   Existing virtual key from env is invalid or expired. Minting new key."
     fi
   fi
 fi
@@ -194,9 +199,9 @@ echo "4. Writing Codex CLI config..."
 
 if [ "$DRY_RUN" = true ]; then
   echo "   Would write: $CODEX_CONFIG (chmod 600)"
+  echo "   Would write: $CODEX_DIR/model_catalog.json"
   echo "   Template: $PROJECT_DIR/configs/codex/config.toml.template"
-  echo "   Substitution: <LITELLM_VIRTUAL_KEY> → ${VIRTUAL_KEY:0:8}..."
-  echo "   Would write: $CODEX_DIR/auth.json (chmod 600)"
+  echo "   Would set LITELLM_CODEX_API_KEY in shell profile"
   echo ""
   echo "=== Dry run complete — no changes made ==="
   exit 0
@@ -204,8 +209,12 @@ fi
 
 mkdir -p "$CODEX_DIR"
 
+# Copy model catalog
+cp "$PROJECT_DIR/configs/codex/model_catalog.json" "$CODEX_DIR/model_catalog.json"
+echo "   Written: $CODEX_DIR/model_catalog.json"
+
 TEMPLATE="$PROJECT_DIR/configs/codex/config.toml.template"
-NEW_CONFIG=$(sed "s|<LITELLM_VIRTUAL_KEY>|$VIRTUAL_KEY|" "$TEMPLATE")
+NEW_CONFIG=$(sed "s|<CODEX_HOME>|$CODEX_DIR|g" "$TEMPLATE")
 
 if [ -f "$CODEX_CONFIG" ]; then
   EXISTING_CONFIG=$(cat "$CODEX_CONFIG")
@@ -224,25 +233,28 @@ else
 fi
 echo ""
 
-# ── 5. Authenticate (skip login screen) ──
-echo "5. Authenticating Codex CLI..."
-CODEX_AUTH="$CODEX_DIR/auth.json"
-NEW_AUTH=$(printf '{"auth_mode":"apikey","OPENAI_API_KEY":"%s"}' "$VIRTUAL_KEY")
+# ── 5. Set API key in shell profile ──
+echo "5. Setting LITELLM_CODEX_API_KEY in shell profile..."
+ENV_LINE="export LITELLM_CODEX_API_KEY=\"$VIRTUAL_KEY\""
 
-if [ -f "$CODEX_AUTH" ]; then
-  EXISTING_AUTH=$(cat "$CODEX_AUTH")
-  if [ "$NEW_AUTH" = "$EXISTING_AUTH" ]; then
-    echo "   Auth unchanged — skipping write"
-  else
-    echo "$NEW_AUTH" > "$CODEX_AUTH"
-    chmod 600 "$CODEX_AUTH"
-    echo "   Updated: $CODEX_AUTH"
+# Write to ~/.bashrc and ~/.zshrc (whichever exists)
+for RC_FILE in "$HOME/.bashrc" "$HOME/.zshrc"; do
+  if [ -f "$RC_FILE" ]; then
+    # Remove any existing LITELLM_CODEX_API_KEY line
+    if grep -q 'LITELLM_CODEX_API_KEY' "$RC_FILE" 2>/dev/null; then
+      sed -i '/LITELLM_CODEX_API_KEY/d' "$RC_FILE"
+      echo "$ENV_LINE" >> "$RC_FILE"
+      echo "   Updated: $RC_FILE"
+    else
+      echo "$ENV_LINE" >> "$RC_FILE"
+      echo "   Added: $RC_FILE"
+    fi
   fi
-else
-  echo "$NEW_AUTH" > "$CODEX_AUTH"
-  chmod 600 "$CODEX_AUTH"
-  echo "   Written: $CODEX_AUTH"
-fi
+done
+
+# Also export for current session
+export LITELLM_CODEX_API_KEY="$VIRTUAL_KEY"
+echo "   Exported for current session"
 echo ""
 
 # ── 6. Summary ──
@@ -250,7 +262,8 @@ echo "=== Installation complete ==="
 echo ""
 echo "Config files:"
 echo "  Codex CLI:  $CODEX_CONFIG (chmod 600)"
-echo "  Auth:       $CODEX_DIR/auth.json (chmod 600)"
+echo "  Catalog:    $CODEX_DIR/model_catalog.json"
+echo "  API key:    LITELLM_CODEX_API_KEY env var (set in shell profile)"
 echo ""
 echo "Versions:"
 command -v codex &>/dev/null && echo "  codex:      $(codex --version 2>/dev/null || echo 'unknown')"

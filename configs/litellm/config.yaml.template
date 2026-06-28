@@ -19,9 +19,10 @@ model_list:
 
   - model_name: glm-5.2
     litellm_params:
-      model: custom_openai/glm-5.2
+      model: openai/glm-5.2
       api_base: os.environ/HUAWEI_MAAS_API_BASE
       api_key: os.environ/HUAWEI_MAAS_API_KEY_0
+      use_chat_completions_api: true
       tpm: 198000
       rpm: 100
     model_info:
@@ -33,9 +34,10 @@ model_list:
 
   - model_name: glm-5.1
     litellm_params:
-      model: custom_openai/glm-5.1
+      model: openai/glm-5.1
       api_base: os.environ/HUAWEI_MAAS_API_BASE
       api_key: os.environ/HUAWEI_MAAS_API_KEY_0
+      use_chat_completions_api: true
       tpm: 500000
       rpm: 30
     model_info:
@@ -47,9 +49,10 @@ model_list:
 
   - model_name: glm-5
     litellm_params:
-      model: custom_openai/glm-5
+      model: openai/glm-5
       api_base: os.environ/HUAWEI_MAAS_API_BASE
       api_key: os.environ/HUAWEI_MAAS_API_KEY_0
+      use_chat_completions_api: true
       tpm: 500000
       rpm: 30
     model_info:
@@ -61,9 +64,10 @@ model_list:
 
   - model_name: deepseek-v4-pro
     litellm_params:
-      model: custom_openai/deepseek-v4-pro
+      model: openai/deepseek-v4-pro
       api_base: os.environ/HUAWEI_MAAS_API_BASE
       api_key: os.environ/HUAWEI_MAAS_API_KEY_0
+      use_chat_completions_api: true
       tpm: 30000
       rpm: 3
     model_info:
@@ -75,9 +79,10 @@ model_list:
 
   - model_name: deepseek-v4-flash
     litellm_params:
-      model: custom_openai/deepseek-v4-flash
+      model: openai/deepseek-v4-flash
       api_base: os.environ/HUAWEI_MAAS_API_BASE
       api_key: os.environ/HUAWEI_MAAS_API_KEY_0
+      use_chat_completions_api: true
       tpm: 30000
       rpm: 3
     model_info:
@@ -89,9 +94,10 @@ model_list:
 
   - model_name: deepseek-v3.2
     litellm_params:
-      model: custom_openai/deepseek-v3.2
+      model: openai/deepseek-v3.2
       api_base: os.environ/HUAWEI_MAAS_API_BASE
       api_key: os.environ/HUAWEI_MAAS_API_KEY_0
+      use_chat_completions_api: true
       tpm: 500000
       rpm: 700
     model_info:

@@ -196,6 +196,7 @@ if [ "$DRY_RUN" = true ]; then
   echo "   Would write: $CODEX_CONFIG (chmod 600)"
   echo "   Template: $PROJECT_DIR/configs/codex/config.toml.template"
   echo "   Substitution: <LITELLM_VIRTUAL_KEY> → ${VIRTUAL_KEY:0:8}..."
+  echo "   Would write: $CODEX_DIR/auth.json (chmod 600)"
   echo ""
   echo "=== Dry run complete — no changes made ==="
   exit 0
@@ -223,11 +224,33 @@ else
 fi
 echo ""
 
-# ── 5. Summary ──
+# ── 5. Authenticate (skip login screen) ──
+echo "5. Authenticating Codex CLI..."
+CODEX_AUTH="$CODEX_DIR/auth.json"
+NEW_AUTH=$(printf '{"auth_mode":"apikey","OPENAI_API_KEY":"%s"}' "$VIRTUAL_KEY")
+
+if [ -f "$CODEX_AUTH" ]; then
+  EXISTING_AUTH=$(cat "$CODEX_AUTH")
+  if [ "$NEW_AUTH" = "$EXISTING_AUTH" ]; then
+    echo "   Auth unchanged — skipping write"
+  else
+    echo "$NEW_AUTH" > "$CODEX_AUTH"
+    chmod 600 "$CODEX_AUTH"
+    echo "   Updated: $CODEX_AUTH"
+  fi
+else
+  echo "$NEW_AUTH" > "$CODEX_AUTH"
+  chmod 600 "$CODEX_AUTH"
+  echo "   Written: $CODEX_AUTH"
+fi
+echo ""
+
+# ── 6. Summary ──
 echo "=== Installation complete ==="
 echo ""
 echo "Config files:"
 echo "  Codex CLI:  $CODEX_CONFIG (chmod 600)"
+echo "  Auth:       $CODEX_DIR/auth.json (chmod 600)"
 echo ""
 echo "Versions:"
 command -v codex &>/dev/null && echo "  codex:      $(codex --version 2>/dev/null || echo 'unknown')"

@@ -1,62 +1,62 @@
 # oh-my-litellm-opencode
 
-LiteLLM proxy → Huawei MaaS → opencode + Codex CLI + Claude Code CLI. Virtual keys, 4 presets, 6 models, dual-format endpoints (OpenAI + Anthropic), multi-key load balancing, Prometheus + Grafana observability.
+LiteLLM proxy routing Huawei MaaS models to opencode, Codex CLI, and Claude
+Code CLI — with virtual keys, multi-key load balancing, dual-format endpoints,
+and Prometheus + Grafana observability.
+
+## What You Get
+
+- **LiteLLM proxy** on `:4000` — load balancing, virtual keys, budget tracking
+- **opencode** — 4 presets, 7 agents, `oh-my-opencode-slim` plugin
+- **Codex CLI** — OpenAI Responses API bridged to Huawei MaaS
+- **Claude Code CLI** — Anthropic Messages API direct to Huawei MaaS
+- **Prometheus + Grafana** on `:9090` / `:3000` — 12-panel dashboard, no login
+- **6 models** — glm-5.2, glm-5.1, glm-5, deepseek-v4-pro, deepseek-v4-flash, deepseek-v3.2
+- **Dual-format endpoints** — OpenAI (`/v1/chat/completions`) + Anthropic (`/v1/messages`)
 
 ## Quick Start
 
 **Prerequisites:** Linux, Docker, bun, jq, npm, bubblewrap.
 
-**1. Install prerequisites** (skip any you already have):
-
 ```bash
-curl -fsSL https://bun.sh/install | bash          # bun
-sudo apt-get install -y jq                         # jq
-# Docker: https://docs.docker.com/get-docker/     # then start the daemon
-```
+# 1. Install prerequisites (skip any you already have)
+curl -fsSL https://bun.sh/install | bash
+sudo apt-get install -y jq npm bubblewrap
+# Docker: https://docs.docker.com/get-docker/
 
-**2. Deploy:**
-
-```bash
+# 2. Clone and deploy
 git clone https://github.com/wallacelw/oh-my-litellm-opencode
 cd oh-my-litellm-opencode
-./scripts/0_bootstrap.sh      # prompts for MaaS key, starts Docker, installs opencode + Codex CLI + Claude Code CLI
-./scripts/5_validate.sh       # verify
+./scripts/0_bootstrap.sh      # prompts for MaaS key
+
+# 3. Verify
+./scripts/5_validate.sh       # 74 checks
+
+# 4. Use
 opencode                      # or: codex  or:  claude --bare
 ```
 
-After install, open the Grafana dashboard at `http://127.0.0.1:3000`
-(username: `admin`, password: `grep GRAFANA_ADMIN_PASSWORD .env`).
+Grafana dashboard: `http://127.0.0.1:3000` (anonymous, no login).
 
-If opencode was already running, exit it (`/exit` or Ctrl+C) and start fresh
-to pick up the new configuration.
+If opencode was already running, exit it (`/exit` or Ctrl+C) and start fresh.
 
-**LiteLLM-only?** Skip opencode, Codex CLI, and Claude Code CLI, just deploy the proxy:
+## Install Modes
 
-```bash
-./scripts/0_bootstrap.sh --litellm-only    # LiteLLM proxy only
-```
-
-**Codex CLI only?** Skip opencode:
-
-```bash
-./scripts/0_bootstrap.sh --codex-only      # LiteLLM proxy + Codex CLI
-```
-
-**Claude Code CLI only?** Skip opencode and Codex:
+| Flag | What gets installed |
+|------|-------------------|
+| *(none)* | LiteLLM + opencode + Codex CLI + Claude Code CLI |
+| `--litellm-only` | LiteLLM proxy only |
+| `--opencode-only` | LiteLLM + opencode |
+| `--codex-only` | LiteLLM + Codex CLI |
+| `--claude-code-only` | LiteLLM + Claude Code CLI |
 
 ```bash
-./scripts/0_bootstrap.sh --claude-code-only   # LiteLLM proxy + Claude Code CLI
-```
-
-**opencode CLI only?** Skip Codex and Claude Code:
-
-```bash
-./scripts/0_bootstrap.sh --opencode-only    # LiteLLM proxy + opencode
+./scripts/0_bootstrap.sh --litellm-only    # example: proxy only
 ```
 
 ## One-Click Agent Install
 
-Copy and paste this prompt into any coding agent to install automatically:
+Paste this into any coding agent:
 
 ```
 Install oh-my-litellm-opencode on this machine by following the procedure in
@@ -89,7 +89,7 @@ Rules:
 
 ## One-Click Agent Upgrade
 
-Already installed and want to update to the latest version? Copy and paste:
+Paste this to upgrade an existing installation:
 
 ```
 Upgrade oh-my-litellm-opencode on this machine by following Section D
@@ -119,6 +119,8 @@ Rules:
 
 ## Documentation
 
-- **[SKILL.md](./SKILL.md)** — Deterministic install procedure (for agents and humans)
-- **[REFERENCE.md](./REFERENCE.md)** — Architecture, presets, models, repair guide
-- **[CHANGELOG.md](./CHANGELOG.md)** — Version history
+| File | Description |
+|------|-------------|
+| [SKILL.md](./SKILL.md) | Deterministic install procedure (for agents and humans) |
+| [REFERENCE.md](./REFERENCE.md) | Architecture, tool integration, presets, models, repair guide |
+| [CHANGELOG.md](./CHANGELOG.md) | Version history |

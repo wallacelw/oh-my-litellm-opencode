@@ -34,7 +34,7 @@ This is reference documentation. For the install procedure, read
 | LiteLLM Health | `http://127.0.0.1:4000/health` | Master key |
 | LiteLLM Metrics | `http://127.0.0.1:4000/metrics` | None (Prometheus format) |
 | Prometheus | `http://127.0.0.1:9090` | None (bound to localhost) |
-| Grafana | `http://127.0.0.1:3000` | Admin password (from `.env`) |
+| Grafana | `http://127.0.0.1:3000` | Anonymous (Viewer role) |
 | Codex CLI | `http://127.0.0.1:4000/v1` | Virtual key in `~/.codex/.env` |
 | Claude Code CLI | `http://127.0.0.1:4000/v1/messages` | Virtual key in `~/.claude/settings.json` |
 | Huawei MaaS Anthropic | `https://api-ap-southeast-1.modelarts-maas.com/anthropic/v1/messages` | MaaS API key (`x-api-key` header) |
@@ -113,11 +113,151 @@ the provider prefix (preset name indicates LiteLLM proxy vs direct MaaS).
 | `deepseek-v4-flash` | 1M/128K | 3 | $0.135 / $0.270 × 10⁻⁶ |
 | `deepseek-v3.2` | 128K/32K | 700 | $0.270 / $0.404 × 10⁻⁶ |
 
+## Tool Integration
+
+Three CLI tools connect to Huawei MaaS through the LiteLLM proxy. Each uses
+a distinct API format, virtual key, and config location.
+
+### Connection Chains
+
+```
+opencode                LiteLLM (:4000)                    Huawei MaaS
+────────                ───────────────                    ────────────
+agents ──→ /v1/chat/completions ──→ openai/ provider ──→ /openai/v1/chat/completions
+           (OpenAI Chat API)        (use_chat_completions_api: true)
+
+Codex CLI ──→ /v1/responses ──→ openai/ provider ──→ /openai/v1/chat/completions
+              (Responses API)    (bridged to Chat Completions by LiteLLM)
+
+Claude Code ──→ /v1/messages ──→ anthropic/ provider ──→ /anthropic/v1/messages
+                (Anthropic Messages API)                  (native Anthropic format)
+```
+
+### Virtual Keys
+
+All three keys are minted by `4_mint-virtual-key.sh` and tied to
+`LITELLM_MASTER_KEY` — changing the master key invalidates all virtual keys.
+
+| Alias | Minted by | Stored in | Budget | Scope |
+|-------|-----------|-----------|--------|-------|
+| `opencode` | `3a_install_opencode.sh` | `~/.config/opencode/opencode.jsonc` (provider apiKey) | Unlimited | All models |
+| `codex` | `3b_install_codex.sh` | `~/.codex/.env` (`LITELLM_CODEX_API_KEY`) | Unlimited | All models |
+| `claude-code` | `3c_install_claude_code.sh` | `~/.claude/settings.json` (env.ANTHROPIC_API_KEY) | Unlimited | All models |
+
+Each installer reuses existing valid keys idempotently — it checks the config
+file first, then the environment variable, then the LiteLLM `/key/list` +
+`/key/info` alias lookup, and only mints a new key if all fail.
+
+### Dual-Format Architecture
+
+Each model has two LiteLLM deployment types in `config.yaml`:
+
+| Type | Provider | model_name | Endpoint | Used by |
+|------|----------|------------|----------|---------|
+| OpenAI | `openai/{model}` | `{model}` | `/openai/v1/chat/completions` | opencode, Codex CLI |
+| Anthropic | `anthropic/{model}` | `claude-{model}` | `/anthropic/v1/messages` | Claude Code CLI |
+
+OpenAI deployments use the base model name (e.g., `glm-5.2`). Anthropic
+deployments use a `claude-` prefix (e.g., `claude-glm-5.2`) to avoid
+routing conflicts — LiteLLM routes by `model_name`, so distinct names
+ensure `/v1/messages` always hits the Anthropic deployment directly,
+with no OpenAI→Anthropic format conversion.
+
+## opencode
+
+opencode connects to LiteLLM via the OpenAI Chat Completions API
+(`/v1/chat/completions`). The `oh-my-opencode-slim` plugin (installed via
+`bunx`) configures 4 presets and agent→model mappings.
+
+### Configuration
+
+| File | Purpose |
+|------|---------|
+| `~/.config/opencode/opencode.jsonc` | Provider config (LiteLLM + Huawei-MaaS direct), API key |
+| `~/.config/opencode/oh-my-opencode-slim.json` | Plugin config: presets, agents, council |
+
+The `LiteLLM` provider uses `@ai-sdk/openai-compatible` with
+`baseURL: http://127.0.0.1:4000`. Models use base names (e.g., `glm-5.2`)
+without provider prefix — the preset name (`LiteLLM/` vs `Huawei-MaaS/`)
+determines routing.
+
+### Presets
+
+4 presets control routing:
+
+| Preset | Route | Models |
+|--------|-------|--------|
+| **LiteLLM-Huawei-MaaS-Full** (default) | Proxy → MaaS | All 6 |
+| **LiteLLM-Huawei-MaaS-Core** | Proxy → MaaS | 4 (no v4-pro/v4-flash) |
+| **Huawei-MaaS-Full** | Direct → MaaS | All 6 |
+| **Huawei-MaaS-Core** | Direct → MaaS | 4 (no v4-pro/v4-flash) |
+
+Switch at runtime: `/preset LiteLLM-Huawei-MaaS-Core`
+
+## Codex CLI
+
+Codex CLI connects to LiteLLM via the OpenAI Responses API (`/v1/responses`).
+LiteLLM bridges this to Chat Completions using the
+`use_chat_completions_api: true` flag on each `openai/` deployment, then
+forwards to Huawei MaaS's OpenAI endpoint (`/openai/v1/chat/completions`).
+
+### Configuration
+
+| File | Purpose |
+|------|---------|
+| `~/.codex/config.toml` | Model provider config, default model, feature flags |
+| `~/.codex/model_catalog.json` | Model metadata (context window, max tokens, reasoning levels) |
+| `~/.codex/.env` | API key (`LITELLM_CODEX_API_KEY=sk-...`), auto-loaded by Codex CLI |
+
+### Custom Provider
+
+Codex CLI uses a custom `litellm_proxy` model provider instead of the
+built-in `openai` provider:
+
+```toml
+[model_providers.litellm_proxy]
+name = "LiteLLM Proxy"
+base_url = "http://127.0.0.1:4000/v1"
+env_key = "LITELLM_CODEX_API_KEY"
+wire_api = "responses"
+```
+
+Why a custom provider:
+- Codex CLI rejects overriding the reserved `openai` provider name.
+- The built-in `openai` provider defaults to `wire_api = "responses_websocket"`
+  (WebSocket), which has a bug in LiteLLM v1.89.3 when bridging to Chat
+  Completions. Setting `wire_api = "responses"` forces HTTP SSE instead.
+- The `env_key` field lets Codex CLI read the API key from `~/.codex/.env`
+  automatically (via dotenvy), no shell exports needed.
+
+### Feature Flags
+
+- `multi_agent = false` — disabled because it sends `type: "namespace"` tools
+  that Huawei MaaS rejects (only `type: "function"` is accepted).
+
+### Prerequisites
+
+- `npm` — for `npm install -g @openai/codex`
+- `jq` — for parsing LiteLLM API responses
+- `bubblewrap` (`bwrap`) — Codex CLI requires it for sandboxing
+
+### Model Selection
+
+Models use base names (e.g., `glm-5.2`). All 6 models are available. Switch
+at runtime with `--model`:
+
+```bash
+codex --model deepseek-v4-pro    # deep reasoning
+codex --model glm-5.2            # general purpose (default)
+codex --model deepseek-v3.2      # fast
+```
+
 ## Claude Code CLI
 
 Claude Code CLI connects to LiteLLM via the Anthropic Messages API
-(`/v1/messages`). LiteLLM forwards to Huawei MaaS's Anthropic-compatible
-endpoint (`/anthropic/v1/messages`) using the `anthropic/` provider prefix.
+(`/v1/messages`). LiteLLM forwards directly to Huawei MaaS's
+Anthropic-compatible endpoint (`/anthropic/v1/messages`) using the
+`anthropic/` provider prefix — no format conversion needed.
 
 ### Configuration
 
@@ -138,10 +278,24 @@ Set in the `env` block of `~/.claude/settings.json`:
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `ANTHROPIC_BASE_URL` | `http://127.0.0.1:4000` | LiteLLM proxy URL |
+| `ANTHROPIC_BASE_URL` | `http://127.0.0.1:4000` | LiteLLM proxy URL (no `/v1`) |
 | `ANTHROPIC_API_KEY` | `sk-...` (virtual key) | LiteLLM auth (alias: claude-code) |
 | `ANTHROPIC_MODEL` | `claude-glm-5.2` | Primary model |
 | `ANTHROPIC_SMALL_FAST_MODEL` | `claude-deepseek-v3.2` | Fast model for background tasks |
+
+### Why `claude-` Prefix
+
+LiteLLM routes requests by `model_name`, not by request format. If OpenAI
+and Anthropic deployments share the same `model_name` (e.g., `glm-5.2`),
+a `/v1/messages` request might randomly hit the OpenAI deployment, triggering
+a broken Anthropic→OpenAI→Anthropic translation that drops content. The
+`claude-` prefix (e.g., `claude-glm-5.2`) ensures `/v1/messages` always
+routes to the Anthropic deployment directly.
+
+### Prerequisites
+
+- `npm` — for `npm install -g @anthropic-ai/claude-code`
+- `jq` — for parsing LiteLLM API responses and writing settings.json
 
 ### Model Selection
 
@@ -150,25 +304,10 @@ Anthropic endpoint. All 6 models are available. Switch at runtime with
 `--model`:
 
 ```bash
-claude --model claude-deepseek-v4-pro    # deep reasoning
-claude --model claude-glm-5.2            # general purpose (default)
-claude --model claude-deepseek-v3.2      # fast
+claude --bare --model claude-deepseek-v4-pro    # deep reasoning
+claude --bare --model claude-glm-5.2            # general purpose (default)
+claude --bare --model claude-deepseek-v3.2      # fast
 ```
-
-### Dual-Format Architecture
-
-Each model has two LiteLLM deployment types:
-
-| Type | Provider | model_name | Endpoint | Used by |
-|------|----------|------------|----------|---------|
-| OpenAI | `openai/{model}` | `{model}` | `/openai/v1/chat/completions` | opencode, Codex CLI |
-| Anthropic | `anthropic/{model}` | `claude-{model}` | `/anthropic/v1/messages` | Claude Code CLI |
-
-OpenAI deployments use the base model name (e.g., `glm-5.2`). Anthropic
-deployments use a `claude-` prefix (e.g., `claude-glm-5.2`) to avoid
-routing conflicts — LiteLLM routes by `model_name`, so distinct names
-ensure `/v1/messages` always hits the Anthropic deployment directly,
-with no OpenAI format conversion.
 
 ## Repair
 
@@ -183,8 +322,8 @@ with no OpenAI format conversion.
 | Port conflict | `ss -tlnp \| grep -E ':(4000\|5432\|9090\|3000) '` |
 | Prometheus not scraping | Check `docker compose logs prometheus --tail 20`; verify `litellm:4000` reachable from Prometheus container |
 | Prometheus rules error | `docker compose logs prometheus --tail 20` — look for "loading groups failed"; check PromQL syntax in `configs/prometheus/rules.yml` |
-| Grafana dashboard blank | Check datasource UID: `curl -u admin:$GRAFANA_ADMIN_PASSWORD http://127.0.0.1:3000/api/datasources/name/Prometheus \| jq .uid` — must be `prometheus` |
-| Grafana login failed | Check `GRAFANA_ADMIN_PASSWORD` in `.env`; `docker compose restart grafana` after changing |
+| Grafana dashboard blank | Check datasource UID: `curl http://127.0.0.1:3000/api/datasources/name/Prometheus \| jq .uid` — must be `prometheus` |
+| Grafana not loading | `docker compose restart grafana` |
 | Grafana dashboard stale after upgrade | `docker compose restart grafana` — hard restart picks up provisioning changes |
 | Claude Code `claude not found` | `npm install -g @anthropic-ai/claude-code` |
 | Claude Code 401 | Check `ANTHROPIC_API_KEY` in `~/.claude/settings.json` env block — must start with `sk-` |

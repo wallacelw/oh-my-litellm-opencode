@@ -500,12 +500,8 @@ If `INSTALL_MODE=full`:
 Project dir:       $PROJECT_DIR
 LiteLLM proxy:     http://127.0.0.1:4000
 LiteLLM Admin UI:  http://127.0.0.1:4000/ui
-Grafana:           http://127.0.0.1:3000
+Grafana:           http://127.0.0.1:3000 (anonymous, no login)
 Prometheus:        http://127.0.0.1:9090
-
-Grafana login:
-  Username:        admin
-  Password:        grep GRAFANA_ADMIN_PASSWORD .env
 
 opencode config:   ~/.config/opencode/opencode.jsonc
 plugin config:     ~/.config/opencode/oh-my-opencode-slim.json
@@ -531,12 +527,8 @@ If `INSTALL_MODE=litellm-only`:
 Project dir:       $PROJECT_DIR
 LiteLLM proxy:     http://127.0.0.1:4000
 LiteLLM Admin UI:  http://127.0.0.1:4000/ui
-Grafana:           http://127.0.0.1:3000
+Grafana:           http://127.0.0.1:3000 (anonymous, no login)
 Prometheus:        http://127.0.0.1:9090
-
-Grafana login:
-  Username:        admin
-  Password:        grep GRAFANA_ADMIN_PASSWORD .env
 
 Mode:              LiteLLM-only (no tools)
 
@@ -634,5 +626,4 @@ follow Section C but with these modifications:
 (`/exit` or Ctrl+C) and start fresh (`opencode`) to pick up the new
 configuration. The slim plugin and preset changes are not hot-reloaded.
 
-**Grafana access:** `http://127.0.0.1:3000` — username `admin`,
-password `grep GRAFANA_ADMIN_PASSWORD .env`.
+**Grafana access:** `http://127.0.0.1:3000` (anonymous, no login).

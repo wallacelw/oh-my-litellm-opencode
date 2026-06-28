@@ -1,32 +1,34 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ─── Claude Code CLI installer for Huawei MaaS via LiteLLM ───────────────
+# ─── Codex CLI installer for Huawei MaaS via LiteLLM ─────────────────────────
 #
-# Installs Claude Code CLI, mints a LiteLLM virtual key (alias "claude-code"),
-# and writes ~/.claude/settings.json pointing to the LiteLLM proxy.
+# Installs OpenAI Codex CLI, mints a LiteLLM virtual key (alias "codex"),
+# and writes ~/.codex/config.toml pointing to the LiteLLM proxy.
 #
-# Claude Code CLI uses the Anthropic Messages API (/v1/messages). LiteLLM
-# forwards to Huawei MaaS's Anthropic-compatible endpoint
-# (/anthropic/v1/messages) via anthropic/ provider deployments in config.yaml.
+# Codex CLI uses the Responses API (/v1/responses) exclusively. LiteLLM
+# bridges Responses → Chat Completions via use_chat_completions_api: true
+# in config.yaml, so no custom workaround is needed.
 #
-# Configuration is written to ~/.claude/settings.json (Claude Code's native
-# settings file) using the env block. No shell exports or source needed.
+# A custom model provider (litellm_proxy) is used instead of the built-in
+# openai provider to set wire_api = "responses" (HTTP SSE), avoiding the
+# WebSocket transport that has a bug in LiteLLM v1.89.3. The API key is
+# read from the LITELLM_CODEX_API_KEY environment variable.
 #
 # Prerequisites:
 #   - LiteLLM proxy running on 127.0.0.1:4000
-#   - npm installed (for Claude Code CLI installation)
+#   - npm installed (for Codex CLI installation)
 #   - LITELLM_MASTER_KEY set in environment
 #
 # Usage:
-#   ./3c_install_claude_code.sh                       # interactive
-#   ./3c_install_claude_code.sh --virtual-key=sk-...  # use existing virtual key
-#   ./3c_install_claude_code.sh --dry-run             # preview changes
+#   ./4b_install_codex.sh                       # interactive
+#   ./4b_install_codex.sh --virtual-key=sk-...  # use existing virtual key
+#   ./4b_install_codex.sh --dry-run             # preview changes
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-CLAUDE_CONFIG_DIR="$HOME/.claude"
-CLAUDE_SETTINGS="$CLAUDE_CONFIG_DIR/settings.json"
+CODEX_DIR="$HOME/.codex"
+CODEX_CONFIG="$CODEX_DIR/config.toml"
 LITELLM_URL="http://127.0.0.1:4000"
 CURL_TIMEOUT=15
 
@@ -40,7 +42,7 @@ for arg in "$@"; do
   esac
 done
 
-echo "=== Claude Code CLI installer for Huawei MaaS via LiteLLM ==="
+echo "=== Codex CLI installer for Huawei MaaS via LiteLLM ==="
 if [ "$DRY_RUN" = true ]; then
   echo "   (DRY RUN — no changes will be made)"
 fi
@@ -79,6 +81,14 @@ if ! command -v jq &>/dev/null; then
 fi
 echo "   jq: $(jq --version)"
 
+if ! command -v bwrap &>/dev/null; then
+  echo "ERROR: bubblewrap (bwrap) is not installed. Codex CLI requires it for sandboxing."
+  echo "  Install with: apt-get install -y bubblewrap  (Debian/Ubuntu)"
+  echo "               dnf install -y bubblewrap       (Fedora)"
+  exit 1
+fi
+echo "   bwrap: $(bwrap --version 2>/dev/null || echo 'installed')"
+
 # Check LiteLLM is reachable
 if curl -sf -m $CURL_TIMEOUT "$LITELLM_URL/health/liveliness" &>/dev/null; then
   echo "   LiteLLM proxy: reachable at $LITELLM_URL"
@@ -89,55 +99,53 @@ fi
 
 echo ""
 
-# ── 2. Install Claude Code CLI ──
-echo "2. Installing Claude Code CLI..."
-if ! command -v claude &>/dev/null; then
+# ── 2. Install Codex CLI ──
+echo "2. Installing Codex CLI..."
+if ! command -v codex &>/dev/null; then
   if [ "$DRY_RUN" = true ]; then
-    echo "   Would run: npm install -g @anthropic-ai/claude-code"
+    echo "   Would run: npm install -g @openai/codex"
   else
-    npm install -g @anthropic-ai/claude-code
-    echo "   Installed: $(claude --version 2>/dev/null || echo 'unknown')"
+    npm install -g @openai/codex
+    echo "   Installed: $(codex --version 2>/dev/null || echo 'unknown')"
   fi
 else
-  echo "   Already installed: $(claude --version 2>/dev/null || echo 'unknown')"
+  echo "   Already installed: $(codex --version 2>/dev/null || echo 'unknown')"
 fi
 echo ""
 
 # ── 3. Acquire virtual key (idempotent — reuse existing if valid) ──
 echo "3. Configuring LiteLLM virtual key..."
 
-# Try to reuse existing key from ~/.claude/settings.json (fast, local)
-if [ -z "$VIRTUAL_KEY" ] && [ -f "$CLAUDE_SETTINGS" ]; then
-  EXISTING_KEY=$(jq -r '.env.ANTHROPIC_API_KEY // empty' "$CLAUDE_SETTINGS" 2>/dev/null || true)
+# Try to reuse existing key from ~/.codex/.env (fast, local)
+if [ -z "$VIRTUAL_KEY" ] && [ -f "$CODEX_DIR/.env" ]; then
+  EXISTING_KEY=$(grep -oP '^LITELLM_CODEX_API_KEY=\K.*' "$CODEX_DIR/.env" 2>/dev/null || true)
   if [ -n "$EXISTING_KEY" ] && [[ "$EXISTING_KEY" == sk-* ]]; then
     if [ "$DRY_RUN" = true ]; then
-      echo "   Would test existing key from settings.json: ${EXISTING_KEY:0:8}...${EXISTING_KEY: -4}"
+      echo "   Would test existing key from .env: ${EXISTING_KEY:0:8}...${EXISTING_KEY: -4}"
       VIRTUAL_KEY="$EXISTING_KEY"
-    elif retry_curl -sf -m $CURL_TIMEOUT "$LITELLM_URL/v1/messages" \
-         -H "x-api-key: $EXISTING_KEY" \
+    elif retry_curl -sf -m $CURL_TIMEOUT "$LITELLM_URL/v1/responses" \
+         -H "Authorization: Bearer $EXISTING_KEY" \
          -H "Content-Type: application/json" \
-         -H "anthropic-version: 2023-06-01" \
-         -d '{"model":"claude-deepseek-v3.2","messages":[{"role":"user","content":"ok"}],"max_tokens":1}'; then
-      echo "   Existing virtual key from settings.json is valid. Reusing: ${EXISTING_KEY:0:8}...${EXISTING_KEY: -4}"
+         -d '{"model":"deepseek-v3.2","input":"ok"}'; then
+      echo "   Existing virtual key from .env is valid. Reusing: ${EXISTING_KEY:0:8}...${EXISTING_KEY: -4}"
       VIRTUAL_KEY="$EXISTING_KEY"
     else
-      echo "   Existing virtual key from settings.json is invalid or expired. Will try alias lookup."
+      echo "   Existing virtual key from .env is invalid or expired. Will try alias lookup."
     fi
   fi
 fi
 
 # Try to reuse existing key from environment (fast, local)
-if [ -z "$VIRTUAL_KEY" ] && [ -n "${ANTHROPIC_API_KEY:-}" ]; then
-  EXISTING_KEY="$ANTHROPIC_API_KEY"
+if [ -z "$VIRTUAL_KEY" ] && [ -n "${LITELLM_CODEX_API_KEY:-}" ]; then
+  EXISTING_KEY="$LITELLM_CODEX_API_KEY"
   if [[ "$EXISTING_KEY" == sk-* ]]; then
     if [ "$DRY_RUN" = true ]; then
       echo "   Would test existing key from env: ${EXISTING_KEY:0:8}...${EXISTING_KEY: -4}"
       VIRTUAL_KEY="$EXISTING_KEY"
-    elif retry_curl -sf -m $CURL_TIMEOUT "$LITELLM_URL/v1/messages" \
-         -H "x-api-key: $EXISTING_KEY" \
+    elif retry_curl -sf -m $CURL_TIMEOUT "$LITELLM_URL/v1/responses" \
+         -H "Authorization: Bearer $EXISTING_KEY" \
          -H "Content-Type: application/json" \
-         -H "anthropic-version: 2023-06-01" \
-         -d '{"model":"claude-deepseek-v3.2","messages":[{"role":"user","content":"ok"}],"max_tokens":1}'; then
+         -d '{"model":"deepseek-v3.2","input":"ok"}'; then
       echo "   Existing virtual key from env is valid. Reusing: ${EXISTING_KEY:0:8}...${EXISTING_KEY: -4}"
       VIRTUAL_KEY="$EXISTING_KEY"
     else
@@ -159,21 +167,20 @@ if [ -z "$VIRTUAL_KEY" ] && [ -n "${LITELLM_MASTER_KEY:-}" ]; then
         -H "Authorization: Bearer $LITELLM_MASTER_KEY" 2>/dev/null || true)
       if [ -n "$KEY_INFO" ]; then
         ALIAS=$(echo "$KEY_INFO" | jq -r '.info.key_alias // empty' 2>/dev/null)
-        if [ "$ALIAS" = "claude-code" ]; then
+        if [ "$ALIAS" = "codex" ]; then
           ALIAS_KEY=$(echo "$KEY_INFO" | jq -r '.info.key_name // empty' 2>/dev/null)
           if [ -n "$ALIAS_KEY" ] && [[ "$ALIAS_KEY" == sk-* ]]; then
             if [ "$DRY_RUN" = true ]; then
               echo "   Would test existing key by alias: ${ALIAS_KEY:0:8}...${ALIAS_KEY: -4}"
               VIRTUAL_KEY="$ALIAS_KEY"
-            elif retry_curl -sf -m $CURL_TIMEOUT "$LITELLM_URL/v1/messages" \
-                 -H "x-api-key: $ALIAS_KEY" \
+            elif retry_curl -sf -m $CURL_TIMEOUT "$LITELLM_URL/v1/responses" \
+                 -H "Authorization: Bearer $ALIAS_KEY" \
                  -H "Content-Type: application/json" \
-                 -H "anthropic-version: 2023-06-01" \
-                 -d '{"model":"claude-deepseek-v3.2","messages":[{"role":"user","content":"ok"}],"max_tokens":1}'; then
-              echo "   Existing virtual key (alias 'claude-code') is valid. Reusing: ${ALIAS_KEY:0:8}...${ALIAS_KEY: -4}"
+                 -d '{"model":"deepseek-v3.2","input":"ok"}'; then
+              echo "   Existing virtual key (alias 'codex') is valid. Reusing: ${ALIAS_KEY:0:8}...${ALIAS_KEY: -4}"
               VIRTUAL_KEY="$ALIAS_KEY"
             else
-              echo "   Existing virtual key (alias 'claude-code') is invalid or expired. Will mint new key."
+              echo "   Existing virtual key (alias 'codex') is invalid or expired. Will mint new key."
             fi
             break
           fi
@@ -195,13 +202,13 @@ if [ -z "$VIRTUAL_KEY" ]; then
     export LITELLM_MASTER_KEY
   fi
   if [ "$DRY_RUN" = true ]; then
-    echo "   Would mint new virtual key with alias 'claude-code', unlimited budget & duration, all models"
+    echo "   Would mint new virtual key with alias 'codex', unlimited budget & duration, all models"
   else
     echo "   Minting virtual key from LiteLLM (unlimited budget, unlimited duration)..."
     RESPONSE=$(retry_curl -o -sf -X POST "$LITELLM_URL/key/generate" \
       -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
       -H "Content-Type: application/json" \
-      -d '{"key_alias": "claude-code", "duration": null}' || true)
+      -d '{"key_alias": "codex", "duration": null}' || true)
     if [ -z "$RESPONSE" ]; then
       echo "ERROR: Failed to mint virtual key after 3 attempts. Check LiteLLM health and master key."
       exit 1
@@ -216,58 +223,80 @@ if [ -z "$VIRTUAL_KEY" ]; then
 fi
 echo ""
 
-# ── 4. Write settings.json ──
-echo "4. Writing Claude Code CLI config..."
+# ── 4. Write config.toml ──
+echo "4. Writing Codex CLI config..."
 
 if [ "$DRY_RUN" = true ]; then
-  echo "   Would write: $CLAUDE_SETTINGS (chmod 600)"
+  echo "   Would write: $CODEX_CONFIG (chmod 600)"
+  echo "   Would write: $CODEX_DIR/model_catalog.json"
+  echo "   Would write: $CODEX_DIR/.env (chmod 600)"
   echo ""
   echo "=== Dry run complete — no changes made ==="
   exit 0
 fi
 
-mkdir -p "$CLAUDE_CONFIG_DIR"
+mkdir -p "$CODEX_DIR"
 
-# Build settings.json — Claude Code's native config format
-# The env block sets ANTHROPIC_* vars without needing shell exports
-NEW_SETTINGS=$(jq -n \
-  --arg base_url "http://127.0.0.1:4000" \
-  --arg api_key "$VIRTUAL_KEY" \
-  --arg model "claude-glm-5.2" \
-  --arg fast_model "claude-deepseek-v3.2" \
-  '{env: {ANTHROPIC_BASE_URL: $base_url, ANTHROPIC_API_KEY: $api_key, ANTHROPIC_MODEL: $model, ANTHROPIC_SMALL_FAST_MODEL: $fast_model}}')
+# Copy model catalog
+cp "$PROJECT_DIR/configs/codex/model_catalog.json" "$CODEX_DIR/model_catalog.json"
+echo "   Written: $CODEX_DIR/model_catalog.json"
 
-if [ -f "$CLAUDE_SETTINGS" ]; then
-  EXISTING_SETTINGS=$(cat "$CLAUDE_SETTINGS")
-  if [ "$NEW_SETTINGS" = "$EXISTING_SETTINGS" ]; then
-    echo "   settings.json unchanged — skipping write"
+TEMPLATE="$PROJECT_DIR/configs/codex/config.toml.template"
+NEW_CONFIG=$(sed "s|<CODEX_HOME>|$CODEX_DIR|g" "$TEMPLATE")
+
+if [ -f "$CODEX_CONFIG" ]; then
+  EXISTING_CONFIG=$(cat "$CODEX_CONFIG")
+  if [ "$NEW_CONFIG" = "$EXISTING_CONFIG" ]; then
+    echo "   Config unchanged — skipping write"
   else
-    cp "$CLAUDE_SETTINGS" "$CLAUDE_SETTINGS.bak.$(date +%Y%m%d%H%M%S)"
-    echo "$NEW_SETTINGS" > "$CLAUDE_SETTINGS"
-    chmod 600 "$CLAUDE_SETTINGS"
-    echo "   Updated: $CLAUDE_SETTINGS (backup saved)"
+    cp "$CODEX_CONFIG" "$CODEX_CONFIG.bak.$(date +%Y%m%d%H%M%S)"
+    echo "$NEW_CONFIG" > "$CODEX_CONFIG"
+    chmod 600 "$CODEX_CONFIG"
+    echo "   Updated: $CODEX_CONFIG (backup saved)"
   fi
 else
-  echo "$NEW_SETTINGS" > "$CLAUDE_SETTINGS"
-  chmod 600 "$CLAUDE_SETTINGS"
-  echo "   Written: $CLAUDE_SETTINGS (chmod 600)"
+  echo "$NEW_CONFIG" > "$CODEX_CONFIG"
+  chmod 600 "$CODEX_CONFIG"
+  echo "   Written: $CODEX_CONFIG"
 fi
 echo ""
 
-# ── 5. Summary ──
+# ── 5. Write API key to ~/.codex/.env ──
+echo "5. Writing API key to $CODEX_DIR/.env..."
+ENV_FILE="$CODEX_DIR/.env"
+NEW_ENV="LITELLM_CODEX_API_KEY=$VIRTUAL_KEY"
+
+if [ -f "$ENV_FILE" ]; then
+  EXISTING_ENV=$(cat "$ENV_FILE")
+  if [ "$NEW_ENV" = "$EXISTING_ENV" ]; then
+    echo "   .env unchanged — skipping write"
+  else
+    echo "$NEW_ENV" > "$ENV_FILE"
+    chmod 600 "$ENV_FILE"
+    echo "   Updated: $ENV_FILE (chmod 600)"
+  fi
+else
+  echo "$NEW_ENV" > "$ENV_FILE"
+  chmod 600 "$ENV_FILE"
+  echo "   Written: $ENV_FILE (chmod 600)"
+fi
+echo ""
+
+# ── 6. Summary ──
 echo "=== Installation complete ==="
 echo ""
 echo "Config files:"
-echo "  Claude Code: $CLAUDE_SETTINGS (chmod 600)"
+echo "  Codex CLI:  $CODEX_CONFIG (chmod 600)"
+echo "  Catalog:    $CODEX_DIR/model_catalog.json"
+echo "  API key:    $CODEX_DIR/.env (chmod 600)"
 echo ""
 echo "Versions:"
-command -v claude &>/dev/null && echo "  claude:     $(claude --version 2>/dev/null || echo 'unknown')"
+command -v codex &>/dev/null && echo "  codex:      $(codex --version 2>/dev/null || echo 'unknown')"
 echo ""
-echo "Default model: claude-glm-5.2"
-echo "Fast model:    claude-deepseek-v3.2"
-echo "All 6 models available via LiteLLM proxy (Anthropic Messages API)"
+echo "Default model: glm-5.2"
+echo "All 6 models available via LiteLLM proxy"
 echo "LiteLLM proxy URL: $LITELLM_URL"
 echo ""
 echo "Next steps:"
-echo "  1. Run:              claude --bare"
-echo "  2. Validate:         $SCRIPT_DIR/5_validate.sh"
+echo "  1. Validate: $SCRIPT_DIR/5_validate.sh"
+echo "  2. Run: codex"

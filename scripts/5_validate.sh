@@ -268,7 +268,7 @@ print(f'{moderation_errors} {other_errors} {len(unhealthy)}')
       fi
     fi
   else
-    warn "litellm_config.yaml not found — run scripts/2_generate_config.sh"
+    warn "litellm_config.yaml not found — run scripts/2_deploy_litellm.sh"
   fi
 
   # A5. Inference smoke test (runs in --litellm-only mode where Section B is skipped)

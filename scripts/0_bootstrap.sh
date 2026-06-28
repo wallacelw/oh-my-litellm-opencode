@@ -362,7 +362,7 @@ with open(path, 'w') as f:
     f.writelines(lines)
 " HUAWEI_MAAS_API_KEY_0 "$MAAS_KEY" "$PROJECT_DIR/.env"
       echo "  Regenerating litellm_config.yaml..."
-      (cd "$PROJECT_DIR" && ./scripts/2_generate_config.sh)
+      (cd "$PROJECT_DIR" && ./scripts/2_deploy_litellm.sh)
       # Warn about stale extra keys
       ENV_KEY_COUNT=$(grep -oP '^HUAWEI_MAAS_API_KEY_COUNT=\K\d+' "$PROJECT_DIR/.env" 2>/dev/null || echo "1")
       if [ "$ENV_KEY_COUNT" -gt 1 ]; then
@@ -421,7 +421,7 @@ print_step "4" "Install tools and configure"
 # ── 4a. opencode ──
 if [ "$INSTALL_OPENCODE" = true ]; then
   echo "  ── opencode + oh-my-opencode-slim ──"
-  INSTALL_CMD=("$SCRIPT_DIR/3a_install_opencode.sh")
+  INSTALL_CMD=("$SCRIPT_DIR/4a_install_opencode.sh")
   [ -n "$VIRTUAL_KEY" ] && INSTALL_CMD+=("--virtual-key=$VIRTUAL_KEY")
   [ "$DRY_RUN" = true ] && INSTALL_CMD+=("--dry-run")
 
@@ -439,7 +439,7 @@ fi
 # ── 4b. Codex CLI ──
 if [ "$INSTALL_CODEX" = true ]; then
   echo "  ── Codex CLI ──"
-  CODEX_CMD=("$SCRIPT_DIR/3b_install_codex.sh")
+  CODEX_CMD=("$SCRIPT_DIR/4b_install_codex.sh")
   [ "$DRY_RUN" = true ] && CODEX_CMD+=("--dry-run")
 
   if [ "$DRY_RUN" = true ]; then
@@ -456,7 +456,7 @@ fi
 # ── 4c. Claude Code CLI ──
 if [ "$INSTALL_CLAUDE_CODE" = true ]; then
   echo "  ── Claude Code CLI ──"
-  CLAUDE_CMD=("$SCRIPT_DIR/3c_install_claude_code.sh")
+  CLAUDE_CMD=("$SCRIPT_DIR/4c_install_claude_code.sh")
   [ "$DRY_RUN" = true ] && CLAUDE_CMD+=("--dry-run")
 
   if [ "$DRY_RUN" = true ]; then
@@ -529,7 +529,7 @@ if [ "$LITELLM_ONLY" = true ]; then
   echo "  4. To add Claude Code CLI later:"
   echo "     ./scripts/0_bootstrap.sh --maas-key=\"\$KEY\" --claude-code-only"
   echo "  5. Or mint a virtual key only:"
-  echo "     ./scripts/4_mint-virtual-key.sh"
+  echo "     ./scripts/3_mint_key.sh"
   if [ "$AGENT_MODE" = true ]; then
     echo ""
     echo "⚠️  Security: API keys were shared with the agent via command line"
@@ -537,7 +537,7 @@ if [ "$LITELLM_ONLY" = true ]; then
     echo ""
     echo "  1. Get new MaaS key(s) from https://console.huaweicloud.com/modelarts/"
     echo "  2. Edit .env: replace HUAWEI_MAAS_API_KEY and HUAWEI_MAAS_API_KEY_1..N"
-    echo "  3. Regenerate config: ./scripts/2_generate_config.sh"
+    echo "  3. Regenerate config: ./scripts/2_deploy_litellm.sh"
     echo "  4. Restart LiteLLM:  docker compose restart litellm"
     echo "  5. Re-validate:      ./scripts/5_validate.sh --litellm-only"
   fi
@@ -612,7 +612,7 @@ print(d.get('provider',{}).get('LiteLLM',{}).get('options',{}).get('apiKey',''))
     echo ""
     echo "  1. Get new MaaS key(s) from https://console.huaweicloud.com/modelarts/"
     echo "  2. Edit .env: replace HUAWEI_MAAS_API_KEY and HUAWEI_MAAS_API_KEY_1..N"
-    echo "  3. Regenerate config: ./scripts/2_generate_config.sh"
+    echo "  3. Regenerate config: ./scripts/2_deploy_litellm.sh"
     echo "  4. Restart LiteLLM:  docker compose restart litellm"
     echo "  5. Re-validate:      ./scripts/5_validate.sh"
     echo ""

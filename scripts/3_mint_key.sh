@@ -4,12 +4,12 @@ set -euo pipefail
 # ─── Mint a scoped virtual key from LiteLLM ───
 #
 # Usage:
-#   ./4_mint-virtual-key.sh                                    # key with alias, budget $100, unlimited duration
-#   ./4_mint-virtual-key.sh --models=glm-5.1,deepseek-v3.2    # model-scoped key
-#   ./4_mint-virtual-key.sh --budget=50 --duration=7d          # custom budget + duration
-#   ./4_mint-virtual-key.sh --models=glm-5.1 --budget=10       # model-scoped with budget
-#   ./4_mint-virtual-key.sh --alias=my-key                     # custom alias
-#   ./4_mint-virtual-key.sh --no-budget                        # unlimited budget (dangerous)
+#   ./3_mint_key.sh                                    # key with alias, budget $100, unlimited duration
+#   ./3_mint_key.sh --models=glm-5.1,deepseek-v3.2    # model-scoped key
+#   ./3_mint_key.sh --budget=50 --duration=7d          # custom budget + duration
+#   ./3_mint_key.sh --models=glm-5.1 --budget=10       # model-scoped with budget
+#   ./3_mint_key.sh --alias=my-key                     # custom alias
+#   ./3_mint_key.sh --no-budget                        # unlimited budget (dangerous)
 
 # ── Parse args ──
 MODELS=""
@@ -91,8 +91,8 @@ if [ -n "$EXISTING_KEY" ] && [[ "$EXISTING_KEY" == sk-* ]]; then
     echo "To use this key, set it in opencode.jsonc:"
     echo "  .provider.LiteLLM.options.apiKey = \"$EXISTING_KEY\""
     echo ""
-    echo "Or re-run 3a_install_opencode.sh:"
-    echo "  ./3a_install_opencode.sh --virtual-key=$EXISTING_KEY"
+    echo "Or re-run 4a_install_opencode.sh:"
+    echo "  ./4a_install_opencode.sh --virtual-key=$EXISTING_KEY"
     exit 0
   else
     echo "Existing key with alias '$ALIAS' is invalid or expired. Minting new key."
@@ -142,5 +142,5 @@ echo ""
 echo "To use this key, set it in opencode.jsonc:"
 echo "  .provider.LiteLLM.options.apiKey = \"$KEY\""
 echo ""
-echo "Or re-run 3a_install_opencode.sh:"
-echo "  ./3a_install_opencode.sh --virtual-key=$KEY"
+echo "Or re-run 4a_install_opencode.sh:"
+echo "  ./4a_install_opencode.sh --virtual-key=$KEY"

@@ -67,7 +67,7 @@ Fix bugs found in end-to-end review
 
 - 0_bootstrap.sh: duplicate key count message in agent mode
 - 5_validate.sh: --litellm-only --opencode-only silent no-op
-- 4_mint-virtual-key.sh: empty duration display
+- 3_mint_key.sh: empty duration display
 ```
 
 ## Never Commit

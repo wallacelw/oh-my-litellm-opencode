@@ -28,19 +28,19 @@ For reference documentation (architecture, presets, models, repair), see
 
 | Env var | Set by | Read by | Format | Immutable? |
 |---------|--------|---------|--------|------------|
-| `HUAWEI_MAAS_API_KEY` | User (prompted, Step 5) | `1_init_env.sh`, `3a_install_opencode.sh` | Non-empty, no placeholders, validated via live API call | No |
-| `HUAWEI_MAAS_API_KEY_COUNT` | Agent (Step 7) → recalculated by `0_bootstrap.sh` | `1_init_env.sh`, `2_generate_config.sh` | Integer ≥ 1 | No |
-| `HUAWEI_MAAS_API_KEY_0` | `0_bootstrap.sh` (auto, = main key) | `1_init_env.sh`, `2_generate_config.sh` | Non-empty | No |
+| `HUAWEI_MAAS_API_KEY` | User (prompted, Step 5) | `1_init_env.sh`, `4a_install_opencode.sh` | Non-empty, no placeholders, validated via live API call | No |
+| `HUAWEI_MAAS_API_KEY_COUNT` | Agent (Step 7) → recalculated by `0_bootstrap.sh` | `1_init_env.sh`, `2_deploy_litellm.sh` | Integer ≥ 1 | No |
+| `HUAWEI_MAAS_API_KEY_0` | `0_bootstrap.sh` (auto, = main key) | `1_init_env.sh`, `2_deploy_litellm.sh` | Non-empty | No |
 | `HUAWEI_MAAS_API_KEY_1..N` | User (prompted, Step 5) → agent exports (Step 7) | `0_bootstrap.sh` → `1_init_env.sh` | Non-empty | No |
-| `LITELLM_MASTER_KEY` | `1_init_env.sh` (auto-generated) | `0_bootstrap.sh`, `3a_install_opencode.sh`, `3b_install_codex.sh`, `3c_install_claude_code.sh` | Must start with `sk-` | **Yes** — changing invalidates all virtual keys |
+| `LITELLM_MASTER_KEY` | `1_init_env.sh` (auto-generated) | `0_bootstrap.sh`, `4a_install_opencode.sh`, `4b_install_codex.sh`, `4c_install_claude_code.sh` | Must start with `sk-` | **Yes** — changing invalidates all virtual keys |
 | `LITELLM_SALT_KEY` | `1_init_env.sh` (auto-generated) | LiteLLM container | Random string | **Yes** — changing invalidates all virtual keys |
 | `DB_PASSWORD` | `1_init_env.sh` (auto-generated) | docker-compose, postgres | Random string | **Yes** — changing breaks DB auth |
 | `GRAFANA_ADMIN_PASSWORD` | `1_init_env.sh` (auto-generated) | docker-compose, `5_validate.sh` | Random string | No — rotating changes dashboard login only |
 | `PROMETHEUS_RETENTION` | `1_init_env.sh` (default `30d`) | docker-compose | Prometheus duration (`Nd`/`Nh`/`Nw`), ≥ `7d` | No |
-| `CODEX_VIRTUAL_KEY` | `3b_install_codex.sh` (minted) | `~/.codex/.env` as `LITELLM_CODEX_API_KEY` | Virtual key starting with `sk-` | No — tied to `LITELLM_MASTER_KEY` |
-| `HUAWEI_MAAS_ANTHROPIC_API_BASE` | `1_init_env.sh` (default `https://api-ap-southeast-1.modelarts-maas.com/anthropic`) | `2_generate_config.sh` | URL | No |
-| `HUAWEI_MAAS_API_BASE` | `1_init_env.sh` (default `https://api-ap-southeast-1.modelarts-maas.com/openai`) | `2_generate_config.sh` | URL | No |
-| `CLAUDE_CODE_VIRTUAL_KEY` | `3c_install_claude_code.sh` (minted) | `~/.claude/settings.json` env block as `ANTHROPIC_API_KEY` | Virtual key starting with `sk-` | No — tied to `LITELLM_MASTER_KEY` |
+| `CODEX_VIRTUAL_KEY` | `4b_install_codex.sh` (minted) | `~/.codex/.env` as `LITELLM_CODEX_API_KEY` | Virtual key starting with `sk-` | No — tied to `LITELLM_MASTER_KEY` |
+| `HUAWEI_MAAS_ANTHROPIC_API_BASE` | `1_init_env.sh` (default `https://api-ap-southeast-1.modelarts-maas.com/anthropic`) | `2_deploy_litellm.sh` | URL | No |
+| `HUAWEI_MAAS_API_BASE` | `1_init_env.sh` (default `https://api-ap-southeast-1.modelarts-maas.com/openai`) | `2_deploy_litellm.sh` | URL | No |
+| `CLAUDE_CODE_VIRTUAL_KEY` | `4c_install_claude_code.sh` (minted) | `~/.claude/settings.json` env block as `ANTHROPIC_API_KEY` | Virtual key starting with `sk-` | No — tied to `LITELLM_MASTER_KEY` |
 
 **Rules:**
 
@@ -157,7 +157,7 @@ export PATH="$HOME/.bun/bin:$PATH"
 ```
 
 > **Note:** opencode is NOT a prerequisite. It is installed automatically during
-> Step 7 (bootstrap → `3a_install_opencode.sh`). Do not install it separately.
+> Step 7 (bootstrap → `4a_install_opencode.sh`). Do not install it separately.
 
 **Postcondition:** All of the following succeed:
 
@@ -541,7 +541,7 @@ Next steps:
   4. To add Claude Code CLI later:
      ./scripts/0_bootstrap.sh --maas-key="$MAAS_KEY" --claude-code-only
   5. Or mint a virtual key only:
-     ./scripts/4_mint-virtual-key.sh
+     ./scripts/3_mint_key.sh
 ```
 
 **Security warning (agent mode only):**
@@ -555,7 +555,7 @@ variables), append this warning to the summary:
 
   1. Get new MaaS key(s) from https://console.huaweicloud.com/modelarts/
   2. Edit .env: replace HUAWEI_MAAS_API_KEY and HUAWEI_MAAS_API_KEY_1..N
-  3. Regenerate config: ./scripts/2_generate_config.sh
+  3. Regenerate config: ./scripts/2_deploy_litellm.sh
   4. Restart LiteLLM:  docker compose restart litellm
   5. Re-validate:      ./scripts/5_validate.sh [--litellm-only if applicable]
 ```

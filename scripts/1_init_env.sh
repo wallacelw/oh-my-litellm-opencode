@@ -306,7 +306,7 @@ fi
 # ── Generate litellm_config.yaml ─────────────────────────────────
 echo ""
 echo "Generating litellm_config.yaml..."
-"$SCRIPT_DIR/2_generate_config.sh"
+"$SCRIPT_DIR/2_deploy_litellm.sh"
 echo "Config generation successful."
 
 # ── Summary ───────────────────────────────────────────────────────

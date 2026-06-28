@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Claude Code CLI integration via `3c_install_claude_code.sh` — installs
+- Claude Code CLI integration via `4c_install_claude_code.sh` — installs
   Claude Code CLI, mints virtual key (alias "claude-code", unlimited budget),
   writes `~/.claude/settings.json`.
 - `configs/claude-code/.env.template` — reference template documenting
@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `ANTHROPIC_SMALL_FAST_MODEL`).
 - Huawei MaaS Anthropic-compatible endpoint support
   (`HUAWEI_MAAS_ANTHROPIC_API_BASE`).
-- `2_generate_config.sh` now generates dual-format deployments: OpenAI
+- `2_deploy_litellm.sh` now generates dual-format deployments: OpenAI
   (`openai/` prefix, `/openai/v1/chat/completions`) + Anthropic
   (`anthropic/` prefix, `/anthropic/v1/messages`) for all 6 models.
 - `--claude-code-only` flag for `0_bootstrap.sh` and `5_validate.sh`.
@@ -39,6 +39,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `claude-glm-5.2`) to avoid LiteLLM routing conflicts. OpenAI deployments
   keep base names (e.g., `glm-5.2`). Claude Code uses `claude-glm-5.2`
   as `ANTHROPIC_MODEL`.
+- Script renumbering for modularity: `2_generate_config.sh` →
+  `2_deploy_litellm.sh` (now also deploys Docker Compose),
+  `4_mint-virtual-key.sh` → `3_mint_key.sh` (now precedes tool installs),
+  `3a/3b/3c_install_*.sh` → `4a/4b/4c_install_*.sh`.
 
 ## [0.3.0] - 2026-06-28
 

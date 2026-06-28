@@ -6,11 +6,11 @@
 # LiteLLM load-balances across deployments with the same model_name.
 #
 # Usage:
-#   ./scripts/2_generate_config.sh                                    # default: simple-shuffle
+#   ./scripts/2_deploy_litellm.sh                                    # default: simple-shuffle
 
-#   ./scripts/2_generate_config.sh --routing-strategy=least-busy      # alternative strategy
+#   ./scripts/2_deploy_litellm.sh --routing-strategy=least-busy      # alternative strategy
 
-#   ./scripts/2_generate_config.sh --routing-strategy=latency-based-routing
+#   ./scripts/2_deploy_litellm.sh --routing-strategy=latency-based-routing
 
 set -euo pipefail
 

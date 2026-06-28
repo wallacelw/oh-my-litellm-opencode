@@ -586,7 +586,7 @@ print(d.get('provider',{}).get('LiteLLM',{}).get('options',{}).get('apiKey',''))
     echo "Claude Code config: ~/.claude-code/.env"
     CLAUDE_VK=""
     if [ -f "$HOME/.claude-code/.env" ]; then
-      CLAUDE_VK=$(grep -oP '^ANTHROPIC_API_KEY="?\K[^"]+' "$HOME/.claude-code/.env" 2>/dev/null || true)
+      CLAUDE_VK=$(grep -oP '^export ANTHROPIC_API_KEY="?\K[^"]+' "$HOME/.claude-code/.env" 2>/dev/null || true)
     fi
     if [ -n "$CLAUDE_VK" ]; then
       echo "Claude Code key:    ${CLAUDE_VK:0:8}...${CLAUDE_VK: -4}"

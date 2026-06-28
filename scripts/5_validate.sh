@@ -684,14 +684,14 @@ if [ "$RUN_CLAUDE_CODE" = true ]; then
       fail "ANTHROPIC_BASE_URL not pointing to LiteLLM proxy"
     fi
 
-    if grep -qP '^ANTHROPIC_API_KEY\s*=\s*"sk-\S+"' "$CLAUDE_ENV"; then
+    if grep -qP '^export ANTHROPIC_API_KEY\s*=\s*"sk-\S+"' "$CLAUDE_ENV"; then
       pass "ANTHROPIC_API_KEY set (starts with sk-)"
     else
       fail "ANTHROPIC_API_KEY not set or invalid"
     fi
 
-    if grep -qP '^ANTHROPIC_MODEL\s*=\s*"\S+"' "$CLAUDE_ENV"; then
-      CLAUDE_MODEL=$(grep -oP '^ANTHROPIC_MODEL\s*=\s*"\K[^"]+' "$CLAUDE_ENV" 2>/dev/null || true)
+    if grep -qP '^export ANTHROPIC_MODEL\s*=\s*"\S+"' "$CLAUDE_ENV"; then
+      CLAUDE_MODEL=$(grep -oP '^export ANTHROPIC_MODEL\s*=\s*"\K[^"]+' "$CLAUDE_ENV" 2>/dev/null || true)
       pass "default model set: $CLAUDE_MODEL"
     else
       fail "default model not set"
@@ -713,12 +713,12 @@ if [ "$RUN_CLAUDE_CODE" = true ]; then
   echo "E4. Messages API smoke test"
   CLAUDE_VK=""
   if [ -f "$CLAUDE_ENV" ]; then
-    CLAUDE_VK=$(grep -oP '^ANTHROPIC_API_KEY="?\K[^"]+' "$CLAUDE_ENV" 2>/dev/null || true)
+    CLAUDE_VK=$(grep -oP '^export ANTHROPIC_API_KEY="?\K[^"]+' "$CLAUDE_ENV" 2>/dev/null || true)
   fi
   if [ "$DRY_RUN" = true ]; then
     skip "Messages API smoke test"
   elif [ -n "$CLAUDE_VK" ]; then
-    SMOKE_MODEL="deepseek-v3.2"
+    SMOKE_MODEL="claude-deepseek-v3.2"
     if curl -sf -m 30 "$LITELLM_URL/v1/messages" \
         -H "x-api-key: $CLAUDE_VK" \
         -H "Content-Type: application/json" \

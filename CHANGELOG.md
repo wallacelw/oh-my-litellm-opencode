@@ -29,9 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Total deployment count doubled: 6 OpenAI + 6 Anthropic per API key
   (12 × N total, was 6 × N).
-- Models now exposed via two API formats with the same `model_name`:
-  LiteLLM routes `/v1/chat/completions` to OpenAI deployments and
-  `/v1/messages` to Anthropic deployments.
+- Anthropic deployments use `claude-` prefixed model names (e.g.,
+  `claude-glm-5.2`) to avoid LiteLLM routing conflicts. OpenAI deployments
+  keep base names (e.g., `glm-5.2`). Claude Code uses `claude-glm-5.2`
+  as `ANTHROPIC_MODEL`.
 - `REFERENCE.md`: added Claude Code CLI section, Anthropic endpoint to
   architecture diagram and endpoints table, dual-format architecture
   documentation.

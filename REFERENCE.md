@@ -62,7 +62,7 @@ This is reference documentation. For the install procedure, read
 - Master key is admin-only — opencode, Codex CLI, and Claude Code CLI use separate virtual keys
 - Claude Code CLI uses `anthropic/` provider prefix pointing to Huawei MaaS Anthropic endpoint (`/anthropic/v1/messages`)
 - Claude Code CLI uses `x-api-key` header (Anthropic format), opencode/Codex use `Authorization: Bearer` (OpenAI format)
-- Same model names serve both OpenAI and Anthropic endpoints — LiteLLM routes by request format
+- Anthropic deployments use `claude-` prefix (e.g., `claude-glm-5.2`) to avoid routing conflicts with OpenAI deployments
 - LiteLLM baseURL: `http://127.0.0.1:4000` (no `/v1`)
 - MaaS region-locked to `ap-southeast-1`
 
@@ -136,32 +136,35 @@ Or add to shell profile: `echo 'source ~/.claude-code/.env' >> ~/.bashrc`
 |----------|-------|---------|
 | `ANTHROPIC_BASE_URL` | `http://127.0.0.1:4000` | LiteLLM proxy URL |
 | `ANTHROPIC_API_KEY` | `sk-...` (virtual key) | LiteLLM auth (alias: claude-code) |
-| `ANTHROPIC_MODEL` | `glm-5.2` | Primary model |
-| `ANTHROPIC_SMALL_FAST_MODEL` | `deepseek-v3.2` | Fast model for background tasks |
+| `ANTHROPIC_MODEL` | `claude-glm-5.2` | Primary model |
+| `ANTHROPIC_SMALL_FAST_MODEL` | `claude-deepseek-v3.2` | Fast model for background tasks |
 
 ### Model Selection
 
-Models use Huawei MaaS names directly (no Claude aliasing). All 6 models
-are available. Switch at runtime with `--model`:
+Models use `claude-` prefixed names (e.g., `claude-glm-5.2`) for the
+Anthropic endpoint. All 6 models are available. Switch at runtime with
+`--model`:
 
 ```bash
-claude --model deepseek-v4-pro    # deep reasoning
-claude --model glm-5.2            # general purpose (default)
-claude --model deepseek-v3.2      # fast
+claude --model claude-deepseek-v4-pro    # deep reasoning
+claude --model claude-glm-5.2            # general purpose (default)
+claude --model claude-deepseek-v3.2      # fast
 ```
 
 ### Dual-Format Architecture
 
 Each model has two LiteLLM deployment types:
 
-| Type | Provider | Endpoint | Used by |
-|------|----------|----------|---------|
-| OpenAI | `openai/{model}` | `/openai/v1/chat/completions` | opencode, Codex CLI |
-| Anthropic | `anthropic/{model}` | `/anthropic/v1/messages` | Claude Code CLI |
+| Type | Provider | model_name | Endpoint | Used by |
+|------|----------|------------|----------|---------|
+| OpenAI | `openai/{model}` | `{model}` | `/openai/v1/chat/completions` | opencode, Codex CLI |
+| Anthropic | `anthropic/{model}` | `claude-{model}` | `/anthropic/v1/messages` | Claude Code CLI |
 
-Both share the same `model_name` (e.g., `glm-5.2`). LiteLLM routes based
-on the incoming request format — `/v1/chat/completions` to OpenAI
-deployments, `/v1/messages` to Anthropic deployments.
+OpenAI deployments use the base model name (e.g., `glm-5.2`). Anthropic
+deployments use a `claude-` prefix (e.g., `claude-glm-5.2`) to avoid
+routing conflicts — LiteLLM routes by `model_name`, so distinct names
+ensure `/v1/messages` always hits the Anthropic deployment directly,
+with no OpenAI format conversion.
 
 ## Repair
 

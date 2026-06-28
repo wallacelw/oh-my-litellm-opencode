@@ -105,7 +105,7 @@ echo "3. Configuring LiteLLM virtual key..."
 
 # Try to reuse existing key from ~/.claude-code/.env (fast, local)
 if [ -z "$VIRTUAL_KEY" ] && [ -f "$CLAUDE_ENV" ]; then
-  EXISTING_KEY=$(grep -oP '^ANTHROPIC_API_KEY="?\K[^"]+' "$CLAUDE_ENV" 2>/dev/null || true)
+  EXISTING_KEY=$(grep -oP '^export ANTHROPIC_API_KEY="?\K[^"]+' "$CLAUDE_ENV" 2>/dev/null || true)
   if [ -n "$EXISTING_KEY" ] && [[ "$EXISTING_KEY" == sk-* ]]; then
     if [ "$DRY_RUN" = true ]; then
       echo "   Would test existing key from .env: ${EXISTING_KEY:0:8}...${EXISTING_KEY: -4}"
@@ -225,10 +225,10 @@ fi
 
 mkdir -p "$CLAUDE_DIR"
 
-NEW_ENV="ANTHROPIC_BASE_URL=\"http://127.0.0.1:4000\"
-ANTHROPIC_API_KEY=\"$VIRTUAL_KEY\"
-ANTHROPIC_MODEL=\"glm-5.2\"
-ANTHROPIC_SMALL_FAST_MODEL=\"deepseek-v3.2\""
+NEW_ENV="export ANTHROPIC_BASE_URL=\"http://127.0.0.1:4000\"
+export ANTHROPIC_API_KEY=\"$VIRTUAL_KEY\"
+export ANTHROPIC_MODEL=\"claude-glm-5.2\"
+export ANTHROPIC_SMALL_FAST_MODEL=\"claude-deepseek-v3.2\""
 
 if [ -f "$CLAUDE_ENV" ]; then
   EXISTING_ENV=$(cat "$CLAUDE_ENV")
@@ -256,8 +256,8 @@ echo ""
 echo "Versions:"
 command -v claude &>/dev/null && echo "  claude:     $(claude --version 2>/dev/null || echo 'unknown')"
 echo ""
-echo "Default model: glm-5.2"
-echo "Fast model:    deepseek-v3.2"
+echo "Default model: claude-glm-5.2"
+echo "Fast model:    claude-deepseek-v3.2"
 echo "All 6 models available via LiteLLM proxy (Anthropic Messages API)"
 echo "LiteLLM proxy URL: $LITELLM_URL"
 echo ""

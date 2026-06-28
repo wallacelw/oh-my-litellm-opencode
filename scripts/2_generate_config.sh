@@ -118,7 +118,9 @@ fi
   echo ""
   echo "  # ───────── Huawei MaaS Anthropic Models (for Claude Code CLI) ───────────"
   echo "  # Anthropic-compatible endpoint (/anthropic/v1/messages)"
-  echo "  # Same model names, anthropic/ provider prefix, no use_chat_completions_api"
+  echo "  # Prefixed with claude- to avoid routing conflicts with OpenAI deployments"
+  echo "  # (LiteLLM routes by model_name; same name for both formats causes"
+  echo "  #  /v1/messages to sometimes hit the OpenAI deployment, losing content)"
   echo ""
 
   for model_entry in "${MODELS[@]}"; do
@@ -128,14 +130,14 @@ fi
       if [ "$KEY_COUNT" -gt 1 ]; then
         echo "  # ── deployment $i (key _${i}) ──"
       fi
-      echo "  - model_name: $model_name"
+      echo "  - model_name: claude-$model_name"
       echo "    litellm_params:"
       echo "      model: anthropic/$model_name"
       echo "      api_base: os.environ/HUAWEI_MAAS_ANTHROPIC_API_BASE"
       echo "      api_key: os.environ/HUAWEI_MAAS_API_KEY_$i"
       echo "      tpm: $tpm"
       echo "      rpm: $rpm"
-      echo "    model_info:"
+    echo "    model_info:"
       echo "      max_tokens: $max_tokens"
       echo "      max_input_tokens: $max_input"
       echo "      max_output_tokens: $max_output"

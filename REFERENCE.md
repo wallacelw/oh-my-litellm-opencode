@@ -243,15 +243,19 @@ dashboard.
 Prometheus TSDB retention is configurable via `PROMETHEUS_RETENTION` in `.env`
 (default: `30d`).
 
-**Dashboard** (`configs/grafana/dashboards/main.json`) — 12 panels across 5 rows:
+**Dashboard** (`configs/grafana/dashboards/main.json`) — 25 panels across 7 rows,
+focused on short time windows (default 5m rate, 1h range, 30s refresh):
 
-1. **At-a-glance** — Active Requests, RPM, TPM, Models Deployed
-2. **Latency** — TTFT by model (P50/P95), TPOT by model (P50/P95)
-3. **Cost & Budget** — Total cost, cost per model, budget remaining by key
-4. **Throughput** — RPM by model, TPM by model
-5. **Deployment & Health** — Model instance × API key table
+1. **At-a-glance** — Active Requests, RPM, TPM, Models Healthy, Error %, Spend (window)
+2. **Latency** — TTFT by model (P50/P95), TPOT by model (P50/P95), End-to-end latency (P50/P95/P99), Proxy overhead (P95), Queue wait (P95)
+3. **Errors & Health** — Error rate by model, Error status codes (pie), Cooldown events, Deployment health table
+4. **Throughput & Capacity** — RPM by model, TPM by model, Traffic distribution (pie), RPM utilization vs limit
+5. **Tokens** — Token breakdown stacked (input/output/reasoning/cached)
+6. **Cost** — Total cost, Cost per model, Spend rate ($/min)
+7. **Efficiency** — Cache hit ratio, Cost per 1K tokens
 
-Variables: `$model` (filter by model).
+Variables: `$model` (filter by model), `$provider` (filter by openai/anthropic),
+`$window` (rate window: 1m/5m/15m/1h, default 5m).
 
 
 

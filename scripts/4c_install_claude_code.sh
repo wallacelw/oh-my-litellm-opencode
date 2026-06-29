@@ -67,17 +67,9 @@ retry_curl() {
 # ── 1. Check prerequisites ──
 echo "1. Checking prerequisites..."
 
-if ! command -v npm &>/dev/null; then
-  echo "ERROR: npm is not installed. Install Node.js from https://nodejs.org/"
-  exit 1
-fi
-echo "   npm: $(npm --version)"
-
-if ! command -v jq &>/dev/null; then
-  echo "ERROR: jq is not installed. Install from https://stedolan.github.io/jq/"
-  exit 1
-fi
-echo "   jq: $(jq --version)"
+source "$(dirname "${BASH_SOURCE[0]}")/lib/prereqs.sh"
+prereq_ensure_npm
+prereq_ensure_apt "jq" jq jq
 
 # Check LiteLLM is reachable
 if curl -sf -m $CURL_TIMEOUT "$LITELLM_URL/health/liveliness" &>/dev/null; then

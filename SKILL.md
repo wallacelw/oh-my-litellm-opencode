@@ -12,6 +12,29 @@ For reference documentation (architecture, presets, models, repair), see
 
 ---
 
+## Quick Start for Humans
+
+```bash
+git clone https://github.com/wallacelw/oh-my-coding-maas-gateway ~/oh-my-coding-maas-gateway
+cd ~/oh-my-coding-maas-gateway
+./scripts/0_bootstrap.sh
+```
+
+You'll get a numbered menu (1–6) to choose which tools to install. Enter your
+MaaS API key when prompted. Prerequisites are installed automatically as needed.
+
+### Bootstrap Flags
+
+| Flag | Effect |
+|------|--------|
+| `--maas-key=KEY` | Non-interactive MaaS key (skips prompt) |
+| `--agent` | Agent mode: fail-fast, no prompts, auto-install prereqs |
+| `--tool=VAL` | `all` (default), `litellm`, `opencode`, `codex`, `claude`, or comma combo (e.g. `opencode,codex`) |
+| `--virtual-key=sk-...` | Use existing virtual key, skip minting |
+| `--dry-run` | Preview actions without modifying anything |
+
+---
+
 ## Section A: Idempotency & Re-run Contract
 
 - If any step's precondition is already met, skip the action and verify the
@@ -80,11 +103,28 @@ If creating `$PROJECT_DIR` fails with permission denied:
 sudo mkdir -p "$PROJECT_DIR" && sudo chown "$USER" "$PROJECT_DIR"
 ```
 
-Prompt user: `"Install mode: full, litellm-only, opencode-only, codex-only, or claude-code-only? (default: full)"`
+Prompt user with a numbered menu:
 
-If user presses Enter or chooses full: `INSTALL_MODE="full"`.
-Otherwise set `INSTALL_MODE` to the user's choice (one of: `litellm-only`,
-`opencode-only`, `codex-only`, `claude-code-only`).
+```
+What would you like to install?
+  1) Full stack (LiteLLM + opencode + Codex + Claude Code)  [default]
+  2) LiteLLM only
+  3) LiteLLM + opencode
+  4) LiteLLM + Codex
+  5) LiteLLM + Claude Code
+  6) Custom (toggle each component)
+```
+
+Map the choice to `INSTALL_MODE`:
+
+| Choice | `INSTALL_MODE` | `--tool=` equivalent |
+|--------|---------------|---------------------|
+| 1 (default) | `full` | `--tool=all` |
+| 2 | `litellm-only` | `--tool=litellm` |
+| 3 | `opencode-only` | `--tool=opencode` |
+| 4 | `codex-only` | `--tool=codex` |
+| 5 | `claude-code-only` | `--tool=claude` |
+| 6 | custom | comma combo (e.g. `opencode,codex`) |
 
 **Postcondition:** `uname -s` prints `Linux` AND `$PROJECT_DIR` is set and
 writable (`touch "$PROJECT_DIR/.test" && rm "$PROJECT_DIR/.test"` succeeds)
@@ -102,69 +142,44 @@ Linux only." If dir creation fails even with sudo: escalate.
 
 **Action:**
 
-Check each tool:
+Bootstrap ensures its own prerequisites via `scripts/lib/prereqs.sh`:
 
 ```bash
-command -v bun     && bun --version          # if INSTALL_MODE ∈ {full, opencode-only}
-command -v jq      && jq --version           # if INSTALL_MODE != litellm-only
-command -v npm     && npm --version          # if INSTALL_MODE ∈ {full, codex-only, claude-code-only}
-command -v bwrap   && bwrap --version        # if INSTALL_MODE ∈ {full, codex-only}
 command -v git     && git --version
 command -v python3 && python3 --version
 command -v curl    && curl --version
-command -v docker  && docker --version
-docker compose version              # V2 plugin
-command -v sudo                     # sudo available
+command -v jq      && jq --version
 ```
 
-> **Note:** None of `bun`, `jq`, `npm`, or `bwrap` are required when
-> `INSTALL_MODE=litellm-only`. `bun` is needed by opencode plugin install
-> (`{full, opencode-only}`). `jq` is needed by all tool installs and validation
-> (`{not litellm-only}`). `npm` is needed by Codex CLI and Claude Code CLI
-> (`{full, codex-only, claude-code-only}`). `bwrap` (bubblewrap) is needed by
-> Codex CLI for sandboxing (`{full, codex-only}`).
+If any are missing, they are installed automatically (`apt-get install -y`).
+In interactive mode, the user is prompted before installation. In agent mode
+(`--agent`), installation is automatic without prompts.
 
-Collect all missing tools. If any are missing:
+> **Distributed prerequisites:** Each script installs only the tools it
+> needs:
+>
+> | Script | Ensures |
+> |--------|---------|
+> | `0_bootstrap.sh` | git, python3, curl, jq |
+> | `1_init_env.sh` | python3 |
+> | `2_deploy_litellm.sh` | docker + compose + daemon (via `prereq_ensure_docker`) |
+> | `3_mint_key.sh` | curl, jq |
+> | `4a_install_opencode.sh` | bun, jq, curl |
+> | `4b_install_codex.sh` | npm/node, jq, bubblewrap |
+> | `4c_install_claude_code.sh` | npm/node, jq |
+> | `5_validate.sh` | curl, jq |
+>
+> This makes each script independently runnable. Repeated installs are
+> harmless — `apt-get install` is idempotent, and the helper library
+> tracks what's been ensured within the current process.
 
-1. List all missing tools to the user.
-2. Ask: `"OK to install all missing prerequisites? (y/n)"`
-3. If user declines: stop and report "Prerequisites are required. Install them
-   manually and re-run from Step 1."
-4. If user approves, install each missing tool:
-
-   First, refresh the package index (required on fresh systems):
-   ```bash
-   sudo apt-get update
-   ```
-
-   Then install each:
-   - `bun`:            `curl -fsSL https://bun.sh/install | bash`
-   - `jq`:             `sudo apt-get install -y jq`
-   - `git`:            `sudo apt-get install -y git`
-   - `python3`:        `sudo apt-get install -y python3`
-   - `curl`:           `sudo apt-get install -y curl`
-   - `docker`:         `curl -fsSL https://get.docker.com | sudo sh`
-   - `docker compose`: If `docker` exists but `docker compose version` fails:
-                         `sudo apt-get install -y docker-compose-v2`
-   - `sudo`:           If missing and running as root (`id -u` = 0), run
-                         commands directly without sudo. If missing and not root:
-                         escalate "sudo is required but not installed."
-
-After installing bun, source the bun env so it's on PATH:
-
-```bash
-export PATH="$HOME/.bun/bin:$PATH"
-```
-
-> **Note:** opencode is NOT a prerequisite. It is installed automatically during
-> Step 7 (bootstrap → `4a_install_opencode.sh`). Do not install it separately.
+> **Note:** opencode is NOT a prerequisite. It is installed automatically
+> during Step 7 (bootstrap → `4a_install_opencode.sh`).
 
 **Postcondition:** All of the following succeed:
 
 ```bash
-command -v bun && command -v jq && command -v git \
-  && command -v python3 && command -v curl \
-  && command -v docker && docker compose version
+command -v git && command -v python3 && command -v curl && command -v jq
 ```
 
 **On failure:** Report which tool failed to install. Escalate.
@@ -173,9 +188,15 @@ command -v bun && command -v jq && command -v git \
 
 ### Step 3: Ensure Docker Daemon
 
-**Precondition:** Step 2 passed (`docker` and `docker compose` are installed).
+**Precondition:** Step 2 passed.
 
 **Action:**
+
+Docker engine, compose plugin, and daemon startup are now handled
+automatically by `2_deploy_litellm.sh` via `prereq_ensure_docker` (called
+during Step 7). This step is a confirmation only.
+
+If running Docker commands manually before Step 7:
 
 ```bash
 docker info >/dev/null 2>&1
@@ -189,7 +210,7 @@ sudo systemctl start docker
 
 Wait 5 seconds, retry `docker info`.
 
-**Postcondition:** `docker info` exits 0.
+**Postcondition:** `docker info` exits 0 (verified during Step 7).
 
 **On failure:** Escalate: `"Docker daemon won't start. Check: sudo journalctl -u docker --tail 20"`
 
@@ -460,25 +481,39 @@ fi
 
 | FAIL line contains | Recovery |
 |--------------------|----------|
-| `.env not found` | Re-run from Step 7 |
-| `services running` and count `< 4` | `docker compose -f "$PROJECT_DIR/docker-compose.yml" up -d`, wait 30s, retry Step 9 |
-| `liveness probe` and not `200` | Re-run from Step 8 |
-| `opencode not found` | `curl -fsSL https://opencode.ai/install \| bash`, retry Step 9 |
-| `codex not found` | `npm install -g @openai/codex`, retry Step 9 |
-| `bwrap not found` | `sudo apt-get install -y bubblewrap`, retry Step 9 |
-| `Model catalog not reachable` | Check virtual key in `~/.config/opencode/opencode.json`, re-run from Step 7 |
-| `smoke test` and `did not respond` | Re-validate MaaS key via Step 5's API call. If key is valid, escalate. |
-| `Prometheus not reachable` | `docker compose -f "$PROJECT_DIR/docker-compose.yml" up -d prometheus`, wait 10s, retry Step 9 |
-| `rules not loaded` | Check `configs/prometheus/prometheus.yml` syntax: `docker compose logs prometheus --tail 20` |
-| `Grafana not reachable` | `docker compose -f "$PROJECT_DIR/docker-compose.yml" up -d grafana`, wait 20s, retry Step 9 |
-| `dashboard not found` | Check provisioning: `docker compose logs grafana --tail 20` |
-| `claude not found` | `npm install -g @anthropic-ai/claude-code`, retry Step 9 |
-| `Messages API smoke test` and `did not respond` | Check virtual key in `~/.claude/settings.json` (`env.ANTHROPIC_API_KEY`), verify Anthropic endpoint in config.yaml |
+| `.env not found` | Re-run `1_init_env.sh --auto` then bootstrap |
+| `placeholder value` | Edit `.env`, set the named var, re-run bootstrap |
+| `services running` + `expected 4` | `docker compose up -d`, wait 30s, retry Step 9 |
+| `liveness probe returned` | `docker compose logs litellm --tail 50` |
+| `litellm_config.yaml not found` | `./scripts/2_deploy_litellm.sh` |
+| `Inference smoke test` + `did not respond` | Re-validate MaaS key; check logs |
+| `opencode not found` | `curl -fsSL https://opencode.ai/install \| bash` |
+| `opencode.json not found` | Re-run `4a_install_opencode.sh` |
+| `oh-my-opencode-slim.json not found` | Re-run `4a_install_opencode.sh` |
+| `No API key for model checks` | Check opencode.json has apiKey; re-run 4a |
+| `Model catalog not reachable` | Check LiteLLM healthy + virtual key valid |
+| `Prometheus not reachable` | `docker compose up -d prometheus`, wait 10s |
+| `/metrics endpoint not responding` | `docker compose restart litellm`, wait 15s |
+| `Prometheus scraping` + `target is down` | Check LiteLLM `/metrics` responds |
+| `Grafana not reachable` | `docker compose up -d grafana`, wait 20s |
+| `Grafana` + `dashboard not found` | `docker compose restart grafana` (re-provision) |
+| `codex not found` | `npm install -g @openai/codex` |
+| `config.toml not found` | Re-run `4b_install_codex.sh` |
+| `base_url not pointing` | Re-run `4b_install_codex.sh` |
+| `env_key not set` | Re-run `4b_install_codex.sh` |
+| `wire_api not set` | Re-run `4b_install_codex.sh` |
+| `default model not set` (Codex) | Re-run `4b_install_codex.sh` |
+| `Responses API smoke test` + `did not respond` | Check `~/.codex/.env` key; verify `/v1/responses` |
+| `claude not found` | `npm install -g @anthropic-ai/claude-code` |
+| `settings.json not found` | Re-run `4c_install_claude_code.sh` |
+| `ANTHROPIC_BASE_URL not pointing` | Re-run `4c_install_claude_code.sh` |
+| `ANTHROPIC_API_KEY not set` | Re-run `4c_install_claude_code.sh` |
+| `Messages API smoke test` + `did not respond` | Check `~/.claude/settings.json` key |
 
-> **Note:** `unhealthy_count > 0` is a **warning** in `5_validate.sh`, not a
-> failure — it does not cause a non-zero exit. If you see this warning, monitor
-> it but proceed. If inference fails later (smoke test), then investigate MaaS
-> key/model/region validity.
+> **Note:** WARN messages (permissions, `unhealthy_count > 0`, deployment
+> drift, scrape not-yet) do NOT cause a non-zero exit — they are advisory.
+> If you see `unhealthy_count > 0`, monitor it but proceed. If inference
+> fails later (smoke test), then investigate MaaS key/model/region validity.
 
 After running the recovery command, re-run `5_validate.sh` **once**. If it
 still fails: escalate with the full validation output. Do not loop recovery
@@ -752,7 +787,7 @@ follow Section C but with these modifications:
 |------|--------------|---------|
 | 1 | Detect environment + prompt install dir | Detect existing install dir (look for `$PROJECT_DIR/.git`) |
 | 2 | Verify & install prerequisites | Quick verify only (prereqs already installed) |
-| 3 | Ensure Docker daemon | Quick verify only |
+| 3 | Ensure Docker daemon | Quick verify only (handled by `2_deploy_litellm.sh`) |
 | 4 | Clone | `git -C "$PROJECT_DIR" pull --ff-only` (update in-place) |
 | 5 | Prompt for MaaS key + validate | Read `HUAWEI_MAAS_API_KEY` from `$PROJECT_DIR/.env` — do NOT prompt |
 | 6 | Check ports free | Skip — ports are in use by existing containers (expected) |

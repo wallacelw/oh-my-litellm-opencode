@@ -28,6 +28,10 @@ SKIP_CODEX=false
 SKIP_CLAUDE_CODE=false
 LITELLM_URL="http://127.0.0.1:4000"
 
+source "$(dirname "${BASH_SOURCE[0]}")/lib/prereqs.sh"
+prereq_ensure_apt "curl" curl curl
+prereq_ensure_apt "jq"   jq   jq
+
 for arg in "$@"; do
   case "$arg" in
     --dry-run)          DRY_RUN=true ;;

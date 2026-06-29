@@ -20,6 +20,10 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ENV_FILE="$PROJECT_ROOT/.env"
 CONFIG_FILE="$PROJECT_ROOT/configs/litellm/config.yaml"
 
+# ── Ensure prerequisites ──────────────────────────────────────────
+source "$(dirname "${BASH_SOURCE[0]}")/lib/prereqs.sh"
+prereq_ensure_docker
+
 # ── Parse args ────────────────────────────────────────────────────
 ROUTING_STRATEGY="simple-shuffle"
 DRY_RUN=false

@@ -23,6 +23,10 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ENV_EXAMPLE="$PROJECT_ROOT/configs/.env.template"
 ENV_FILE="$PROJECT_ROOT/.env"
 
+# ── Ensure prerequisites ──────────────────────────────────────────
+source "$(dirname "${BASH_SOURCE[0]}")/lib/prereqs.sh"
+prereq_ensure_apt "python3" python3 python3
+
 # ── Parse mode ────────────────────────────────────────────────────
 MODE="interactive"
 FORCE=false

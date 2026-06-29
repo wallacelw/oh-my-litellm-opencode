@@ -215,34 +215,22 @@ echo "   Project dir: $PROJECT_DIR"
 [ "$DRY_RUN" = true ] && echo "   (DRY RUN — no changes will be made)"
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Step 2: Check core prerequisites (always needed for LiteLLM)
+# Step 2: Ensure prerequisites
 # ──────────────────────────────────────────────────────────────────────────────
-print_step "2" "Check core prerequisites"
-
-PREREQ_OK=true
-
-check_prereq() {
-  local name="$1" cmd="$2"
-  if ! command -v "$cmd" &>/dev/null; then
-    echo "  ✗ $name NOT found — $3"
-    PREREQ_OK=false
-  else
-    echo "  ✓ $name: $($cmd --version 2>/dev/null | head -1 || echo 'found')"
-  fi
-}
-
-check_prereq "docker"  docker  "install from https://docs.docker.com/engine/install/"
-check_prereq "git"     git     "install git"
-check_prereq "python3" python3 "install Python 3"
-check_prereq "jq"      jq      "install from https://stedolan.github.io/jq/"
-check_prereq "curl"    curl    "install curl"
-
-if command -v docker &>/dev/null && ! docker compose version &>/dev/null; then
-  echo "  ✗ docker compose V2 NOT found"
-  PREREQ_OK=false
+print_step "2" "Ensure prerequisites"
+source "$SCRIPT_DIR/lib/prereqs.sh"
+export PREREQ_MODE
+if [ "$AGENT_MODE" = true ]; then
+  PREREQ_MODE=auto
+else
+  PREREQ_MODE=prompt
 fi
 
-[ "$PREREQ_OK" = false ] && { echo ""; echo "ERROR: Core prerequisites missing. Install them and re-run."; exit 1; }
+# Bootstrap's own deps — sub-scripts handle their own
+prereq_ensure_apt "git"     git     git
+prereq_ensure_apt "python3" python3 python3
+prereq_ensure_apt "curl"    curl    curl
+prereq_ensure_apt "jq"      jq      jq
 
 # ── Tool selection (menu or --tool= flag) ──
 if [ "$TOOL_SPECIFIED" = false ]; then
@@ -262,22 +250,6 @@ echo "    opencode:     $( [ "$INSTALL_OPENCODE" = true ] && echo "yes" || echo 
 echo "    Codex:        $( [ "$INSTALL_CODEX" = true ] && echo "yes" || echo "no" )"
 echo "    Claude Code:  $( [ "$INSTALL_CLAUDE_CODE" = true ] && echo "yes" || echo "no" )"
 
-# ── Tool-specific prerequisites (batch, based on selection) ──
-echo ""
-echo "  Checking tool-specific prerequisites..."
-
-if [ "$INSTALL_OPENCODE" = true ]; then
-  check_prereq "bun" bun "install from https://bun.sh (needed for oh-my-opencode-slim plugin)"
-fi
-if [ "$INSTALL_CODEX" = true ] || [ "$INSTALL_CLAUDE_CODE" = true ]; then
-  check_prereq "npm" npm "install from https://nodejs.org/ (needed for Codex/Claude Code CLI)"
-fi
-if [ "$INSTALL_CODEX" = true ]; then
-  check_prereq "bwrap" bwrap "install with: apt-get install -y bubblewrap (needed for Codex CLI sandboxing)"
-fi
-
-[ "$PREREQ_OK" = false ] && { echo ""; echo "ERROR: Tool prerequisites missing. Install them and re-run."; exit 1; }
-
 # Resolve MaaS key
 if [ -z "$MAAS_KEY" ]; then MAAS_KEY="${HUAWEI_MAAS_API_KEY:-}"; fi
 if [ -z "$MAAS_KEY" ]; then
@@ -287,12 +259,11 @@ if [ -z "$MAAS_KEY" ]; then
     MAAS_KEY="<HUAWEI_MAAS_API_KEY>"
   else
     echo ""; echo "  Enter Huawei MaaS API key:"; read -r MAAS_KEY < /dev/tty
-    [ -z "$MAAS_KEY" ] && { echo "ERROR: MaaS API key is required."; PREREQ_OK=false; }
+    [ -z "$MAAS_KEY" ] && { echo "ERROR: MaaS API key is required."; exit 1; }
   fi
 else
   echo "  ✓ Huawei MaaS API key set"
 fi
-[ "$PREREQ_OK" = false ] && { echo ""; echo "ERROR: Prerequisites missing. Install them and re-run."; exit 1; }
 
 # ── Configure git hooks (prevent committing secrets) ──
 if [ -d "$PROJECT_DIR/.githooks" ]; then
@@ -360,9 +331,12 @@ print_step "3" "Deploy LiteLLM"
 # ── Port conflict check ──
 for port in 4000 5432 9090 3000; do
   if command -v ss &>/dev/null && ss -tlnp 2>/dev/null | grep -q ":${port} "; then
-    echo "  WARNING: Port $port is already in use. Docker Compose may fail."
-  elif command -v netstat &>/dev/null && netstat -tlnp 2>/dev/null | grep -q ":${port} "; then
-    echo "  WARNING: Port $port is already in use. Docker Compose may fail."
+    if [ "$AGENT_MODE" = true ]; then
+      echo "ERROR: Port $port is in use. Agent mode cannot proceed."
+      exit 1
+    else
+      echo "WARNING: Port $port is already in use. Docker Compose may fail."
+    fi
   fi
 done
 

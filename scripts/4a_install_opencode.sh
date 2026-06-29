@@ -113,17 +113,10 @@ echo ""
 # ── 1. Check prerequisites ──
 echo "1. Checking prerequisites..."
 
-if ! command -v bun &>/dev/null; then
-  echo "ERROR: bun is not installed. Install from https://bun.sh"
-  exit 1
-fi
-echo "   bun: $(bun --version)"
-
-if ! command -v jq &>/dev/null; then
-  echo "ERROR: jq is not installed. Install from https://stedolan.github.io/jq/"
-  exit 1
-fi
-echo "   jq: $(jq --version)"
+source "$(dirname "${BASH_SOURCE[0]}")/lib/prereqs.sh"
+prereq_ensure_bun
+prereq_ensure_apt "jq" jq jq
+prereq_ensure_apt "curl" curl curl
 
 if ! command -v docker &>/dev/null; then
   echo "WARNING: docker is not installed. LiteLLM proxy requires Docker — opencode will work but cannot reach the proxy."

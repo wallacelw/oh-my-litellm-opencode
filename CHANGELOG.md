@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Distributed prerequisite installation** — each script now installs its own
+  prerequisites via shared `scripts/lib/prereqs.sh` library instead of
+  centralized check in `0_bootstrap.sh`. Scripts are independently runnable.
+  `PREREQ_MODE=auto` (agent) installs without prompting; `prompt` asks first.
+- `2_deploy_litellm.sh` now ensures Docker engine + compose plugin + daemon
+  are running via `prereq_ensure_docker` (previously assumed pre-installed).
+- Port check in `0_bootstrap.sh` now exits with error in `--agent` mode
+  (previously only warned).
+- SKILL.md Step 2 rewritten for distributed prereqs. Step 3 updated to note
+  Docker daemon handled by deploy script. Step 9 recovery table expanded
+  with all actual `fail()` messages from `5_validate.sh`. Quick Start
+  section and flags table added.
+
+### Added
+
+- `scripts/lib/prereqs.sh` — shared prerequisite installation helper library.
+  Provides `prereq_ensure_apt`, `prereq_ensure_bun`, `prereq_ensure_npm`,
+  `prereq_ensure_docker`. Idempotent, with sudo wrapper and apt-update-once.
+
 ### Removed
 
 - Prometheus alerting rules (`alerts.yml`) — removed, no Alertmanager configured.

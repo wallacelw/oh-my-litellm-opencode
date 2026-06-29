@@ -78,6 +78,7 @@ This is reference documentation. For the install procedure, read
 | 4b | `4b_install_codex.sh` | Install Codex CLI + mint key + write `~/.codex/config.toml` + `model_catalog.json` + `.env` |
 | 4c | `4c_install_claude_code.sh` | Install Claude Code CLI + mint key + write `~/.claude/settings.json` + disable VSCode extension |
 | 5 | `5_validate.sh` | Validate all components (--litellm-only, --opencode-only, --codex-only, --claude-code-only for scoped checks; --skip-opencode, --skip-codex, --skip-claude-code for partial runs) |
+| — | `lib/prereqs.sh` | Shared prerequisite installation helpers (sourced by all scripts). Provides `prereq_ensure_apt`, `prereq_ensure_bun`, `prereq_ensure_npm`, `prereq_ensure_docker`. Mode controlled by `$PREREQ_MODE` (auto/prompt). |
 
 ### Models
 

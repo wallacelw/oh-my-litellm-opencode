@@ -69,25 +69,10 @@ retry_curl() {
 # ── 1. Check prerequisites ──
 echo "1. Checking prerequisites..."
 
-if ! command -v npm &>/dev/null; then
-  echo "ERROR: npm is not installed. Install Node.js from https://nodejs.org/"
-  exit 1
-fi
-echo "   npm: $(npm --version)"
-
-if ! command -v jq &>/dev/null; then
-  echo "ERROR: jq is not installed. Install from https://stedolan.github.io/jq/"
-  exit 1
-fi
-echo "   jq: $(jq --version)"
-
-if ! command -v bwrap &>/dev/null; then
-  echo "ERROR: bubblewrap (bwrap) is not installed. Codex CLI requires it for sandboxing."
-  echo "  Install with: apt-get install -y bubblewrap  (Debian/Ubuntu)"
-  echo "               dnf install -y bubblewrap       (Fedora)"
-  exit 1
-fi
-echo "   bwrap: $(bwrap --version 2>/dev/null || echo 'installed')"
+source "$(dirname "${BASH_SOURCE[0]}")/lib/prereqs.sh"
+prereq_ensure_npm
+prereq_ensure_apt "jq" jq jq
+prereq_ensure_apt "bubblewrap" bwrap bubblewrap
 
 # Check LiteLLM is reachable
 if curl -sf -m $CURL_TIMEOUT "$LITELLM_URL/health/liveliness" &>/dev/null; then

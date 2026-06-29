@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# ── Ensure prerequisites ──────────────────────────────────────────
+source "$(dirname "${BASH_SOURCE[0]}")/lib/prereqs.sh"
+prereq_ensure_apt "curl" curl curl
+prereq_ensure_apt "jq"   jq   jq
+
 # ─── Mint a scoped virtual key from LiteLLM ───
 #
 # Usage:

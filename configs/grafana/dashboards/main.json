@@ -2,7 +2,7 @@
   "title": "oh-my-coding-maas-gateway",
   "uid": "oh-my-coding-maas-gateway",
   "schemaVersion": 39,
-  "version": 6,
+  "version": 7,
   "refresh": "30s",
   "time": {
     "from": "now-1h",
@@ -295,7 +295,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(litellm_deployment_failure_responses_total{requested_model=~\"$model\"}[$window])) / sum(rate(litellm_proxy_total_requests_metric_total{requested_model=~\"$model\"}[$window])) * 100",
+          "expr": "sum(rate(litellm_deployment_failure_responses_total{requested_model=~\"$model\"}[$window])) / (sum(rate(litellm_deployment_success_responses_total{litellm_model_name=~\"$model\"}[$window])) + sum(rate(litellm_deployment_failure_responses_total{requested_model=~\"$model\"}[$window]))) * 100",
           "refId": "A",
           "legendFormat": "",
           "hide": false,

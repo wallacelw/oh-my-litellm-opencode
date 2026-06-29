@@ -20,7 +20,7 @@ models, then configures three coding tools to use it:
 **What you get:**
 - LiteLLM proxy on `:4000` — load balancing, virtual keys, budget tracking
 - 6 models: glm-5.2, glm-5.1, glm-5, deepseek-v4-pro, deepseek-v4-flash, deepseek-v3.2
-- OpenAI-compatible and Anthropic-compatible endpoints
+- Dual-format endpoints — OpenAI-compatible and Anthropic-compatible endpoints
 - Prometheus (`:9090`) + Grafana (`:3000`, anonymous) — 12-panel dashboard
 - 4 presets, 7 agents, council (opencode only)
 

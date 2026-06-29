@@ -2,7 +2,7 @@
   "title": "oh-my-coding-maas-gateway",
   "uid": "oh-my-coding-maas-gateway",
   "schemaVersion": 39,
-  "version": 5,
+  "version": 6,
   "refresh": "30s",
   "time": {
     "from": "now-1h",
@@ -354,7 +354,7 @@
       "title": "TPS",
       "description": "Tokens per second (input + output combined) over the selected window, from litellm_total_tokens_metric_total. Measures throughput in terms of token generation. A model generating long outputs will have high TPS even with low RPS.\n\nGOOD: Matches expected workload volume.\nBAD: Sudden drops suggest request failures or model unavailability.",
       "gridPos": {
-        "x": 0,
+        "x": 6,
         "y": 5,
         "w": 6,
         "h": 4
@@ -412,7 +412,7 @@
       "title": "TPM",
       "description": "Tokens per minute (input + output combined). Same as TPS scaled to per-minute. Use for provider TPM limit capacity planning.\n\nGOOD: Below 70% of your provider's TPM limit.\nBAD: Approaching the limit — expect throttling.",
       "gridPos": {
-        "x": 6,
+        "x": 12,
         "y": 5,
         "w": 6,
         "h": 4
@@ -470,7 +470,7 @@
       "title": "Models Healthy",
       "description": "Count of distinct models with at least one deployment in healthy state (deployment_state == 0). A model is healthy when its upstream deployments respond successfully to health checks.\n\nGOOD: Equals the total number of configured models.\nBAD: Less than total — one or more models have degraded or unavailable deployments. Check the Deployment health table for details.",
       "gridPos": {
-        "x": 12,
+        "x": 0,
         "y": 5,
         "w": 6,
         "h": 4

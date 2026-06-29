@@ -2,7 +2,7 @@
   "title": "oh-my-coding-maas-gateway",
   "uid": "oh-my-coding-maas-gateway",
   "schemaVersion": 39,
-  "version": 3,
+  "version": 4,
   "refresh": "30s",
   "time": {
     "from": "now-1h",
@@ -295,7 +295,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(litellm_proxy_failed_requests_metric_total{requested_model=~\"$model\"}[$window])) / sum(rate(litellm_proxy_total_requests_metric_total{requested_model=~\"$model\"}[$window])) * 100",
+          "expr": "sum(rate(litellm_deployment_failure_responses_total{requested_model=~\"$model\"}[$window])) / sum(rate(litellm_proxy_total_requests_metric_total{requested_model=~\"$model\"}[$window])) * 100",
           "refId": "A",
           "legendFormat": "",
           "hide": false,
@@ -477,7 +477,7 @@
       },
       "targets": [
         {
-          "expr": "count(count by (litellm_model_name) (litellm_deployment_state{litellm_model_name=~\"$model\",api_provider=~\"$provider\"} == 1))",
+          "expr": "count(count by (litellm_model_name) (litellm_deployment_state{litellm_model_name=~\"$model\",api_provider=~\"$provider\"} == 0))",
           "refId": "A",
           "legendFormat": "",
           "hide": false,
@@ -999,7 +999,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (requested_model) (rate(litellm_proxy_failed_requests_metric_total{requested_model=~\"$model\"}[$window])) * 60",
+          "expr": "sum by (requested_model) (rate(litellm_deployment_failure_responses_total{requested_model=~\"$model\"}[$window])) * 60",
           "refId": "A",
           "legendFormat": "{{requested_model}}",
           "hide": false,
@@ -1054,7 +1054,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (exception_status) (increase(litellm_proxy_failed_requests_metric_total{requested_model=~\"$model\"}[$__range]))",
+          "expr": "sum by (exception_status) (increase(litellm_deployment_failure_responses_total{requested_model=~\"$model\"}[$__range]))",
           "refId": "A",
           "legendFormat": "{{label}}",
           "hide": false,
@@ -1086,8 +1086,8 @@
     {
       "id": 17,
       "type": "timeseries",
-      "title": "Cooldown events",
-      "description": "Deployments pulled from rotation per minute.",
+      "title": "Deployment state",
+      "description": "Deployment health state per model (0=healthy, 1=partial, 2=outage).",
       "gridPos": {
         "x": 18,
         "y": 35,
@@ -1096,7 +1096,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (litellm_model_name) (rate(litellm_deployment_cooled_down_total{litellm_model_name=~\"$model\",api_provider=~\"$provider\"}[$window])) * 60",
+          "expr": "sum by (litellm_model_name) (litellm_deployment_state{litellm_model_name=~\"$model\",api_provider=~\"$provider\"})",
           "refId": "A",
           "legendFormat": "{{litellm_model_name}}",
           "hide": false,
@@ -1110,7 +1110,7 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "events/min",
+          "unit": "short",
           "color": {
             "mode": "palette-classic"
           },
@@ -1151,7 +1151,7 @@
       },
       "targets": [
         {
-          "expr": "count by (litellm_model_name) (litellm_deployment_state{litellm_model_name=~\"$model\",api_provider=~\"$provider\"} == 1)",
+          "expr": "count by (litellm_model_name) (litellm_deployment_state{litellm_model_name=~\"$model\",api_provider=~\"$provider\"} == 0)",
           "refId": "A",
           "legendFormat": "Healthy",
           "hide": false,
@@ -1163,7 +1163,7 @@
           "range": true
         },
         {
-          "expr": "count by (litellm_model_name) (litellm_deployment_state{litellm_model_name=~\"$model\",api_provider=~\"$provider\"} == 0)",
+          "expr": "count by (litellm_model_name) (litellm_deployment_state{litellm_model_name=~\"$model\",api_provider=~\"$provider\"} > 0)",
           "refId": "B",
           "legendFormat": "Unhealthy",
           "hide": false,
@@ -1187,7 +1187,7 @@
           "range": true
         },
         {
-          "expr": "sum by (litellm_model_name) (increase(litellm_deployment_failure_responses_total{litellm_model_name=~\"$model\",api_provider=~\"$provider\"}[$__range]))",
+          "expr": "sum by (requested_model) (increase(litellm_deployment_failure_responses_total{requested_model=~\"$model\"}[$__range]))",
           "refId": "D",
           "legendFormat": "Failures",
           "hide": false,
@@ -1199,7 +1199,7 @@
           "range": true
         },
         {
-          "expr": "sum by (litellm_model_name) (increase(litellm_deployment_cooled_down_total{litellm_model_name=~\"$model\",api_provider=~\"$provider\"}[$__range]))",
+          "expr": "sum by (litellm_model_name) (increase(litellm_deployment_cooled_down_total[$__range]))",
           "refId": "E",
           "legendFormat": "Cooldowns",
           "hide": false,

@@ -55,13 +55,33 @@
       },
       {
         "name": "window",
-        "type": "interval",
+        "type": "custom",
         "query": "1m,5m,15m,1h",
-        "refresh": 2,
+        "refresh": 1,
         "current": {
           "text": "5m",
           "value": "5m"
-        }
+        },
+        "includeAll": false,
+        "multi": false,
+        "options": [
+          {
+            "text": "1m",
+            "value": "1m"
+          },
+          {
+            "text": "5m",
+            "value": "5m"
+          },
+          {
+            "text": "15m",
+            "value": "15m"
+          },
+          {
+            "text": "1h",
+            "value": "1h"
+          }
+        ]
       }
     ]
   },
@@ -159,7 +179,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(litellm_proxy_total_requests_metric_total{requested_model=~\"$model\"}[[$window]])) * 60",
+          "expr": "sum(rate(litellm_proxy_total_requests_metric_total{requested_model=~\"$model\"}[$window])) * 60",
           "refId": "A",
           "legendFormat": "",
           "hide": false,
@@ -217,7 +237,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(litellm_total_tokens_metric_total{model=~\"$model\"}[[$window]])) * 60",
+          "expr": "sum(rate(litellm_total_tokens_metric_total{model=~\"$model\"}[$window])) * 60",
           "refId": "A",
           "legendFormat": "",
           "hide": false,
@@ -333,7 +353,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(litellm_proxy_failed_requests_metric_total{requested_model=~\"$model\"}[[$window]])) / sum(rate(litellm_proxy_total_requests_metric_total{requested_model=~\"$model\"}[[$window]])) * 100",
+          "expr": "sum(rate(litellm_proxy_failed_requests_metric_total{requested_model=~\"$model\"}[$window])) / sum(rate(litellm_proxy_total_requests_metric_total{requested_model=~\"$model\"}[$window])) * 100",
           "refId": "A",
           "legendFormat": "",
           "hide": false,
@@ -462,7 +482,7 @@
       "id": 9,
       "type": "timeseries",
       "title": "TTFT by model",
-      "description": "Time To First Token (seconds). P50 = median, P95 = slow tail.",
+      "description": "Time To First Token P95 (seconds) \u2014 slow tail latency per model.",
       "gridPos": {
         "x": 0,
         "y": 6,
@@ -471,19 +491,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum by (le, model) (rate(litellm_llm_api_time_to_first_token_metric_bucket{model=~\"$model\"}[[$window]])))",
-          "refId": "A",
-          "legendFormat": "{{model}} P50",
-          "hide": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "range": true
-        },
-        {
-          "expr": "histogram_quantile(0.95, sum by (le, model) (rate(litellm_llm_api_time_to_first_token_metric_bucket{model=~\"$model\"}[[$window]])))",
+          "expr": "histogram_quantile(0.95, sum by (le, model) (rate(litellm_llm_api_time_to_first_token_metric_bucket{model=~\"$model\"}[$window])))",
           "refId": "B",
           "legendFormat": "{{model}} P95",
           "hide": false,
@@ -529,7 +537,7 @@
       "id": 10,
       "type": "timeseries",
       "title": "TPOT by model",
-      "description": "Time Per Output Token (seconds). Lower = smoother streaming.",
+      "description": "Time Per Output Token P95 (seconds) \u2014 slow tail per model. Lower = smoother streaming.",
       "gridPos": {
         "x": 12,
         "y": 6,
@@ -538,19 +546,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum by (le, litellm_model_name) (rate(litellm_deployment_latency_per_output_token_bucket{litellm_model_name=~\"$model\",api_provider=~\"$provider\"}[[$window]])))",
-          "refId": "A",
-          "legendFormat": "{{litellm_model_name}} P50",
-          "hide": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "range": true
-        },
-        {
-          "expr": "histogram_quantile(0.95, sum by (le, litellm_model_name) (rate(litellm_deployment_latency_per_output_token_bucket{litellm_model_name=~\"$model\",api_provider=~\"$provider\"}[[$window]])))",
+          "expr": "histogram_quantile(0.95, sum by (le, litellm_model_name) (rate(litellm_deployment_latency_per_output_token_bucket{litellm_model_name=~\"$model\",api_provider=~\"$provider\"}[$window])))",
           "refId": "B",
           "legendFormat": "{{litellm_model_name}} P95",
           "hide": false,
@@ -605,7 +601,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum by (le, model) (rate(litellm_request_total_latency_metric_bucket{model=~\"$model\"}[[$window]])))",
+          "expr": "histogram_quantile(0.50, sum by (le, model) (rate(litellm_request_total_latency_metric_bucket{model=~\"$model\"}[$window])))",
           "refId": "A",
           "legendFormat": "{{model}} P50",
           "hide": false,
@@ -617,7 +613,7 @@
           "range": true
         },
         {
-          "expr": "histogram_quantile(0.95, sum by (le, model) (rate(litellm_request_total_latency_metric_bucket{model=~\"$model\"}[[$window]])))",
+          "expr": "histogram_quantile(0.95, sum by (le, model) (rate(litellm_request_total_latency_metric_bucket{model=~\"$model\"}[$window])))",
           "refId": "B",
           "legendFormat": "{{model}} P95",
           "hide": false,
@@ -629,7 +625,7 @@
           "range": true
         },
         {
-          "expr": "histogram_quantile(0.99, sum by (le, model) (rate(litellm_request_total_latency_metric_bucket{model=~\"$model\"}[[$window]])))",
+          "expr": "histogram_quantile(0.99, sum by (le, model) (rate(litellm_request_total_latency_metric_bucket{model=~\"$model\"}[$window])))",
           "refId": "C",
           "legendFormat": "{{model}} P99",
           "hide": false,
@@ -684,7 +680,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le, litellm_model_name) (rate(litellm_overhead_latency_metric_bucket{litellm_model_name=~\"$model\",api_provider=~\"$provider\"}[[$window]])))",
+          "expr": "histogram_quantile(0.95, sum by (le, litellm_model_name) (rate(litellm_overhead_latency_metric_bucket{litellm_model_name=~\"$model\",api_provider=~\"$provider\"}[$window])))",
           "refId": "A",
           "legendFormat": "{{litellm_model_name}} P95",
           "hide": false,
@@ -739,7 +735,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le, model) (rate(litellm_request_queue_time_seconds_bucket{model=~\"$model\"}[[$window]])))",
+          "expr": "histogram_quantile(0.95, sum by (le, model) (rate(litellm_request_queue_time_seconds_bucket{model=~\"$model\"}[$window])))",
           "refId": "A",
           "legendFormat": "{{model}} P95",
           "hide": false,
@@ -808,7 +804,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (requested_model) (rate(litellm_proxy_failed_requests_metric_total{requested_model=~\"$model\"}[[$window]])) * 60",
+          "expr": "sum by (requested_model) (rate(litellm_proxy_failed_requests_metric_total{requested_model=~\"$model\"}[$window])) * 60",
           "refId": "A",
           "legendFormat": "{{requested_model}}",
           "hide": false,
@@ -905,7 +901,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (litellm_model_name) (rate(litellm_deployment_cooled_down_total{litellm_model_name=~\"$model\",api_provider=~\"$provider\"}[[$window]])) * 60",
+          "expr": "sum by (litellm_model_name) (rate(litellm_deployment_cooled_down_total{litellm_model_name=~\"$model\",api_provider=~\"$provider\"}[$window])) * 60",
           "refId": "A",
           "legendFormat": "{{litellm_model_name}}",
           "hide": false,
@@ -1055,7 +1051,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (requested_model) (rate(litellm_proxy_total_requests_metric_total{requested_model=~\"$model\"}[[$window]])) * 60",
+          "expr": "sum by (requested_model) (rate(litellm_proxy_total_requests_metric_total{requested_model=~\"$model\"}[$window])) * 60",
           "refId": "A",
           "legendFormat": "{{requested_model}}",
           "hide": false,
@@ -1110,7 +1106,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (model) (rate(litellm_total_tokens_metric_total{model=~\"$model\"}[[$window]])) * 60",
+          "expr": "sum by (model) (rate(litellm_total_tokens_metric_total{model=~\"$model\"}[$window])) * 60",
           "refId": "A",
           "legendFormat": "{{model}}",
           "hide": false,
@@ -1207,7 +1203,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (litellm_model_name) (rate(litellm_deployment_total_requests_total{litellm_model_name=~\"$model\",api_provider=~\"$provider\"}[[$window]])) * 60 / sum by (litellm_model_name) (litellm_deployment_rpm_limit{litellm_model_name=~\"$model\",api_provider=~\"$provider\"}) * 100",
+          "expr": "sum by (litellm_model_name) (rate(litellm_deployment_total_requests_total{litellm_model_name=~\"$model\",api_provider=~\"$provider\"}[$window])) * 60 / sum by (litellm_model_name) (litellm_deployment_rpm_limit{litellm_model_name=~\"$model\",api_provider=~\"$provider\"}) * 100",
           "refId": "A",
           "legendFormat": "{{litellm_model_name}}",
           "hide": false,
@@ -1276,7 +1272,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (model) (rate(litellm_input_tokens_metric_total{model=~\"$model\"}[[$window]])) * 60",
+          "expr": "sum by (model) (rate(litellm_input_tokens_metric_total{model=~\"$model\"}[$window])) * 60",
           "refId": "A",
           "legendFormat": "Input",
           "hide": false,
@@ -1288,7 +1284,7 @@
           "range": true
         },
         {
-          "expr": "sum by (model) (rate(litellm_output_tokens_metric_total{model=~\"$model\"}[[$window]])) * 60",
+          "expr": "sum by (model) (rate(litellm_output_tokens_metric_total{model=~\"$model\"}[$window])) * 60",
           "refId": "B",
           "legendFormat": "Output",
           "hide": false,
@@ -1300,7 +1296,7 @@
           "range": true
         },
         {
-          "expr": "sum by (model) (rate(litellm_output_reasoning_tokens_metric_total{model=~\"$model\"}[[$window]])) * 60",
+          "expr": "sum by (model) (rate(litellm_output_reasoning_tokens_metric_total{model=~\"$model\"}[$window])) * 60",
           "refId": "C",
           "legendFormat": "Reasoning",
           "hide": false,
@@ -1312,7 +1308,7 @@
           "range": true
         },
         {
-          "expr": "sum by (model) (rate(litellm_input_cached_tokens_metric_total{model=~\"$model\"}[[$window]])) * 60",
+          "expr": "sum by (model) (rate(litellm_input_cached_tokens_metric_total{model=~\"$model\"}[$window])) * 60",
           "refId": "D",
           "legendFormat": "Cached",
           "hide": false,
@@ -1498,7 +1494,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (model) (rate(litellm_spend_metric_total{model=~\"$model\"}[[$window]])) * 60",
+          "expr": "sum by (model) (rate(litellm_spend_metric_total{model=~\"$model\"}[$window])) * 60",
           "refId": "A",
           "legendFormat": "{{model}}",
           "hide": false,
@@ -1567,7 +1563,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(litellm_input_cached_tokens_metric_total{model=~\"$model\"}[[$window]])) / sum(rate(litellm_input_tokens_metric_total{model=~\"$model\"}[[$window]])) * 100",
+          "expr": "sum(rate(litellm_input_cached_tokens_metric_total{model=~\"$model\"}[$window])) / sum(rate(litellm_input_tokens_metric_total{model=~\"$model\"}[$window])) * 100",
           "refId": "A",
           "legendFormat": "",
           "hide": false,
@@ -1633,7 +1629,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(litellm_spend_metric_total{model=~\"$model\"}[[$window]])) / sum(rate(litellm_total_tokens_metric_total{model=~\"$model\"}[[$window]])) * 1000",
+          "expr": "sum(rate(litellm_spend_metric_total{model=~\"$model\"}[$window])) / sum(rate(litellm_total_tokens_metric_total{model=~\"$model\"}[$window])) * 1000",
           "refId": "A",
           "legendFormat": "",
           "hide": false,

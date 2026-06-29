@@ -4,17 +4,49 @@ LiteLLM proxy routing Huawei MaaS models to opencode, Codex CLI, and Claude
 Code CLI — with virtual keys, multi-key load balancing, dual-format endpoints,
 and Prometheus + Grafana observability.
 
-## What You Get
+---
 
-- **LiteLLM proxy** on `:4000` — load balancing, virtual keys, budget tracking
-- **opencode** — 4 presets, 7 agents, `oh-my-opencode-slim` plugin
-- **Codex CLI** — OpenAI Responses API bridged to Chat Completions by LiteLLM
-- **Claude Code CLI** — Anthropic Messages API via LiteLLM proxy
-- **Prometheus + Grafana** on `:9090` / `:3000` — 12-panel dashboard, no login
-- **6 models** — glm-5.2, glm-5.1, glm-5, deepseek-v4-pro, deepseek-v4-flash, deepseek-v3.2
-- **Dual-format endpoints** — OpenAI (`/v1/chat/completions`) + Anthropic (`/v1/messages`)
+## Overview
 
-## Quick Start
+This project deploys a LiteLLM proxy that routes requests to Huawei MaaS
+models, then configures three coding tools to use it:
+
+| Tool | API Format | Connection |
+|------|-----------|------------|
+| **opencode** | OpenAI Chat Completions | `→ /v1/chat/completions → openai/ provider → MaaS` |
+| **Codex CLI** | OpenAI Responses (bridged) | `→ /v1/responses → openai/ provider → MaaS` |
+| **Claude Code CLI** | Anthropic Messages | `→ /v1/messages → anthropic/ provider → MaaS` |
+
+**What you get:**
+- LiteLLM proxy on `:4000` — load balancing, virtual keys, budget tracking
+- 6 models: glm-5.2, glm-5.1, glm-5, deepseek-v4-pro, deepseek-v4-flash, deepseek-v3.2
+- Dual-format endpoints — OpenAI + Anthropic
+- Prometheus (`:9090`) + Grafana (`:3000`, anonymous) — 12-panel dashboard
+- 4 presets, 7 agents, council (opencode only)
+
+**Install modes:**
+
+| Flag | What gets installed |
+|------|-------------------|
+| *(none)* | LiteLLM + opencode + Codex CLI + Claude Code CLI |
+| `--litellm-only` | LiteLLM proxy only |
+| `--opencode-only` | LiteLLM + opencode |
+| `--codex-only` | LiteLLM + Codex CLI |
+| `--claude-code-only` | LiteLLM + Claude Code CLI |
+
+---
+
+## Documentation
+
+| File | For | Description |
+|------|-----|-------------|
+| [SKILL.md](./SKILL.md) | Agents + humans | Deterministic install procedure (step-by-step) |
+| [REFERENCE.md](./REFERENCE.md) | Humans | Architecture, tool integration, LiteLLM config, repair guide |
+| [CHANGELOG.md](./CHANGELOG.md) | Everyone | Version history |
+
+---
+
+## 👤 Human Installation
 
 **Prerequisites:** Linux, Docker, bun, jq, npm, bubblewrap.
 
@@ -40,21 +72,18 @@ Grafana dashboard: `http://127.0.0.1:3000` (anonymous, no login).
 
 If opencode was already running, exit it (`/exit` or Ctrl+C) and start fresh.
 
-## Install Modes
-
-| Flag | What gets installed |
-|------|-------------------|
-| *(none)* | LiteLLM + opencode + Codex CLI + Claude Code CLI |
-| `--litellm-only` | LiteLLM proxy only |
-| `--opencode-only` | LiteLLM + opencode |
-| `--codex-only` | LiteLLM + Codex CLI |
-| `--claude-code-only` | LiteLLM + Claude Code CLI |
-
+For a different install mode:
 ```bash
-./scripts/0_bootstrap.sh --litellm-only    # example: proxy only
+./scripts/0_bootstrap.sh --litellm-only    # proxy only
+./scripts/0_bootstrap.sh --codex-only      # proxy + Codex CLI
+# etc.
 ```
 
-## One-Click Agent Install
+---
+
+## 🤖 Agent Installation
+
+### Install
 
 Paste this into any coding agent:
 
@@ -87,7 +116,7 @@ Rules:
 - After install: I will rotate my MaaS keys (they were shared with you).
 ```
 
-## One-Click Agent Upgrade
+### Upgrade
 
 Paste this to upgrade an existing installation:
 
@@ -116,11 +145,3 @@ Rules:
 - If validation fails, follow the recovery table in Step 9 of SKILL.md.
 - After upgrade: I will rotate my MaaS keys if they were shared with you.
 ```
-
-## Documentation
-
-| File | Description |
-|------|-------------|
-| [SKILL.md](./SKILL.md) | Deterministic install procedure (for agents and humans) |
-| [REFERENCE.md](./REFERENCE.md) | Architecture, tool integration, presets, models, repair guide |
-| [CHANGELOG.md](./CHANGELOG.md) | Version history |

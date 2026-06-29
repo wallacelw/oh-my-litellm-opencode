@@ -2,7 +2,7 @@
   "title": "oh-my-coding-maas-gateway",
   "uid": "oh-my-coding-maas-gateway",
   "schemaVersion": 39,
-  "version": 12,
+  "version": 13,
   "refresh": "30s",
   "time": {
     "from": "now-1h",
@@ -1755,78 +1755,6 @@
           "mode": "multi",
           "sort": "none"
         }
-      }
-    },
-    {
-      "id": 30,
-      "type": "row",
-      "title": "Efficiency",
-      "description": "Cost efficiency metrics. Use these to understand how much value you get per dollar spent.",
-      "gridPos": {
-        "x": 0,
-        "y": 84,
-        "w": 24,
-        "h": 1
-      },
-      "collapsed": false,
-      "panels": []
-    },
-    {
-      "id": 32,
-      "type": "stat",
-      "title": "Cost per 1K tokens",
-      "description": "USD per 1,000 tokens (input + output), from litellm_spend_metric_total / litellm_total_tokens_metric_total. This is the blended cost efficiency across all models. Lower means you're getting more tokens per dollar. Compare against model pricing to verify billing.\n\nGOOD: Matches expected blended model pricing.\nBAD: Higher than expected — expensive models dominating traffic, or pricing/billing misconfiguration.",
-      "gridPos": {
-        "x": 0,
-        "y": 85,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "expr": "sum(rate(litellm_spend_metric_total{model=~\"$model\"}[$window])) / sum(rate(litellm_total_tokens_metric_total{model=~\"$model\"}[$window])) * 1000",
-          "refId": "A",
-          "legendFormat": "",
-          "hide": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "range": true
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "$",
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "horizontal",
-        "textMode": "auto",
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto"
       }
     }
   ],

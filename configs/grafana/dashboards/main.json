@@ -2,7 +2,7 @@
   "title": "oh-my-coding-maas-gateway",
   "uid": "oh-my-coding-maas-gateway",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "refresh": "30s",
   "time": {
     "from": "now-1h",
@@ -101,6 +101,122 @@
       "panels": []
     },
     {
+      "id": 33,
+      "type": "stat",
+      "title": "RPS",
+      "description": "Requests per second.",
+      "gridPos": {
+        "x": 3,
+        "y": 1,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litellm_proxy_total_requests_metric_total{requested_model=~\"$model\"}[$window]))",
+          "refId": "A",
+          "legendFormat": "",
+          "hide": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 34,
+      "type": "stat",
+      "title": "TPS",
+      "description": "Tokens per second (input + output).",
+      "gridPos": {
+        "x": 9,
+        "y": 1,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(litellm_total_tokens_metric_total{model=~\"$model\"}[$window]))",
+          "refId": "A",
+          "legendFormat": "",
+          "hide": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
       "id": 2,
       "type": "stat",
       "title": "Active Requests",
@@ -108,7 +224,7 @@
       "gridPos": {
         "x": 0,
         "y": 1,
-        "w": 4,
+        "w": 3,
         "h": 4
       },
       "targets": [
@@ -172,9 +288,9 @@
       "title": "RPM",
       "description": "Requests per minute.",
       "gridPos": {
-        "x": 4,
+        "x": 6,
         "y": 1,
-        "w": 4,
+        "w": 3,
         "h": 4
       },
       "targets": [
@@ -230,9 +346,9 @@
       "title": "TPM",
       "description": "Tokens per minute (input + output).",
       "gridPos": {
-        "x": 8,
+        "x": 12,
         "y": 1,
-        "w": 4,
+        "w": 3,
         "h": 4
       },
       "targets": [
@@ -288,9 +404,9 @@
       "title": "Models Healthy",
       "description": "Deployments in healthy state.",
       "gridPos": {
-        "x": 12,
+        "x": 15,
         "y": 1,
-        "w": 4,
+        "w": 3,
         "h": 4
       },
       "targets": [
@@ -346,9 +462,9 @@
       "title": "Error %",
       "description": "Failed requests as % of total.",
       "gridPos": {
-        "x": 16,
+        "x": 18,
         "y": 1,
-        "w": 4,
+        "w": 3,
         "h": 4
       },
       "targets": [
@@ -412,9 +528,9 @@
       "title": "Spend (window)",
       "description": "USD spent in selected time range.",
       "gridPos": {
-        "x": 20,
+        "x": 21,
         "y": 1,
-        "w": 4,
+        "w": 3,
         "h": 4
       },
       "targets": [
@@ -468,7 +584,7 @@
       "id": 8,
       "type": "row",
       "title": "Latency",
-      "description": "Streaming, end-to-end, overhead, and queue latency per model.",
+      "description": "Streaming, end-to-end, upstream, overhead, and queue latency per model.",
       "gridPos": {
         "x": 0,
         "y": 5,
@@ -482,7 +598,7 @@
       "id": 9,
       "type": "timeseries",
       "title": "TTFT by model",
-      "description": "Time To First Token P95 (seconds) \u2014 slow tail per model.",
+      "description": "Time To First Token P95 (seconds) — slow tail per model.",
       "gridPos": {
         "x": 0,
         "y": 6,
@@ -537,7 +653,7 @@
       "id": 10,
       "type": "timeseries",
       "title": "TPOT by model",
-      "description": "Time Per Output Token P95 (seconds) \u2014 slow tail per model.",
+      "description": "Time Per Output Token P95 (seconds) — slow tail per model.",
       "gridPos": {
         "x": 12,
         "y": 6,
@@ -592,18 +708,121 @@
       "id": 11,
       "type": "timeseries",
       "title": "End-to-end latency",
-      "description": "Total request latency P95 (seconds) \u2014 what users experience.",
+      "description": "Total request latency P50/P95/P99 (seconds) per model.",
       "gridPos": {
         "x": 0,
         "y": 18,
-        "w": 8,
+        "w": 6,
         "h": 12
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le, model) (rate(litellm_request_total_latency_metric_bucket{model=~\"$model\"}[$window])))",
+          "expr": "histogram_quantile(0.5, sum by (le, model) (rate(litellm_request_total_latency_metric_bucket{model=~\"$model\"}[$window])))",
           "refId": "A",
-          "legendFormat": "{{model}}",
+          "legendFormat": "{{model}} P50",
+          "hide": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "range": true
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, model) (rate(litellm_request_total_latency_metric_bucket{model=~\"$model\"}[$window])))",
+          "refId": "B",
+          "legendFormat": "{{model}} P95",
+          "hide": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "range": true
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le, model) (rate(litellm_request_total_latency_metric_bucket{model=~\"$model\"}[$window])))",
+          "refId": "C",
+          "legendFormat": "{{model}} P99",
+          "hide": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 35,
+      "type": "timeseries",
+      "title": "LLM API latency",
+      "description": "Upstream LLM API latency P50/P95/P99 (seconds) per model.",
+      "gridPos": {
+        "x": 6,
+        "y": 18,
+        "w": 6,
+        "h": 12
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum by (le, model) (rate(litellm_llm_api_latency_metric_bucket{model=~\"$model\"}[$window])))",
+          "refId": "A",
+          "legendFormat": "{{model}} P50",
+          "hide": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "range": true
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, model) (rate(litellm_llm_api_latency_metric_bucket{model=~\"$model\"}[$window])))",
+          "refId": "B",
+          "legendFormat": "{{model}} P95",
+          "hide": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "range": true
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le, model) (rate(litellm_llm_api_latency_metric_bucket{model=~\"$model\"}[$window])))",
+          "refId": "C",
+          "legendFormat": "{{model}} P99",
           "hide": false,
           "datasource": {
             "type": "prometheus",
@@ -649,9 +868,9 @@
       "title": "Proxy overhead",
       "description": "LiteLLM processing overhead P95 (seconds). High = proxy bottleneck.",
       "gridPos": {
-        "x": 8,
+        "x": 12,
         "y": 18,
-        "w": 8,
+        "w": 6,
         "h": 12
       },
       "targets": [
@@ -704,9 +923,9 @@
       "title": "Queue wait",
       "description": "Queue wait time P95 (seconds). Spikes = deployment saturation.",
       "gridPos": {
-        "x": 16,
+        "x": 18,
         "y": 18,
-        "w": 8,
+        "w": 6,
         "h": 12
       },
       "targets": [
@@ -1015,13 +1234,195 @@
       "panels": []
     },
     {
+      "id": 36,
+      "type": "stat",
+      "title": "Total Requests",
+      "description": "Total requests (success + failure).",
+      "gridPos": {
+        "x": 0,
+        "y": 51,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "sum(litellm_deployment_success_responses_total{litellm_model_name=~\"$model\",api_provider=~\"$provider\"}) + sum(litellm_deployment_failure_responses_total{litellm_model_name=~\"$model\",api_provider=~\"$provider\"})",
+          "refId": "A",
+          "legendFormat": "",
+          "hide": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 37,
+      "type": "stat",
+      "title": "Successful Requests",
+      "description": "Total successful responses.",
+      "gridPos": {
+        "x": 8,
+        "y": 51,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "sum(litellm_deployment_success_responses_total{litellm_model_name=~\"$model\",api_provider=~\"$provider\"})",
+          "refId": "A",
+          "legendFormat": "",
+          "hide": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 38,
+      "type": "stat",
+      "title": "Failed Requests",
+      "description": "Total failed responses.",
+      "gridPos": {
+        "x": 16,
+        "y": 51,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "expr": "sum(litellm_deployment_failure_responses_total{litellm_model_name=~\"$model\",api_provider=~\"$provider\"})",
+          "refId": "A",
+          "legendFormat": "",
+          "hide": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
       "id": 20,
       "type": "timeseries",
       "title": "RPM by model",
       "description": "Requests per minute per model.",
       "gridPos": {
         "x": 0,
-        "y": 51,
+        "y": 55,
         "w": 12,
         "h": 12
       },
@@ -1076,7 +1477,7 @@
       "description": "Tokens per minute per model.",
       "gridPos": {
         "x": 12,
-        "y": 51,
+        "y": 55,
         "w": 12,
         "h": 12
       },
@@ -1131,7 +1532,7 @@
       "description": "Request share per model in window.",
       "gridPos": {
         "x": 0,
-        "y": 63,
+        "y": 67,
         "w": 12,
         "h": 10
       },
@@ -1170,10 +1571,10 @@
       "id": 23,
       "type": "timeseries",
       "title": "RPM utilization vs limit",
-      "description": "Current RPM as % of MaaS RPM limit. \u2192100% = expect 429s.",
+      "description": "Current RPM as % of MaaS RPM limit. →100% = expect 429s.",
       "gridPos": {
         "x": 12,
-        "y": 63,
+        "y": 67,
         "w": 12,
         "h": 10
       },
@@ -1225,10 +1626,10 @@
       "id": 24,
       "type": "row",
       "title": "Tokens",
-      "description": "Token usage breakdown: input, output, reasoning, cached.",
+      "description": "Token usage breakdown: input, output, reasoning.",
       "gridPos": {
         "x": 0,
-        "y": 73,
+        "y": 77,
         "w": 24,
         "h": 1
       },
@@ -1236,57 +1637,21 @@
       "panels": []
     },
     {
-      "id": 25,
+      "id": 39,
       "type": "timeseries",
-      "title": "Token breakdown",
-      "description": "Tokens per minute by type. Stacked. Reasoning = thinking cost. Cached = prompt cache hits.",
+      "title": "Input tokens",
+      "description": "Input tokens per minute per model.",
       "gridPos": {
         "x": 0,
-        "y": 74,
-        "w": 24,
+        "y": 78,
+        "w": 8,
         "h": 12
       },
       "targets": [
         {
           "expr": "sum by (model) (rate(litellm_input_tokens_metric_total{model=~\"$model\"}[$window])) * 60",
           "refId": "A",
-          "legendFormat": "Input",
-          "hide": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "range": true
-        },
-        {
-          "expr": "sum by (model) (rate(litellm_output_tokens_metric_total{model=~\"$model\"}[$window])) * 60",
-          "refId": "B",
-          "legendFormat": "Output",
-          "hide": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "range": true
-        },
-        {
-          "expr": "sum by (model) (rate(litellm_output_reasoning_tokens_metric_total{model=~\"$model\"}[$window])) * 60",
-          "refId": "C",
-          "legendFormat": "Reasoning",
-          "hide": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "range": true
-        },
-        {
-          "expr": "sum by (model) (rate(litellm_input_cached_tokens_metric_total{model=~\"$model\"}[$window])) * 60",
-          "refId": "D",
-          "legendFormat": "Cached",
+          "legendFormat": "{{model}}",
           "hide": false,
           "datasource": {
             "type": "prometheus",
@@ -1307,11 +1672,117 @@
             "lineInterpolation": "linear",
             "lineWidth": 2,
             "fillOpacity": 10,
-            "showPoints": "never",
-            "stacking": {
-              "mode": "normal",
-              "group": "A"
-            }
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 40,
+      "type": "timeseries",
+      "title": "Output tokens",
+      "description": "Output tokens per minute per model.",
+      "gridPos": {
+        "x": 8,
+        "y": 78,
+        "w": 8,
+        "h": 12
+      },
+      "targets": [
+        {
+          "expr": "sum by (model) (rate(litellm_output_tokens_metric_total{model=~\"$model\"}[$window])) * 60",
+          "refId": "A",
+          "legendFormat": "{{model}}",
+          "hide": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "tok/min",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 41,
+      "type": "timeseries",
+      "title": "Reasoning tokens",
+      "description": "Reasoning (thinking) tokens per minute per model.",
+      "gridPos": {
+        "x": 16,
+        "y": 78,
+        "w": 8,
+        "h": 12
+      },
+      "targets": [
+        {
+          "expr": "sum by (model) (rate(litellm_output_reasoning_tokens_metric_total{model=~\"$model\"}[$window])) * 60",
+          "refId": "A",
+          "legendFormat": "{{model}}",
+          "hide": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "tok/min",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
           }
         },
         "overrides": []
@@ -1337,7 +1808,7 @@
       "description": "Spend accumulation and rate per model.",
       "gridPos": {
         "x": 0,
-        "y": 86,
+        "y": 90,
         "w": 24,
         "h": 1
       },
@@ -1351,7 +1822,7 @@
       "description": "Cumulative USD spent.",
       "gridPos": {
         "x": 0,
-        "y": 87,
+        "y": 91,
         "w": 6,
         "h": 8
       },
@@ -1409,7 +1880,7 @@
       "description": "Cumulative USD spend over time per model.",
       "gridPos": {
         "x": 6,
-        "y": 87,
+        "y": 91,
         "w": 12,
         "h": 8
       },
@@ -1461,10 +1932,10 @@
       "id": 29,
       "type": "timeseries",
       "title": "Spend rate",
-      "description": "USD per minute \u2014 spot runaway costs in real time.",
+      "description": "USD per minute — spot runaway costs in real time.",
       "gridPos": {
         "x": 18,
-        "y": 87,
+        "y": 91,
         "w": 6,
         "h": 8
       },
@@ -1516,10 +1987,10 @@
       "id": 30,
       "type": "row",
       "title": "Efficiency",
-      "description": "Cache effectiveness and cost efficiency.",
+      "description": "Cost efficiency.",
       "gridPos": {
         "x": 0,
-        "y": 95,
+        "y": 99,
         "w": 24,
         "h": 1
       },
@@ -1527,79 +1998,13 @@
       "panels": []
     },
     {
-      "id": 31,
-      "type": "stat",
-      "title": "Cache hit ratio",
-      "description": "Cached input tokens as % of total input tokens.",
-      "gridPos": {
-        "x": 0,
-        "y": 96,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "expr": "sum(rate(litellm_input_cached_tokens_metric_total{model=~\"$model\"}[$window])) / sum(rate(litellm_input_tokens_metric_total{model=~\"$model\"}[$window])) * 100",
-          "refId": "A",
-          "legendFormat": "",
-          "hide": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "range": true
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 10
-              },
-              {
-                "color": "green",
-                "value": 30
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "horizontal",
-        "textMode": "auto",
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto"
-      }
-    },
-    {
       "id": 32,
       "type": "stat",
       "title": "Cost per 1K tokens",
-      "description": "USD per 1000 tokens \u2014 cost efficiency.",
+      "description": "USD per 1000 tokens — cost efficiency.",
       "gridPos": {
-        "x": 12,
-        "y": 96,
+        "x": 0,
+        "y": 100,
         "w": 12,
         "h": 8
       },

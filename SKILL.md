@@ -490,64 +490,230 @@ more than once.
 
 **Precondition:** Step 9 passed (validation exited 0).
 
-**Action:** Report to the user:
+**Action:** Print a comprehensive summary to the user. The summary has four
+sections: (1) what was installed, (2) services & access, (3) coding agents &
+activation, (4) next steps. Each section is conditional based on
+`INSTALL_MODE`.
 
-If `INSTALL_MODE=full`:
+#### Section 1 — What Was Installed
 
-```
-=== Bootstrap complete ===
-
-Project dir:       $PROJECT_DIR
-LiteLLM proxy:     http://127.0.0.1:4000
-LiteLLM Admin UI:  http://127.0.0.1:4000/ui
-Grafana:           http://127.0.0.1:3000 (anonymous, no login)
-Prometheus:        http://127.0.0.1:9090
-
-opencode config:   ~/.config/opencode/opencode.json
-plugin config:     ~/.config/opencode/oh-my-opencode-slim.json
-Codex CLI config:  ~/.codex/config.toml
-Codex catalog:     ~/.codex/model_catalog.json
-Codex API key:     ~/.codex/.env
-Claude Code config: ~/.claude/settings.json
-
-Next steps:
-  1. Restart opencode to apply the new configuration:
-       - Exit any running opencode session (Ctrl+C or /exit)
-       - Start fresh: opencode
-  2. Switch preset: /preset LiteLLM-Huawei-MaaS-Core
-  3. Or use Codex CLI: codex
-  4. Or use Claude Code CLI: claude --bare
-```
-
-If `INSTALL_MODE=litellm-only`:
+Print a checklist of everything the installation did, conditional on mode:
 
 ```
-=== Bootstrap complete ===
+=== Installation Summary ===
 
-Project dir:       $PROJECT_DIR
-LiteLLM proxy:     http://127.0.0.1:4000
-LiteLLM Admin UI:  http://127.0.0.1:4000/ui
-Grafana:           http://127.0.0.1:3000 (anonymous, no login)
-Prometheus:        http://127.0.0.1:9090
+Mode:              $INSTALL_MODE
+Project directory: $PROJECT_DIR
+MAaS keys:         $HUAWEI_MAAS_API_KEY_COUNT key(s) configured
 
-Mode:              LiteLLM-only (no tools)
-
-Next steps:
-  1. LiteLLM Admin UI: http://127.0.0.1:4000/ui
-  2. To add opencode later:
-     ./scripts/0_bootstrap.sh --maas-key="$MAAS_KEY" --tool=opencode
-  3. To add Codex CLI later:
-     ./scripts/0_bootstrap.sh --maas-key="$MAAS_KEY" --tool=codex
-  4. To add Claude Code CLI later:
-     ./scripts/0_bootstrap.sh --maas-key="$MAAS_KEY" --tool=claude
-  5. Or mint a virtual key only:
-     ./scripts/3_mint_key.sh
+✅ LiteLLM proxy deployed (Docker: litellm + postgres + prometheus + grafana)
+✅ .env generated (secrets preserved from existing install if upgrade)
+✅ configs/litellm/config.yaml generated from .env
+✅ Docker Compose stack started (4 containers)
+✅ Prometheus scraping LiteLLM /metrics
+✅ Grafana dashboard provisioned (oh-my-coding-maas-gateway)
 ```
 
-**Security warning (agent mode only):**
+Then for each tool that was installed, append:
+
+```
+✅ opencode installed + oh-my-opencode-slim plugin
+✅ Virtual key minted (alias: opencode)
+✅ opencode config written (~/.config/opencode/opencode.json)
+```
+
+(if `INSTALL_MODE ∈ {full, opencode-only}`)
+
+```
+✅ Codex CLI installed (npm: @openai/codex)
+✅ Virtual key minted (alias: codex)
+✅ Codex config written (~/.codex/config.toml + model_catalog.json + .env)
+```
+
+(if `INSTALL_MODE ∈ {full, codex-only}`)
+
+```
+✅ Claude Code CLI installed (npm: @anthropic-ai/claude-code)
+✅ Virtual key minted (alias: claude-code)
+✅ Claude Code config written (~/.claude/settings.json)
+```
+
+(if `INSTALL_MODE ∈ {full, claude-code-only}`)
+
+```
+✅ Validation passed (5_validate.sh)
+```
+
+#### Section 2 — Services & How to Access Them
+
+These services are always running (all install modes include LiteLLM):
+
+```
+=== Services ===
+
+LiteLLM Proxy API   http://127.0.0.1:4000
+  - Chat Completions:  POST /v1/chat/completions
+  - Responses API:     POST /v1/responses
+  - Anthropic Messages: POST /v1/messages
+  - Health:            GET  /health/liveliness
+  - Metrics:           GET  /metrics (Prometheus format)
+
+LiteLLM Admin UI     http://127.0.0.1:4000/ui
+  - View deployments, virtual keys, spend, budgets
+  - Login: admin / $LITELLM_MASTER_KEY
+
+Grafana Dashboard     http://127.0.0.1:3000
+  - Access: anonymous (no login required)
+  - Dashboard: "oh-my-coding-maas-gateway" (auto-provisioned)
+  - Sections: At-a-glance, Latency, Errors & Health,
+    Throughput & Capacity, Tokens, Cost
+  - Time window: selectable (default 15m)
+
+Prometheus            http://127.0.0.1:9090
+  - Query LiteLLM metrics directly
+  - Targets: http://127.0.0.1:4000/metrics
+
+PostgreSQL            localhost:5432 (internal)
+  - LiteLLM database (keys, spend, budgets)
+  - Not exposed externally
+```
+
+#### Section 3 — Coding Agents & How to Activate Them
+
+For each installed tool, print its activation command, config location,
+and virtual key (masked):
+
+```
+=== Coding Agents ===
+```
+
+If opencode was installed (`INSTALL_MODE ∈ {full, opencode-only}`):
+
+```
+opencode
+  Activate:       opencode
+                  (exit existing session first: Ctrl+C or /exit)
+  Config:         ~/.config/opencode/opencode.json
+  Plugin config:  ~/.config/opencode/oh-my-opencode-slim.json
+  Virtual key:    ${OPENCODE_VK:0:8}...${OPENCODE_VK: -4}
+  Presets:        /preset LiteLLM-Huawei-MaaS-Full  (default, 6 models)
+                  /preset LiteLLM-Huawei-MaaS-Core  (4 models)
+                  /preset Huawei-MaaS-Full          (direct, bypass proxy)
+                  /preset Huawei-MaaS-Core          (direct, bypass proxy)
+  API endpoint:   http://127.0.0.1:4000/v1/chat/completions
+```
+
+If Codex CLI was installed (`INSTALL_MODE ∈ {full, codex-only}`):
+
+```
+Codex CLI
+  Activate:       codex
+  Config:         ~/.codex/config.toml
+  Model catalog:  ~/.codex/model_catalog.json
+  API key file:   ~/.codex/.env (LITELLM_CODEX_API_KEY)
+  Virtual key:    ${CODEX_VK:0:8}...${CODEX_VK: -4}
+  API endpoint:   http://127.0.0.1:4000/v1/responses
+  Wire format:    Responses API → bridged to Chat Completions by LiteLLM
+```
+
+If Claude Code CLI was installed (`INSTALL_MODE ∈ {full, claude-code-only}`):
+
+```
+Claude Code CLI
+  Activate:       claude --bare
+  Config:         ~/.claude/settings.json
+  Virtual key:    ${CLAUDE_VK:0:8}...${CLAUDE_VK: -4}
+  API endpoint:   http://127.0.0.1:4000/v1/messages
+  Wire format:    Anthropic Messages API → forwarded to MaaS Anthropic endpoint
+```
+
+If no tools were installed (`INSTALL_MODE=litellm-only`):
+
+```
+No coding agents installed (LiteLLM-only mode).
+
+To add agents later:
+  opencode:      ./scripts/0_bootstrap.sh --maas-key="$MAAS_KEY" --tool=opencode
+  Codex CLI:     ./scripts/0_bootstrap.sh --maas-key="$MAAS_KEY" --tool=codex
+  Claude Code:   ./scripts/0_bootstrap.sh --maas-key="$MAAS_KEY" --tool=claude
+  All tools:     ./scripts/0_bootstrap.sh --maas-key="$MAAS_KEY" --tool=all
+  Mint key only: ./scripts/3_mint_key.sh
+```
+
+#### Section 4 — Configuration File Locations
+
+```
+=== Configuration Files ===
+
+LiteLLM config:      $PROJECT_DIR/configs/litellm/config.yaml (auto-generated)
+LiteLLM template:    $PROJECT_DIR/configs/litellm/config.yaml.template
+Environment file:    $PROJECT_DIR/.env (secrets — never commit)
+Docker Compose:      $PROJECT_DIR/docker-compose.yml
+Prometheus config:   $PROJECT_DIR/configs/prometheus/prometheus.yml
+Grafana dashboard:   $PROJECT_DIR/configs/grafana/dashboards/main.json
+Grafana provisioning: $PROJECT_DIR/configs/grafana/provisioning/
+```
+
+Then for each installed tool, append its config path:
+
+```
+opencode:            ~/.config/opencode/opencode.json
+opencode plugin:     ~/.config/opencode/oh-my-opencode-slim.json
+```
+(if opencode installed)
+
+```
+Codex CLI:           ~/.codex/config.toml
+Codex model catalog: ~/.codex/model_catalog.json
+Codex API key:       ~/.codex/.env
+```
+(if Codex installed)
+
+```
+Claude Code:         ~/.claude/settings.json
+```
+(if Claude Code installed)
+
+#### Section 5 — Next Steps
+
+```
+=== Next Steps ===
+
+1. Verify the proxy is healthy:
+   curl -sf http://127.0.0.1:4000/health/liveliness && echo "OK"
+
+2. Open Grafana to monitor traffic:
+   http://127.0.0.1:3000
+
+3. Open LiteLLM Admin UI to view keys and spend:
+   http://127.0.0.1:4000/ui
+```
+
+Then for each installed tool:
+
+```
+4. Start opencode:
+   opencode
+   (then switch preset: /preset LiteLLM-Huawei-MaaS-Core)
+```
+(if opencode installed)
+
+```
+5. Or use Codex CLI:
+   codex
+```
+(if Codex installed)
+
+```
+6. Or use Claude Code CLI:
+   claude --bare
+```
+(if Claude Code installed)
+
+#### Security Warning (Agent Mode Only)
 
 If the install was run via `--agent` (keys passed via command line / environment
-variables), append this warning to the summary:
+variables), append:
 
 ```
 ⚠️  Security: API keys were shared with the agent via command line
@@ -557,23 +723,14 @@ variables), append this warning to the summary:
   2. Edit .env: replace HUAWEI_MAAS_API_KEY and HUAWEI_MAAS_API_KEY_1..N
   3. Regenerate config: ./scripts/2_deploy_litellm.sh
   4. Restart LiteLLM:  docker compose restart litellm
-  5. Re-validate:      ./scripts/5_validate.sh [--tool=litellm if applicable]
-```
+  5. Re-validate:      ./scripts/5_validate.sh
 
-For `INSTALL_MODE=full`, also add:
-
-```
-  Note: Virtual key is still valid — it's tied to LITELLM_MASTER_KEY,
+  Note: Virtual keys are still valid — they're tied to LITELLM_MASTER_KEY,
   not MaaS keys. No need to re-mint unless you also rotate the master key.
 ```
 
 Do NOT show this warning for interactive (non-agent) installs — the human
 typed the keys directly, they were not shared with an agent.
-
-**Restart opencode (full mode only):** If opencode was already running,
-the user must exit it (`/exit` or Ctrl+C) and start fresh (`opencode`) to
-pick up the new configuration. The slim plugin and preset changes are not
-hot-reloaded.
 
 **Postcondition:** Summary printed. Installation is complete.
 

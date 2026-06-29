@@ -2,7 +2,7 @@
   "title": "oh-my-coding-maas-gateway",
   "uid": "oh-my-coding-maas-gateway",
   "schemaVersion": 39,
-  "version": 4,
+  "version": 5,
   "refresh": "30s",
   "time": {
     "from": "now-1h",
@@ -90,7 +90,7 @@
       "id": 1,
       "type": "row",
       "title": "At-a-glance",
-      "description": "Live proxy load and health snapshot.",
+      "description": "Live proxy load and health snapshot. Check here first when investigating issues — these stat panels give an instant read on current system state.",
       "gridPos": {
         "x": 0,
         "y": 0,
@@ -104,7 +104,7 @@
       "id": 2,
       "type": "stat",
       "title": "Active Requests",
-      "description": "Requests currently in flight.",
+      "description": "Number of requests currently being processed by the proxy (started but not yet completed). This is a real-time gauge, not a rate — it shows 'right now, N requests are in flight.'\n\nHOW TO READ: Sudden spikes indicate traffic bursts or upstream slowdowns (requests pile up if the backend is slow). If it climbs continuously without dropping, the proxy may be stuck or the upstream is saturated.\n\nGOOD: Low and stable, tracking expected concurrency (0–10 typical).\nBAD: Continuously rising or pegged at max concurrency — investigate upstream latency.",
       "gridPos": {
         "x": 0,
         "y": 1,
@@ -170,7 +170,7 @@
       "id": 33,
       "type": "stat",
       "title": "RPS",
-      "description": "Requests per second.",
+      "description": "Requests per second over the selected window, from litellm_proxy_total_requests_metric_total (all HTTP requests including health checks). Use this to gauge real-time traffic volume. Compare with RPM (×60) for sanity.\n\nGOOD: Matches expected traffic pattern.\nBAD: Unexpected drop to zero (proxy down) or sudden 10× spike (retry storms, runaway clients).",
       "gridPos": {
         "x": 6,
         "y": 1,
@@ -228,7 +228,7 @@
       "id": 3,
       "type": "stat",
       "title": "RPM",
-      "description": "Requests per minute.",
+      "description": "Requests per minute over the selected window. Same metric as RPS scaled to per-minute. Use this for capacity planning — compare against your MaaS provider's RPM limit.\n\nGOOD: Below 70% of your RPM limit.\nBAD: Approaching or exceeding the limit — expect 429 rate-limit errors.",
       "gridPos": {
         "x": 12,
         "y": 1,
@@ -286,7 +286,7 @@
       "id": 6,
       "type": "stat",
       "title": "Error %",
-      "description": "Failed requests as % of total.",
+      "description": "Failed requests as a percentage of total requests, from litellm_deployment_failure_responses_total (deployment-level failures: 429 rate limits, 500 server errors, timeouts). This is the primary error health indicator.\n\nGOOD: <1% (green) — healthy error rate.\nWARNING: 1–5% (yellow) — elevated, monitor closely.\nBAD: >5% (red) — investigate upstream provider status, rate limits, or model availability.",
       "gridPos": {
         "x": 18,
         "y": 1,
@@ -352,7 +352,7 @@
       "id": 34,
       "type": "stat",
       "title": "TPS",
-      "description": "Tokens per second (input + output).",
+      "description": "Tokens per second (input + output combined) over the selected window, from litellm_total_tokens_metric_total. Measures throughput in terms of token generation. A model generating long outputs will have high TPS even with low RPS.\n\nGOOD: Matches expected workload volume.\nBAD: Sudden drops suggest request failures or model unavailability.",
       "gridPos": {
         "x": 0,
         "y": 5,
@@ -410,7 +410,7 @@
       "id": 4,
       "type": "stat",
       "title": "TPM",
-      "description": "Tokens per minute (input + output).",
+      "description": "Tokens per minute (input + output combined). Same as TPS scaled to per-minute. Use for provider TPM limit capacity planning.\n\nGOOD: Below 70% of your provider's TPM limit.\nBAD: Approaching the limit — expect throttling.",
       "gridPos": {
         "x": 6,
         "y": 5,
@@ -468,7 +468,7 @@
       "id": 5,
       "type": "stat",
       "title": "Models Healthy",
-      "description": "Deployments in healthy state.",
+      "description": "Count of distinct models with at least one deployment in healthy state (deployment_state == 0). A model is healthy when its upstream deployments respond successfully to health checks.\n\nGOOD: Equals the total number of configured models.\nBAD: Less than total — one or more models have degraded or unavailable deployments. Check the Deployment health table for details.",
       "gridPos": {
         "x": 12,
         "y": 5,
@@ -526,7 +526,7 @@
       "id": 7,
       "type": "stat",
       "title": "Spend (window)",
-      "description": "USD spent in selected time range.",
+      "description": "Total USD spent in the currently selected Grafana time range, from litellm_spend_metric_total. This is cumulative spend over the visible window, not a rate. Use it to quickly assess cost impact during incidents or traffic spikes.\n\nGOOD: Within budget expectations.\nBAD: Unexpectedly high — check for runaway clients, retry loops, or expensive model selection.",
       "gridPos": {
         "x": 18,
         "y": 5,
@@ -584,7 +584,7 @@
       "id": 8,
       "type": "row",
       "title": "Latency",
-      "description": "Streaming, end-to-end, upstream, overhead, and queue latency per model.",
+      "description": "Streaming and request latency metrics per model. These panels reveal where time is spent in the request lifecycle: queue wait → proxy overhead → upstream API → first token → token generation. Use them to identify bottlenecks and compare model performance.",
       "gridPos": {
         "x": 0,
         "y": 9,
@@ -598,7 +598,7 @@
       "id": 9,
       "type": "timeseries",
       "title": "TTFT by model",
-      "description": "Time To First Token P95 (seconds) — slow tail per model.",
+      "description": "Time To First Token (P95) — the time from request start to the first token being streamed back, from litellm_llm_api_time_to_first_token_metric. This is what users perceive as 'the model is thinking.' It includes queue wait, proxy overhead, and the upstream's prefill phase.\n\nGOOD: <1s for chat models, <2s for reasoning models — users perceive instant response.\nBAD: >3s — users perceive lag; check Queue wait and LLM API latency panels to isolate the cause.",
       "gridPos": {
         "x": 0,
         "y": 10,
@@ -653,7 +653,7 @@
       "id": 10,
       "type": "timeseries",
       "title": "TPOT by model",
-      "description": "Time Per Output Token P95 (seconds) — slow tail per model.",
+      "description": "Time Per Output Token (P95) — the average time between consecutive output tokens during streaming, from litellm_deployment_latency_per_output_token. This measures the model's raw generation speed. Lower means faster token generation.\n\nGOOD: <50ms/token for fast models, <100ms for reasoning models — smooth streaming.\nBAD: >200ms — slow generation; may indicate provider throttling, model overload, or GPU contention.",
       "gridPos": {
         "x": 12,
         "y": 10,
@@ -708,7 +708,7 @@
       "id": 11,
       "type": "timeseries",
       "title": "End-to-end latency",
-      "description": "Total request latency P50/P95/P99 (seconds) per model.",
+      "description": "Total request latency at P50, P95, and P99 percentiles — the full round-trip from request received to response completed, from litellm_request_total_latency_metric. P50 = typical experience; P95 = slow tail; P99 = worst-case outliers.\n\nHOW TO READ: Compare P99 to P50 — a large gap means intermittent latency spikes affecting a small fraction of users.\n\nGOOD: P50 <2s, P95 <5s, P99 <10s for chat models.\nBAD: P99 >> P50 — large tail latency suggests intermittent upstream issues or queue saturation.",
       "gridPos": {
         "x": 0,
         "y": 22,
@@ -787,7 +787,7 @@
       "id": 35,
       "type": "timeseries",
       "title": "LLM API latency",
-      "description": "Upstream LLM API latency P50/P95/P99 (seconds) per model.",
+      "description": "Upstream LLM API call latency at P50/P95/P99 — time spent waiting for the model provider, from litellm_llm_api_latency_metric. This excludes proxy overhead and queue wait. Compare with End-to-end latency to isolate where time is spent.\n\nGOOD: Close to End-to-end latency (proxy adds minimal overhead).\nBAD: Much higher than expected — provider is slow, rate-limiting, or experiencing an outage.",
       "gridPos": {
         "x": 6,
         "y": 22,
@@ -866,7 +866,7 @@
       "id": 12,
       "type": "timeseries",
       "title": "Proxy overhead",
-      "description": "LiteLLM processing overhead P95 (seconds). High = proxy bottleneck.",
+      "description": "LiteLLM proxy processing overhead (P95) — time spent inside the proxy itself (routing, auth, logging, callbacks), from litellm_overhead_latency_metric. This is the difference between end-to-end latency and upstream API latency.\n\nGOOD: <100ms — proxy is not a bottleneck.\nBAD: >500ms — proxy is slow; check callback handlers, logging volume, or CPU saturation on the proxy container.",
       "gridPos": {
         "x": 12,
         "y": 22,
@@ -921,7 +921,7 @@
       "id": 13,
       "type": "timeseries",
       "title": "Queue wait",
-      "description": "Queue wait time P95 (seconds). Spikes = deployment saturation.",
+      "description": "Request queue wait time (P95) — how long requests wait in the LiteLLM queue before being dispatched to the upstream, from litellm_request_queue_time_seconds. This is zero under low load; it rises when all deployment slots are busy.\n\nGOOD: <100ms — no queuing pressure.\nBAD: >1s — the proxy is saturated; consider adding more deployments, increasing concurrency limits, or adding API keys.",
       "gridPos": {
         "x": 18,
         "y": 22,
@@ -976,7 +976,7 @@
       "id": 14,
       "type": "row",
       "title": "Errors & Health",
-      "description": "Error rates, status breakdown, cooldowns, deployment health.",
+      "description": "Error rates, status code breakdown, deployment state, and per-model health. Use these panels to diagnose failures and identify degraded deployments.",
       "gridPos": {
         "x": 0,
         "y": 34,
@@ -990,7 +990,7 @@
       "id": 15,
       "type": "timeseries",
       "title": "Error rate by model",
-      "description": "Failed requests per minute per model.",
+      "description": "Failed requests per minute broken down by model, from litellm_deployment_failure_responses_total. Each line shows the failure rate for one model. Spikes indicate model-specific issues (rate limits, model unavailable, provider outage).\n\nGOOD: All lines at or near zero.\nBAD: Sustained non-zero rate for a model — check provider status, rate limits, and model configuration.",
       "gridPos": {
         "x": 0,
         "y": 35,
@@ -1045,7 +1045,7 @@
       "id": 16,
       "type": "piechart",
       "title": "Error status codes",
-      "description": "Error status code distribution in window.",
+      "description": "Distribution of HTTP status codes for failed requests, from litellm_deployment_failure_responses_total grouped by exception_status. The pie chart shows which error types dominate.\n429 = rate limited (transient); 500 = server error; timeout = upstream unreachable.\n\nGOOD: Empty (no errors) or dominated by 429 (transient rate limits).\nBAD: Large 500 or timeout slices — upstream provider issues requiring investigation.",
       "gridPos": {
         "x": 12,
         "y": 35,
@@ -1087,7 +1087,7 @@
       "id": 17,
       "type": "timeseries",
       "title": "Deployment state",
-      "description": "Deployment health state per model (0=healthy, 1=partial, 2=outage).",
+      "description": "Deployment health state per model over time, from litellm_deployment_state. Values: 0=healthy, 1=partial degradation (some deployments down), 2=outage (all deployments down). Each line represents a model's current health state.\n\nGOOD: All lines at 0 — all models fully healthy.\nBAD: Any line at 1 (partial — some deployments degraded) or 2 (outage — model is down).",
       "gridPos": {
         "x": 18,
         "y": 35,
@@ -1142,7 +1142,7 @@
       "id": 18,
       "type": "table",
       "title": "Deployment health",
-      "description": "Per-model deployment state and counts in window.",
+      "description": "Per-model deployment summary table showing: Healthy count, Unhealthy count, Successes, Failures, and Cooldowns in the selected window. Use this as the primary diagnostic table when models are degraded.\n\nHOW TO READ: Healthy should be >0 for all models. Failures and Cooldowns should be 0 or near-zero.\n\nGOOD: Healthy >0 for all models, Failures = 0.\nBAD: Unhealthy >0 or Failures >>0 — investigate the affected model's upstream provider and API key status.",
       "gridPos": {
         "x": 0,
         "y": 47,
@@ -1223,7 +1223,7 @@
       "id": 19,
       "type": "row",
       "title": "Throughput & Capacity",
-      "description": "Request/token rates, traffic distribution, RPM utilization.",
+      "description": "Request and token throughput rates, traffic distribution across models, and RPM utilization against provider limits. Use these to understand load patterns and capacity headroom.",
       "gridPos": {
         "x": 0,
         "y": 54,
@@ -1237,7 +1237,7 @@
       "id": 36,
       "type": "stat",
       "title": "Total Requests",
-      "description": "Total requests (success + failure).",
+      "description": "Absolute count of all requests (successful + failed) across all deployments. This is a cumulative counter, not a rate — use it to understand total volume over the proxy's lifetime.\n\nGOOD: Increases steadily, with failures being a small fraction.\nBAD: Stagnant (no traffic) or failures dominate the count.",
       "gridPos": {
         "x": 0,
         "y": 55,
@@ -1295,7 +1295,7 @@
       "id": 37,
       "type": "stat",
       "title": "Successful Requests",
-      "description": "Total successful responses.",
+      "description": "Absolute count of successful responses across all deployments. Compare with Total Requests and Failed Requests to compute success rate.\n\nGOOD: Close to Total Requests (>99%).\nBAD: Significantly less than Total — check error panels for the failure cause.",
       "gridPos": {
         "x": 8,
         "y": 55,
@@ -1353,7 +1353,7 @@
       "id": 38,
       "type": "stat",
       "title": "Failed Requests",
-      "description": "Total failed responses.",
+      "description": "Absolute count of failed responses across all deployments. This is the raw failure count, useful for understanding error volume (not just percentage).\n\nGOOD: 0 or very low.\nBAD: High and growing — sustained failures; check Error rate by model for per-model details.",
       "gridPos": {
         "x": 16,
         "y": 55,
@@ -1419,7 +1419,7 @@
       "id": 20,
       "type": "timeseries",
       "title": "RPM by model",
-      "description": "Requests per minute per model.",
+      "description": "Requests per minute broken down by model, from litellm_proxy_total_requests_metric_total. Each line shows traffic volume for one model. Use this to understand which models receive the most traffic and spot usage pattern changes.\n\nGOOD: Matches expected traffic distribution.\nBAD: One model suddenly dominates (misconfigured client) or a model drops to zero (clients can't reach it).",
       "gridPos": {
         "x": 0,
         "y": 59,
@@ -1474,7 +1474,7 @@
       "id": 21,
       "type": "timeseries",
       "title": "TPM by model",
-      "description": "Tokens per minute per model.",
+      "description": "Tokens per minute broken down by model, from litellm_total_tokens_metric. Shows token consumption per model. Compare with RPM by model — a model with low RPM but high TPM has long conversations.\n\nGOOD: Matches expected usage pattern.\nBAD: Unexpected spikes — runaway clients or unexpectedly long outputs.",
       "gridPos": {
         "x": 12,
         "y": 59,
@@ -1529,7 +1529,7 @@
       "id": 22,
       "type": "piechart",
       "title": "Traffic distribution",
-      "description": "Request share per model in window.",
+      "description": "Pie chart showing each model's share of total requests in the selected window. Use this to quickly see which models dominate traffic.\n\nGOOD: Distribution matches intended usage pattern.\nBAD: One model takes >90% (clients not load-balancing) or a model disappears (unreachable or removed).",
       "gridPos": {
         "x": 0,
         "y": 71,
@@ -1571,7 +1571,7 @@
       "id": 23,
       "type": "timeseries",
       "title": "RPM utilization vs limit",
-      "description": "Current RPM as % of MaaS RPM limit. →100% = expect 429s.",
+      "description": "Current RPM as a percentage of the MaaS provider's RPM limit per deployment, from litellm_deployment_total_requests_total / litellm_deployment_rpm_limit. This is the key capacity headroom indicator.\n\nGOOD: <70% — safe headroom.\nWARNING: 70–90% — approaching limit, monitor closely.\nBAD: >90% — expect 429 rate-limit errors; add more API keys or reduce traffic.",
       "gridPos": {
         "x": 12,
         "y": 71,
@@ -1626,7 +1626,7 @@
       "id": 24,
       "type": "row",
       "title": "Tokens",
-      "description": "Token usage breakdown: input, output, reasoning.",
+      "description": "Token usage broken down by type: input (prompt), output (completion), and reasoning (thinking). Use these to understand cost drivers and model behavior.",
       "gridPos": {
         "x": 0,
         "y": 81,
@@ -1640,7 +1640,7 @@
       "id": 39,
       "type": "timeseries",
       "title": "Input tokens",
-      "description": "Input tokens per minute per model.",
+      "description": "Input (prompt) tokens per minute per model, from litellm_input_tokens_metric. Input tokens are what the client sends — prompts, context, system instructions. They drive prefill latency and cost.\n\nGOOD: Proportional to request rate.\nBAD: Disproportionately high — clients sending excessive context (large prompts, untrimmed conversation history).",
       "gridPos": {
         "x": 0,
         "y": 82,
@@ -1695,7 +1695,7 @@
       "id": 40,
       "type": "timeseries",
       "title": "Output tokens",
-      "description": "Output tokens per minute per model.",
+      "description": "Output (completion) tokens per minute per model, from litellm_output_tokens_metric. Output tokens are the model's response. They drive generation time and cost.\n\nGOOD: Proportional to expected response length.\nBAD: Unexpectedly high — model generating excessively long responses; check max_tokens settings.",
       "gridPos": {
         "x": 8,
         "y": 82,
@@ -1750,7 +1750,7 @@
       "id": 41,
       "type": "timeseries",
       "title": "Reasoning tokens",
-      "description": "Reasoning (thinking) tokens per minute per model.",
+      "description": "Reasoning (thinking) tokens per minute per model, from litellm_output_reasoning_tokens_metric. These are internal tokens generated by reasoning models (chain-of-thought) before the final response. They consume time and cost but are not visible to the user.\n\nGOOD: Expected for reasoning models; near-zero for non-reasoning models.\nBAD: Unexpectedly high for non-reasoning models (misconfigured) or dominating total output (expensive reasoning overhead).",
       "gridPos": {
         "x": 16,
         "y": 82,
@@ -1805,7 +1805,7 @@
       "id": 26,
       "type": "row",
       "title": "Cost",
-      "description": "Spend accumulation and rate per model.",
+      "description": "Spend accumulation and rate per model. Use these to track cost trends and spot runaway spending in real time.",
       "gridPos": {
         "x": 0,
         "y": 94,
@@ -1819,7 +1819,7 @@
       "id": 27,
       "type": "stat",
       "title": "Total cost",
-      "description": "Cumulative USD spent.",
+      "description": "Cumulative USD spent across all models since the proxy started, from litellm_spend_metric_total. This is a lifetime counter — use it for budget tracking.\n\nGOOD: Within budget.\nBAD: Approaching or exceeding budget — check Spend rate panel for real-time cost trajectory.",
       "gridPos": {
         "x": 0,
         "y": 95,
@@ -1877,7 +1877,7 @@
       "id": 28,
       "type": "timeseries",
       "title": "Cost per model",
-      "description": "Cumulative USD spend over time per model.",
+      "description": "Cumulative USD spend over time per model. Each line shows the running total for one model. Use this to identify which models cost the most over time.\n\nGOOD: Linear growth at expected rate.\nBAD: Sudden steep slope — runaway costs on a model; check for expensive model selection or excessive usage.",
       "gridPos": {
         "x": 6,
         "y": 95,
@@ -1932,7 +1932,7 @@
       "id": 29,
       "type": "timeseries",
       "title": "Spend rate",
-      "description": "USD per minute — spot runaway costs in real time.",
+      "description": "USD per minute per model — the derivative of cumulative spend, from litellm_spend_metric_total. This is the real-time cost rate. Use it to spot runaway costs immediately rather than waiting for cumulative totals.\n\nGOOD: Stable and within expected rate.\nBAD: Sudden spikes — a client switched to an expensive model or is making excessive high-cost requests.",
       "gridPos": {
         "x": 18,
         "y": 95,
@@ -1987,7 +1987,7 @@
       "id": 30,
       "type": "row",
       "title": "Efficiency",
-      "description": "Cost efficiency.",
+      "description": "Cost efficiency metrics. Use these to understand how much value you get per dollar spent.",
       "gridPos": {
         "x": 0,
         "y": 103,
@@ -2001,7 +2001,7 @@
       "id": 32,
       "type": "stat",
       "title": "Cost per 1K tokens",
-      "description": "USD per 1000 tokens — cost efficiency.",
+      "description": "USD per 1,000 tokens (input + output), from litellm_spend_metric_total / litellm_total_tokens_metric_total. This is the blended cost efficiency across all models. Lower means you're getting more tokens per dollar. Compare against model pricing to verify billing.\n\nGOOD: Matches expected blended model pricing.\nBAD: Higher than expected — expensive models dominating traffic, or pricing/billing misconfiguration.",
       "gridPos": {
         "x": 0,
         "y": 104,

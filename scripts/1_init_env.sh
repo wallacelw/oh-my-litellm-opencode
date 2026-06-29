@@ -165,7 +165,7 @@ MASTER_KEY=$(prompt_value "LITELLM_MASTER_KEY" "LITELLM_MASTER_KEY (admin key, m
 SALT_KEY=$(prompt_value "LITELLM_SALT_KEY" "LITELLM_SALT_KEY (key encryption salt, immutable after first virtual key)" "$DEFAULT_SALT_KEY" "yes")
 DB_PASSWORD=$(prompt_value "DB_PASSWORD" "DB_PASSWORD (PostgreSQL llmproxy user)" "$DEFAULT_DB_PASSWORD" "yes")
 GRAFANA_PASSWORD=$(prompt_value "GRAFANA_ADMIN_PASSWORD" "GRAFANA_ADMIN_PASSWORD (Grafana dashboard admin)" "$DEFAULT_GRAFANA_PASSWORD" "yes")
-PROM_RETENTION=$(prompt_value "PROMETHEUS_RETENTION" "PROMETHEUS_RETENTION (Prometheus TSDB retention, min 7d for baselines)" "$DEFAULT_PROM_RETENTION" "no")
+PROM_RETENTION=$(prompt_value "PROMETHEUS_RETENTION" "PROMETHEUS_RETENTION (Prometheus TSDB retention)" "$DEFAULT_PROM_RETENTION" "no")
 MAAS_API_KEY=$(prompt_value "HUAWEI_MAAS_API_KEY" "HUAWEI_MAAS_API_KEY (main key from ModelArts MaaS console, ap-southeast-1)" "${DEFAULT_MAAS_KEY:-}" "yes")
 MAAS_API_BASE=$(prompt_value "HUAWEI_MAAS_API_BASE" "HUAWEI_MAAS_API_BASE (MaaS endpoint URL)" "$DEFAULT_MAAS_BASE" "no")
 MAAS_ANTHROPIC_BASE=$(prompt_value "HUAWEI_MAAS_ANTHROPIC_API_BASE" "HUAWEI_MAAS_ANTHROPIC_API_BASE (MaaS Anthropic endpoint URL)" "$DEFAULT_MAAS_ANTHROPIC_BASE" "no")
@@ -230,21 +230,8 @@ for i in "${!EXTRA_KEYS[@]}"; do
   fi
 done
 
-# Validate Prometheus retention (must be >= 7d for 7-day baseline recording rules)
-if [[ "$PROM_RETENTION" =~ ^([0-9]+)([dhw])$ ]]; then
-  RET_NUM="${BASH_REMATCH[1]}"
-  RET_UNIT="${BASH_REMATCH[2]}"
-  # Convert to days for comparison
-  case "$RET_UNIT" in
-    d) RET_DAYS="$RET_NUM" ;;
-    h) RET_DAYS=$(( RET_NUM / 24 )) ;;
-    w) RET_DAYS=$(( RET_NUM * 7 )) ;;
-  esac
-  if [[ "$RET_DAYS" -lt 7 ]]; then
-    echo "ERROR: PROMETHEUS_RETENTION must be >= 7d (recording rules use 7-day windows). Got: $PROM_RETENTION" >&2
-    ERRORS=$((ERRORS + 1))
-  fi
-else
+# Validate Prometheus retention format
+if [[ ! "$PROM_RETENTION" =~ ^([0-9]+)([dhw])$ ]]; then
   echo "ERROR: PROMETHEUS_RETENTION must be a Prometheus duration like 30d, 14d, 7d. Got: $PROM_RETENTION" >&2
   ERRORS=$((ERRORS + 1))
 fi

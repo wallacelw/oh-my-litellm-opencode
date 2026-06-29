@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- Prometheus alerting rules (`alerts.yml`) — removed, no Alertmanager configured.
+- Prometheus recording rules (`rules.yml`) — removed, no 7-day baselines needed.
+- 7-day baseline lines from Grafana dashboard panels (TTFT, TPOT, RPM, TPM).
+- `PROMETHEUS_RETENTION` minimum 7d requirement — any valid duration now accepted.
+- "Annotations & Alerts" annotation from Grafana dashboard.
+
 ### Added
 
 - Tool selection menu in `0_bootstrap.sh` — interactive 6-option menu

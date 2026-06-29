@@ -237,44 +237,23 @@ dashboard.
 
 | Service | Port | Purpose |
 |---------|------|---------|
-| Prometheus | 9090 | Metrics storage + querying + alerting |
+| Prometheus | 9090 | Metrics storage + querying |
 | Grafana | 3000 | Dashboard visualization (anonymous, no login) |
 
 Prometheus TSDB retention is configurable via `PROMETHEUS_RETENTION` in `.env`
-(default: `30d`). Must be ≥ `7d` because recording rules use 7-day rolling windows.
+(default: `30d`).
 
 **Dashboard** (`configs/grafana/dashboards/main.json`) — 12 panels across 5 rows:
 
 1. **At-a-glance** — Active Requests, RPM, TPM, Models Deployed
-2. **Latency** — TTFT by model (P50/P95 + 7d baseline), TPOT by model (P50/P95 + 7d baseline)
+2. **Latency** — TTFT by model (P50/P95), TPOT by model (P50/P95)
 3. **Cost & Budget** — Total cost, cost per model, budget remaining by key
-4. **Throughput** — RPM by model (+ 7d baseline), TPM by model (+ 7d baseline)
+4. **Throughput** — RPM by model, TPM by model
 5. **Deployment & Health** — Model instance × API key table
 
-Variables: `$model` (filter by model), `$api_key` (filter by API key alias).
+Variables: `$model` (filter by model).
 
-**Recording Rules** — 4 pre-computed baselines (7-day rolling averages, updated every 5m):
 
-| Rule | Metric |
-|------|--------|
-| `litellm:ttft_p95:7d_avg` | TTFT P95 baseline |
-| `litellm:tpot_p50:7d_avg` | TPOT P50 baseline |
-| `litellm:rpm:7d_avg` | RPM baseline |
-| `litellm:tpm:7d_avg` | TPM baseline |
-
-**Alerting Rules** — 3 dynamic alerts:
-
-| Alert | Condition | Severity |
-|-------|-----------|----------|
-| `LitellmTTFTAnomaly` | TTFT P95 > 2× 7d baseline for 10m | warning |
-| `LitellmBudgetLow` | Budget remaining < 10% for 5m | warning |
-| `LitellmDeploymentOutage` | Deployment state > 0 for 2m | critical |
-
-> **Note:** No Alertmanager is configured. Alerts fire in Prometheus and are
-> visible in the Prometheus UI (`http://127.0.0.1:9090/alerts`) but no
-> notifications are sent (no email, Slack, etc.). Add an Alertmanager
-> service to `docker-compose.yml` and a `alertmanager` config block in
-> `configs/prometheus/prometheus.yml` to enable notifications.
 
 ---
 

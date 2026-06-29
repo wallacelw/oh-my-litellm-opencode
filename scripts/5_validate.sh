@@ -491,13 +491,6 @@ if [ "$RUN_OBSERVABILITY" = true ]; then
     skip "Prometheus reachability"
   elif curl -sf -m 5 http://127.0.0.1:9090/-/ready >/dev/null 2>&1; then
     pass "Prometheus reachable at :9090"
-    # Check recording + alerting rules are loaded
-    RULE_GROUPS=$(curl -sf -m 5 "http://127.0.0.1:9090/api/v1/rules" 2>/dev/null | jq '.data.groups | length' 2>/dev/null || echo 0)
-    if [ "$RULE_GROUPS" -ge 2 ]; then
-      pass "Prometheus rules loaded ($RULE_GROUPS groups)"
-    else
-      warn "Prometheus rules not loaded (expected 2 groups, got $RULE_GROUPS)"
-    fi
   else
     fail "Prometheus not reachable at :9090"
   fi
@@ -540,7 +533,7 @@ if [ "$RUN_OBSERVABILITY" = true ]; then
   if [ "$DRY_RUN" = true ]; then
     skip "Grafana reachability"
   elif curl -sf -m 5 http://127.0.0.1:3000/api/health >/dev/null 2>&1; then
-    GRAFANA_DB_COUNT=$(curl -sf -m 5 -u "admin:${GRAFANA_ADMIN_PASSWORD:-admin}" "http://127.0.0.1:3000/api/search?query=oh-my-litellm" 2>/dev/null | jq 'length' 2>/dev/null || echo 0)
+    GRAFANA_DB_COUNT=$(curl -sf -m 5 -u "admin:${GRAFANA_ADMIN_PASSWORD:-admin}" "http://127.0.0.1:3000/api/search?query=oh-my-coding" 2>/dev/null | jq 'length' 2>/dev/null || echo 0)
     if [ "$GRAFANA_DB_COUNT" -gt 0 ]; then
       pass "Grafana reachable with dashboard provisioned"
       # Check datasource is connected to Prometheus

@@ -101,7 +101,7 @@ uses `--tool=` flags (new syntax).
 scripts/          — install + validate scripts (numbered 0-5)
 configs/          — component configs grouped by service
 configs/litellm/   — LiteLLM config, entrypoint, template
-configs/prometheus/ — Prometheus config, rules, alerts
+configs/prometheus/ — Prometheus config
 configs/grafana/   — Grafana dashboards and provisioning
 configs/opencode/  — opencode + slim plugin templates
 configs/codex/     — Codex CLI config template + model catalog

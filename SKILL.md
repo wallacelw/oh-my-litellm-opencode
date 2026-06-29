@@ -36,7 +36,7 @@ For reference documentation (architecture, presets, models, repair), see
 | `LITELLM_SALT_KEY` | `1_init_env.sh` (auto-generated) | LiteLLM container | Random string | **Yes** — changing invalidates all virtual keys |
 | `DB_PASSWORD` | `1_init_env.sh` (auto-generated) | docker-compose, postgres | Random string | **Yes** — changing breaks DB auth |
 | `GRAFANA_ADMIN_PASSWORD` | `1_init_env.sh` (auto-generated) | docker-compose, `5_validate.sh` | Random string | No — rotating changes dashboard login only |
-| `PROMETHEUS_RETENTION` | `1_init_env.sh` (default `30d`) | docker-compose | Prometheus duration (`Nd`/`Nh`/`Nw`), ≥ `7d` | No |
+| `PROMETHEUS_RETENTION` | `1_init_env.sh` (default `30d`) | docker-compose | Prometheus duration (`Nd`/`Nh`/`Nw`) | No |
 | `CODEX_VIRTUAL_KEY` | `4b_install_codex.sh` (minted) | `~/.codex/.env` as `LITELLM_CODEX_API_KEY` | Virtual key starting with `sk-` | No — tied to `LITELLM_MASTER_KEY` |
 | `HUAWEI_MAAS_ANTHROPIC_API_BASE` | `1_init_env.sh` (default `https://api-ap-southeast-1.modelarts-maas.com/anthropic`) | `2_deploy_litellm.sh` | URL | No |
 | `HUAWEI_MAAS_API_BASE` | `1_init_env.sh` (default `https://api-ap-southeast-1.modelarts-maas.com/openai`) | `2_deploy_litellm.sh` | URL | No |
@@ -469,7 +469,7 @@ fi
 | `Model catalog not reachable` | Check virtual key in `~/.config/opencode/opencode.json`, re-run from Step 7 |
 | `smoke test` and `did not respond` | Re-validate MaaS key via Step 5's API call. If key is valid, escalate. |
 | `Prometheus not reachable` | `docker compose -f "$PROJECT_DIR/docker-compose.yml" up -d prometheus`, wait 10s, retry Step 9 |
-| `rules not loaded` | Check `configs/prometheus/rules.yml` and `configs/prometheus/alerts.yml` syntax: `docker compose logs prometheus --tail 20` |
+| `rules not loaded` | Check `configs/prometheus/prometheus.yml` syntax: `docker compose logs prometheus --tail 20` |
 | `Grafana not reachable` | `docker compose -f "$PROJECT_DIR/docker-compose.yml" up -d grafana`, wait 20s, retry Step 9 |
 | `dashboard not found` | Check provisioning: `docker compose logs grafana --tail 20` |
 | `claude not found` | `npm install -g @anthropic-ai/claude-code`, retry Step 9 |

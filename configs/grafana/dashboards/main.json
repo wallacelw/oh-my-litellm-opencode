@@ -36,22 +36,6 @@
           "text": "All",
           "value": "$__all"
         }
-      },
-      {
-        "name": "api_key",
-        "type": "query",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
-        },
-        "query": "label_values(litellm_proxy_total_requests_metric_total, api_key_alias)",
-        "refresh": 1,
-        "includeAll": true,
-        "multi": true,
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        }
       }
     ]
   },
@@ -60,7 +44,7 @@
       "id": 1,
       "type": "row",
       "title": "At-a-glance",
-      "description": "Snapshot of live proxy load: in-flight requests, request/token rates, and deployment count. Narrow with the model and api_key variables at the top.",
+      "description": "Snapshot of live proxy load: in-flight requests, request/token rates, and deployment count. Narrow with the model at the top.",
       "gridPos": {
         "x": 0,
         "y": 0,
@@ -87,18 +71,6 @@
           "refId": "A",
           "legendFormat": "",
           "hide": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "range": true
-        },
-        {
-          "expr": "avg_over_time(litellm_in_flight_requests[7d:1m])",
-          "refId": "B",
-          "legendFormat": "",
-          "hide": true,
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -144,7 +116,7 @@
       "id": 3,
       "type": "stat",
       "title": "RPM",
-      "description": "Requests per minute over the last 1 minute, summed across all selected models and API keys. A hidden 7-day average is recorded for trending.",
+      "description": "Requests per minute over the last 1 minute, summed across all selected models and API keys.",
       "gridPos": {
         "x": 6,
         "y": 1,
@@ -153,22 +125,10 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(litellm_proxy_total_requests_metric_total{requested_model=~\"$model\",api_key_alias=~\"$api_key\"}[1m])) * 60",
+          "expr": "sum(rate(litellm_proxy_total_requests_metric_total{requested_model=~\"$model\"}[1m])) * 60",
           "refId": "A",
           "legendFormat": "",
           "hide": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "range": true
-        },
-        {
-          "expr": "litellm:rpm:7d_avg",
-          "refId": "B",
-          "legendFormat": "",
-          "hide": true,
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -223,22 +183,10 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(litellm_total_tokens_metric_total{model=~\"$model\",api_key_alias=~\"$api_key\"}[1m])) * 60",
+          "expr": "sum(rate(litellm_total_tokens_metric_total{model=~\"$model\"}[1m])) * 60",
           "refId": "A",
           "legendFormat": "",
           "hide": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "range": true
-        },
-        {
-          "expr": "litellm:tpm:7d_avg",
-          "refId": "B",
-          "legendFormat": "",
-          "hide": true,
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -342,7 +290,7 @@
       "id": 6,
       "type": "row",
       "title": "Latency",
-      "description": "Streaming latency percentiles per model. P50 is the typical experience, P95 is the slow tail. Compare against the 7d avg line to spot regressions.",
+      "description": "Streaming latency percentiles per model. P50 is the typical experience, P95 is the slow tail.",
       "gridPos": {
         "x": 0,
         "y": 5,
@@ -356,7 +304,7 @@
       "id": 7,
       "type": "timeseries",
       "title": "TTFT by model",
-      "description": "Time To First Token in seconds — how long until the first token of a response arrives. P50 = median, P95 = slow tail, 7d avg = baseline. Rising TTFT means users wait longer before seeing output.",
+      "description": "Time To First Token in seconds \u2014 how long until the first token of a response arrives. P50 = median, P95 = slow tail. Rising TTFT means users wait longer before seeing output.",
       "gridPos": {
         "x": 0,
         "y": 6,
@@ -365,7 +313,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum by (le, model) (rate(litellm_llm_api_time_to_first_token_metric_bucket{model=~\"$model\",api_key_alias=~\"$api_key\"}[5m])))",
+          "expr": "histogram_quantile(0.50, sum by (le, model) (rate(litellm_llm_api_time_to_first_token_metric_bucket{model=~\"$model\"}[5m])))",
           "refId": "A",
           "legendFormat": "P50",
           "hide": false,
@@ -377,21 +325,9 @@
           "range": true
         },
         {
-          "expr": "histogram_quantile(0.95, sum by (le, model) (rate(litellm_llm_api_time_to_first_token_metric_bucket{model=~\"$model\",api_key_alias=~\"$api_key\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le, model) (rate(litellm_llm_api_time_to_first_token_metric_bucket{model=~\"$model\"}[5m])))",
           "refId": "B",
           "legendFormat": "P95",
-          "hide": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "range": true
-        },
-        {
-          "expr": "litellm:ttft_p95:7d_avg",
-          "refId": "C",
-          "legendFormat": "7d avg",
           "hide": false,
           "datasource": {
             "type": "prometheus",
@@ -432,7 +368,7 @@
       "id": 8,
       "type": "timeseries",
       "title": "TPOT by model",
-      "description": "Time Per Output Token in seconds — gap between consecutive tokens during streaming. Lower is smoother and faster streaming. P50, P95, and 7d avg shown.",
+      "description": "Time Per Output Token in seconds \u2014 gap between consecutive tokens during streaming. Lower is smoother and faster streaming. P50 and P95 shown.",
       "gridPos": {
         "x": 12,
         "y": 6,
@@ -441,7 +377,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum by (le, litellm_model_name) (rate(litellm_deployment_latency_per_output_token_bucket{litellm_model_name=~\"$model\",api_key_alias=~\"$api_key\"}[5m])))",
+          "expr": "histogram_quantile(0.50, sum by (le, litellm_model_name) (rate(litellm_deployment_latency_per_output_token_bucket{litellm_model_name=~\"$model\"}[5m])))",
           "refId": "A",
           "legendFormat": "P50",
           "hide": false,
@@ -453,21 +389,9 @@
           "range": true
         },
         {
-          "expr": "histogram_quantile(0.95, sum by (le, litellm_model_name) (rate(litellm_deployment_latency_per_output_token_bucket{litellm_model_name=~\"$model\",api_key_alias=~\"$api_key\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le, litellm_model_name) (rate(litellm_deployment_latency_per_output_token_bucket{litellm_model_name=~\"$model\"}[5m])))",
           "refId": "B",
           "legendFormat": "P95",
-          "hide": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "range": true
-        },
-        {
-          "expr": "litellm:tpot_p50:7d_avg",
-          "refId": "C",
-          "legendFormat": "7d avg",
           "hide": false,
           "datasource": {
             "type": "prometheus",
@@ -531,7 +455,7 @@
       },
       "targets": [
         {
-          "expr": "sum(litellm_spend_metric_total{model=~\"$model\",api_key_alias=~\"$api_key\"})",
+          "expr": "sum(litellm_spend_metric_total{model=~\"$model\"})",
           "refId": "A",
           "legendFormat": "",
           "hide": false,
@@ -589,7 +513,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (model) (litellm_spend_metric_total{model=~\"$model\",api_key_alias=~\"$api_key\"})",
+          "expr": "sum by (model) (litellm_spend_metric_total{model=~\"$model\"})",
           "refId": "A",
           "legendFormat": "{{model}}",
           "hide": false,
@@ -639,7 +563,7 @@
       "id": 13,
       "type": "row",
       "title": "Throughput",
-      "description": "Request and token rates over time per model, with a 7-day average baseline for comparison.",
+      "description": "Request and token rates over time per model.",
       "gridPos": {
         "x": 0,
         "y": 21,
@@ -653,7 +577,7 @@
       "id": 14,
       "type": "timeseries",
       "title": "RPM by model",
-      "description": "Requests per minute per model (Current) vs the 7-day average (7d avg). Current above the baseline means elevated load; below means lighter usage.",
+      "description": "Requests per minute per model. Steeper slopes mean heavier usage.",
       "gridPos": {
         "x": 0,
         "y": 22,
@@ -662,21 +586,9 @@
       },
       "targets": [
         {
-          "expr": "sum by (requested_model) (rate(litellm_proxy_total_requests_metric_total{requested_model=~\"$model\",api_key_alias=~\"$api_key\"}[5m])) * 60",
+          "expr": "sum by (requested_model) (rate(litellm_proxy_total_requests_metric_total{requested_model=~\"$model\"}[5m])) * 60",
           "refId": "A",
           "legendFormat": "Current",
-          "hide": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "range": true
-        },
-        {
-          "expr": "avg_over_time((sum by (requested_model) (rate(litellm_proxy_total_requests_metric_total{requested_model=~\"$model\",api_key_alias=~\"$api_key\"}[5m])) * 60)[7d:5m])",
-          "refId": "B",
-          "legendFormat": "7d avg",
           "hide": false,
           "datasource": {
             "type": "prometheus",
@@ -717,7 +629,7 @@
       "id": 15,
       "type": "timeseries",
       "title": "TPM by model",
-      "description": "Tokens per minute per model (Current) vs the 7-day average (7d avg). Useful for spotting which model is driving token consumption.",
+      "description": "Tokens per minute per model. Useful for spotting which model is driving token consumption.",
       "gridPos": {
         "x": 12,
         "y": 22,
@@ -726,21 +638,9 @@
       },
       "targets": [
         {
-          "expr": "sum by (model) (rate(litellm_total_tokens_metric_total{model=~\"$model\",api_key_alias=~\"$api_key\"}[5m])) * 60",
+          "expr": "sum by (model) (rate(litellm_total_tokens_metric_total{model=~\"$model\"}[5m])) * 60",
           "refId": "A",
           "legendFormat": "Current",
-          "hide": false,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "range": true
-        },
-        {
-          "expr": "avg_over_time((sum by (model) (rate(litellm_total_tokens_metric_total{model=~\"$model\",api_key_alias=~\"$api_key\"}[5m])) * 60)[7d:5m])",
-          "refId": "B",
-          "legendFormat": "7d avg",
           "hide": false,
           "datasource": {
             "type": "prometheus",
@@ -917,16 +817,6 @@
   "fiscalYearStartMonth": 0,
   "liveNow": false,
   "annotations": {
-    "list": [
-      {
-        "name": "Annotations & Alerts",
-        "type": "dashboard",
-        "datasource": {
-          "type": "grafana",
-          "uid": "grafana"
-        },
-        "enable": true
-      }
-    ]
+    "list": []
   }
 }

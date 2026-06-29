@@ -304,9 +304,7 @@ if [ "$RUN_OPENCODE" = true ]; then
 
   OPENCODE_DIR="$HOME/.config/opencode"
   CONFIG_FILE=""
-  if [ -f "$OPENCODE_DIR/opencode.jsonc" ]; then
-    CONFIG_FILE="$OPENCODE_DIR/opencode.jsonc"
-  elif [ -f "$OPENCODE_DIR/opencode.json" ]; then
+  if [ -f "$OPENCODE_DIR/opencode.json" ]; then
     CONFIG_FILE="$OPENCODE_DIR/opencode.json"
   fi
 
@@ -323,11 +321,11 @@ if [ "$RUN_OPENCODE" = true ]; then
   echo ""
   echo "B2. Config files"
   if [ -n "$CONFIG_FILE" ]; then
-    pass "opencode.jsonc exists: $CONFIG_FILE"
+    pass "opencode.json exists: $CONFIG_FILE"
     CLEAN_CONFIG=$(strip_jsonc "$CONFIG_FILE")
     pass "Config parses as valid JSON"
   else
-    fail "opencode.jsonc not found in $OPENCODE_DIR"
+    fail "opencode.json not found in $OPENCODE_DIR"
   fi
 
   if [ -f "$OPENCODE_DIR/oh-my-opencode-slim.json" ] || [ -f "$OPENCODE_DIR/oh-my-opencode-slim.jsonc" ]; then

@@ -466,7 +466,7 @@ fi
 | `opencode not found` | `curl -fsSL https://opencode.ai/install \| bash`, retry Step 9 |
 | `codex not found` | `npm install -g @openai/codex`, retry Step 9 |
 | `bwrap not found` | `sudo apt-get install -y bubblewrap`, retry Step 9 |
-| `Model catalog not reachable` | Check virtual key in `~/.config/opencode/opencode.jsonc`, re-run from Step 7 |
+| `Model catalog not reachable` | Check virtual key in `~/.config/opencode/opencode.json`, re-run from Step 7 |
 | `smoke test` and `did not respond` | Re-validate MaaS key via Step 5's API call. If key is valid, escalate. |
 | `Prometheus not reachable` | `docker compose -f "$PROJECT_DIR/docker-compose.yml" up -d prometheus`, wait 10s, retry Step 9 |
 | `rules not loaded` | Check `configs/prometheus/rules.yml` and `configs/prometheus/alerts.yml` syntax: `docker compose logs prometheus --tail 20` |
@@ -503,7 +503,7 @@ LiteLLM Admin UI:  http://127.0.0.1:4000/ui
 Grafana:           http://127.0.0.1:3000 (anonymous, no login)
 Prometheus:        http://127.0.0.1:9090
 
-opencode config:   ~/.config/opencode/opencode.jsonc
+opencode config:   ~/.config/opencode/opencode.json
 plugin config:     ~/.config/opencode/oh-my-opencode-slim.json
 Codex CLI config:  ~/.codex/config.toml
 Codex catalog:     ~/.codex/model_catalog.json

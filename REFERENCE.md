@@ -54,8 +54,8 @@ This is reference documentation. For the install procedure, read
 
 | Tool | Endpoint | API Format | Auth source |
 |------|----------|------------|-------------|
-| opencode (default) | `http://127.0.0.1:4000` → `/v1/chat/completions` | OpenAI Chat Completions | `~/.config/opencode/opencode.jsonc` (provider apiKey) |
-| opencode (direct preset) | `https://api-ap-southeast-1.modelarts-maas.com/openai/v1` | OpenAI Chat Completions | `~/.config/opencode/opencode.jsonc` (provider apiKey) |
+| opencode (default) | `http://127.0.0.1:4000` → `/v1/chat/completions` | OpenAI Chat Completions | `~/.config/opencode/opencode.json` (provider apiKey) |
+| opencode (direct preset) | `https://api-ap-southeast-1.modelarts-maas.com/openai/v1` | OpenAI Chat Completions | `~/.config/opencode/opencode.json` (provider apiKey) |
 | Codex CLI | `http://127.0.0.1:4000/v1` → `/v1/responses` | OpenAI Responses (bridged to Chat Completions by LiteLLM) | `~/.codex/.env` (`LITELLM_CODEX_API_KEY`) |
 | Claude Code CLI | `http://127.0.0.1:4000` → `/v1/messages` | Anthropic Messages | `~/.claude/settings.json` (env.ANTHROPIC_API_KEY) |
 
@@ -221,7 +221,7 @@ Three virtual keys, all minted by `3_mint_key.sh` and tied to
 
 | Alias | Minted by | Stored in | Budget | Scope |
 |-------|-----------|-----------|--------|-------|
-| `opencode` | `4a_install_opencode.sh` | `~/.config/opencode/opencode.jsonc` (provider apiKey) | Unlimited | All models |
+| `opencode` | `4a_install_opencode.sh` | `~/.config/opencode/opencode.json` (provider apiKey) | Unlimited | All models |
 | `codex` | `4b_install_codex.sh` | `~/.codex/.env` (`LITELLM_CODEX_API_KEY`) | Unlimited | All models |
 | `claude-code` | `4c_install_claude_code.sh` | `~/.claude/settings.json` (env.ANTHROPIC_API_KEY) | Unlimited | All models |
 
@@ -290,7 +290,7 @@ agent→model mappings.
 
 | File | Purpose |
 |------|---------|
-| `~/.config/opencode/opencode.jsonc` | Provider config (LiteLLM + Huawei-MaaS direct), API key |
+| `~/.config/opencode/opencode.json` | Provider config (LiteLLM + Huawei-MaaS direct), API key |
 | `~/.config/opencode/oh-my-opencode-slim.json` | Plugin config: presets, agents, council |
 
 The `LiteLLM` provider uses `@ai-sdk/openai-compatible` with

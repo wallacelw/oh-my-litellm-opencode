@@ -18,7 +18,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 OPENCODE_DIR="$HOME/.config/opencode"
-OPENCODE_CONFIG="$OPENCODE_DIR/opencode.jsonc"
+OPENCODE_CONFIG="$OPENCODE_DIR/opencode.json"
 
 # ── Constants ──
 SLIM_VERSION="2.0.5"
@@ -226,7 +226,7 @@ if [ -z "$VIRTUAL_KEY" ]; then
 fi
 echo ""
 
-# ── 5. Write opencode.jsonc ──
+# ── 5. Write opencode.json ──
 echo "5. Writing opencode config..."
 
 if [ "$DRY_RUN" = true ]; then
@@ -250,7 +250,7 @@ if [ -z "$HUAWEI_MAAS_API_KEY" ]; then
   read -r HUAWEI_MAAS_API_KEY < /dev/tty
 fi
 
-# Build opencode.jsonc from template using jq for JSON-safe substitution
+# Build opencode.json from template using jq for JSON-safe substitution
 TEMPLATE="$PROJECT_DIR/configs/opencode/opencode.json.template"
 TARGET="$OPENCODE_CONFIG"
 

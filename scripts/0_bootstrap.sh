@@ -535,7 +535,7 @@ if [ "$LITELLM_ONLY" = true ]; then
   fi
 else
   if [ "$INSTALL_OPENCODE" = true ]; then
-    echo "opencode config:    ~/.config/opencode/opencode.jsonc"
+    echo "opencode config:    ~/.config/opencode/opencode.json"
     echo "plugin config:      ~/.config/opencode/oh-my-opencode-slim.json"
     # Show virtual key (masked) from config
     FINAL_VK=$(python3 -c "
@@ -558,7 +558,7 @@ while i < len(text):
     result.append(c); i += 1
 d = json.loads(''.join(result))
 print(d.get('provider',{}).get('LiteLLM',{}).get('options',{}).get('apiKey',''))
-" "$HOME/.config/opencode/opencode.jsonc" 2>/dev/null || true)
+" "$HOME/.config/opencode/opencode.json" 2>/dev/null || true)
     if [ -n "$FINAL_VK" ]; then
       echo "opencode key:       ${FINAL_VK:0:8}...${FINAL_VK: -4}"
     fi

@@ -7,6 +7,32 @@ This is reference documentation. For the install procedure, read
 
 ## Overview
 
+### Key Contract
+
+| Env var | Set by | Read by | Format | Immutable? |
+|---------|--------|---------|--------|------------|
+| `HUAWEI_MAAS_API_KEY` | User (prompted) | `1_init_env.sh`, `4a_install_opencode.sh` | Non-empty, no placeholders, validated via live API call | No |
+| `HUAWEI_MAAS_API_KEY_COUNT` | Agent → recalculated by `0_bootstrap.sh` | `1_init_env.sh`, `2_deploy_litellm.sh` | Integer ≥ 1 | No |
+| `HUAWEI_MAAS_API_KEY_0` | `0_bootstrap.sh` (auto, = main key) | `1_init_env.sh`, `2_deploy_litellm.sh` | Non-empty | No |
+| `HUAWEI_MAAS_API_KEY_1..N` | User (prompted) → agent exports | `0_bootstrap.sh` → `1_init_env.sh` | Non-empty | No |
+| `LITELLM_MASTER_KEY` | `1_init_env.sh` (auto-generated) | `0_bootstrap.sh`, `4a/4b/4c` | Must start with `sk-` | **Yes** — changing invalidates all virtual keys |
+| `LITELLM_SALT_KEY` | `1_init_env.sh` (auto-generated) | LiteLLM container | Random string | **Yes** — changing invalidates all virtual keys |
+| `DB_PASSWORD` | `1_init_env.sh` (auto-generated) | docker-compose, postgres | Random string | **Yes** — changing breaks DB auth |
+| `GRAFANA_ADMIN_PASSWORD` | `1_init_env.sh` (auto-generated) | docker-compose, `5_validate.sh` | Random string | No — rotating changes dashboard login only |
+| `PROMETHEUS_RETENTION` | `1_init_env.sh` (default `30d`) | docker-compose | Prometheus duration (`Nd`/`Nh`/`Nw`) | No |
+| `CODEX_VIRTUAL_KEY` | `4b_install_codex.sh` (minted) | `~/.codex/.env` as `LITELLM_CODEX_API_KEY` | Virtual key starting with `sk-` | No — tied to `LITELLM_MASTER_KEY` |
+| `HUAWEI_MAAS_ANTHROPIC_API_BASE` | `1_init_env.sh` (default `https://api-ap-southeast-1.modelarts-maas.com/anthropic`) | `2_deploy_litellm.sh` | URL | No |
+| `HUAWEI_MAAS_API_BASE` | `1_init_env.sh` (default `https://api-ap-southeast-1.modelarts-maas.com/openai`) | `2_deploy_litellm.sh` | URL | No |
+| `CLAUDE_CODE_VIRTUAL_KEY` | `4c_install_claude_code.sh` (minted) | `~/.claude/settings.json` env block as `ANTHROPIC_API_KEY` | Virtual key starting with `sk-` | No — tied to `LITELLM_MASTER_KEY` |
+
+**Rules:**
+
+- Agent must NOT set `HUAWEI_MAAS_API_KEY_0` — bootstrap sets it from the main
+  key automatically.
+- Agent must export `HUAWEI_MAAS_API_KEY_COUNT` = 1 + number of extra keys.
+- Agent must export `HUAWEI_MAAS_API_KEY_1` through `HUAWEI_MAAS_API_KEY_N` for
+  extra keys only.
+
 ### Architecture
 
 ```

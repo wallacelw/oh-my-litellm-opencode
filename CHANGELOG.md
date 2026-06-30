@@ -17,10 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   are running via `prereq_ensure_docker` (previously assumed pre-installed).
 - Port check in `0_bootstrap.sh` now exits with error in `--agent` mode
   (previously only warned).
-- SKILL.md Step 2 rewritten for distributed prereqs. Step 3 updated to note
-  Docker daemon handled by deploy script. Step 9 recovery table expanded
-  with all actual `fail()` messages from `5_validate.sh`. Quick Start
-  section and flags table added.
+- **SKILL.md restructured** — 825 → 372 lines. 10 steps → 8 steps in 4 phases
+  (Pre-flight, Execute, Verify, Confirm). Step 10 summary spec replaced with
+  brief description. Recovery table grouped by script. Key Contract table
+  moved to REFERENCE.md. Non-Debian package mapping table added.
 
 ### Added
 

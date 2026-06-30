@@ -48,7 +48,7 @@ prompted. Prerequisites are installed automatically. That's it.
 opencode          # or: codex  or:  claude --bare
 ```
 
-### 🤖 Agent — paste this prompt
+### 🤖 Agent Installation (paste this prompt)
 
 ```
 Install oh-my-coding-maas-gateway on this machine by following SKILL.md.
@@ -75,7 +75,7 @@ Rules:
 - After install: I will rotate my MaaS keys (they were shared with you).
 ```
 
-### 🤖 Agent Upgrade
+### 🤖 Agent Upgrade (paste this prompt)
 
 ```
 Upgrade oh-my-coding-maas-gateway by following the Upgrade Procedure in SKILL.md.

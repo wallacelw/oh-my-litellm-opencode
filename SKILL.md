@@ -12,18 +12,7 @@ see **[REFERENCE.md](./REFERENCE.md)**.
 
 ---
 
-## Quick Start for Humans
-
-```bash
-git clone https://github.com/wallacelw/oh-my-coding-maas-gateway ~/oh-my-coding-maas-gateway
-cd ~/oh-my-coding-maas-gateway
-./scripts/0_bootstrap.sh
-```
-
-You'll get a numbered menu (1–6) to choose which tools to install. Enter your
-MaaS API key when prompted. Prerequisites are installed automatically as needed.
-
-### Bootstrap Flags
+## Bootstrap Flags
 
 | Flag | Effect |
 |------|--------|

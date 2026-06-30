@@ -48,6 +48,19 @@ prompted. Prerequisites are installed automatically. That's it.
 opencode          # or: codex  or:  claude --bare
 ```
 
+**Bootstrap flags** (optional):
+
+| Flag | Effect |
+|------|--------|
+| `--maas-key=KEY` | Non-interactive MaaS key (skips prompt) |
+| `--agent` | Agent mode: fail-fast, no prompts, auto-install prereqs |
+| `--tool=VAL` | `all` (default), `litellm`, `opencode`, `codex`, `claude`, or comma combo (e.g. `opencode,codex`) |
+| `--virtual-key=sk-...` | Use existing virtual key, skip minting |
+| `--dry-run` | Preview actions without modifying anything |
+
+Legacy aliases: `--litellm-only`, `--opencode-only`, `--codex-only`,
+`--claude-code-only` (map to `--tool=litellm|opencode|codex|claude`).
+
 ### 🤖 Agent Installation (paste this prompt)
 
 ```

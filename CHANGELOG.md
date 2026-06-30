@@ -21,6 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (Pre-flight, Execute, Verify, Confirm). Step 10 summary spec replaced with
   brief description. Recovery table grouped by script. Key Contract table
   moved to REFERENCE.md. Non-Debian package mapping table added.
+- **README.md rewritten** — human-first comprehensive page. Architecture
+  diagram, Quick Start, What You Get (service URLs + tool activation),
+  install modes, prerequisites (auto-install), after-install usage guide,
+  upgrade, troubleshooting, agent install prompts. 148 → 215 lines.
+- REFERENCE.md: dashboard description updated (25→34 panels, 5m→15m),
+  stale Prometheus rules repair entry removed, intro updated.
 
 ### Added
 

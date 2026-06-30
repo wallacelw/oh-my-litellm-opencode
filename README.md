@@ -6,108 +6,203 @@ and Prometheus + Grafana observability.
 
 ---
 
-## Overview
+## What Is This?
 
-This project deploys a LiteLLM proxy that routes requests to Huawei MaaS
-models, then configures three coding tools to use it:
+A self-hosted gateway that sits between your coding tools and Huawei ModelArts
+MaaS, giving you load balancing, virtual keys, budget tracking, and
+observability — all through a single local proxy.
 
-| Tool | API Format | Connection |
-|------|-----------|------------|
-| **opencode** | OpenAI Chat Completions | `→ /v1/chat/completions → openai/ provider → MaaS` |
-| **Codex CLI** | OpenAI Responses (bridged) | `→ /v1/responses → openai/ provider → MaaS` |
-| **Claude Code CLI** | Anthropic Messages | `→ /v1/messages → anthropic/ provider → MaaS` |
+```
+  Tools               LiteLLM (:4000)                  Huawei MaaS
+  ─────               ───────────────                  ────────────
 
-**What you get:**
-- LiteLLM proxy on `:4000` — load balancing, virtual keys, budget tracking
-- 6 models: glm-5.2, glm-5.1, glm-5, deepseek-v4-pro, deepseek-v4-flash, deepseek-v3.2
-- Dual-format endpoints — OpenAI-compatible and Anthropic-compatible endpoints
-- Prometheus (`:9090`) + Grafana (`:3000`, anonymous) — 12-panel dashboard
-- 4 presets, 7 agents, council (opencode only)
+  opencode ──→ /v1/chat/completions ──→ openai/ provider ──→ MaaS OpenAI endpoint
+  Codex CLI ──→ /v1/responses ────────→ openai/ provider ──→ MaaS OpenAI endpoint
+  Claude Code ─→ /v1/messages ────────→ anthropic/ provider ─→ MaaS Anthropic endpoint
 
-**Install modes:**
-
-| Flag | What gets installed |
-|------|-------------------|
-| *(none)* | LiteLLM + opencode + Codex CLI + Claude Code CLI |
-| `--tool=litellm` | LiteLLM proxy only |
-| `--tool=opencode` | LiteLLM + opencode |
-| `--tool=codex` | LiteLLM + Codex CLI |
-| `--tool=claude` | LiteLLM + Claude Code CLI |
-| `--tool=opencode,codex` | Custom combo (comma-separated) |
-
----
-
-## Documentation
-
-| File | For | Description |
-|------|-----|-------------|
-| [SKILL.md](./SKILL.md) | Agents + humans | Deterministic install procedure (step-by-step) |
-| [REFERENCE.md](./REFERENCE.md) | Humans | Architecture, tool integration, LiteLLM config, repair guide |
-| [CHANGELOG.md](./CHANGELOG.md) | Everyone | Version history |
-
----
-
-## 👤 Human Installation
-
-**Prerequisites:** Linux, Docker, bun, jq, npm, bubblewrap.
-
-```bash
-# 1. Install prerequisites (skip any you already have)
-curl -fsSL https://bun.sh/install | bash
-sudo apt-get install -y jq npm bubblewrap
-# Docker: https://docs.docker.com/get-docker/
-
-# 2. Clone and deploy
-git clone https://github.com/wallacelw/oh-my-coding-maas-gateway
-cd oh-my-coding-maas-gateway
-./scripts/0_bootstrap.sh      # prompts for MaaS key
-
-# 3. Verify
-./scripts/5_validate.sh       # 74 checks
-
-# 4. Use
-opencode                      # or: codex  or:  claude --bare
+  LiteLLM: load-balances across N MaaS keys · PostgreSQL (:5432)
+  Observability: LiteLLM ──/metrics──→ Prometheus (:9090) ──→ Grafana (:3000)
 ```
 
-Grafana dashboard: `http://127.0.0.1:3000` (anonymous, no login).
+**6 models:** glm-5.2, glm-5.1, glm-5, deepseek-v4-pro, deepseek-v4-flash,
+deepseek-v3.2
 
-If opencode was already running, exit it (`/exit` or Ctrl+C) and start fresh.
+---
 
-For a different install mode:
+## Quick Start
+
 ```bash
-./scripts/0_bootstrap.sh --tool=litellm    # proxy only
-./scripts/0_bootstrap.sh --tool=codex      # proxy + Codex CLI
-# etc.
+git clone https://github.com/wallacelw/oh-my-coding-maas-gateway ~/oh-my-coding-maas-gateway
+cd ~/oh-my-coding-maas-gateway
+./scripts/0_bootstrap.sh
+```
+
+You'll get a menu to choose what to install. Enter your MaaS API key when
+prompted. Prerequisites are installed automatically. That's it.
+
+```bash
+opencode          # or: codex  or:  claude --bare
 ```
 
 ---
 
-## 🤖 Agent Installation
+## What You Get
 
-### Install
+| Service | URL | Auth | Purpose |
+|---------|-----|------|---------|
+| LiteLLM Proxy | `http://127.0.0.1:4000` | Virtual key | API gateway |
+| LiteLLM Admin UI | `http://127.0.0.1:4000/ui` | Master key | View keys, spend, deployments |
+| Grafana Dashboard | `http://127.0.0.1:3000` | Anonymous | 34-panel observability dashboard |
+| Prometheus | `http://127.0.0.1:9090` | None | Metrics storage |
+| PostgreSQL | `localhost:5432` (internal) | — | LiteLLM database |
+
+**Coding tools installed:**
+
+| Tool | Activate | API Format | Config location |
+|------|----------|------------|-----------------|
+| opencode | `opencode` | OpenAI Chat Completions | `~/.config/opencode/opencode.json` |
+| Codex CLI | `codex` | OpenAI Responses (bridged) | `~/.codex/config.toml` |
+| Claude Code CLI | `claude --bare` | Anthropic Messages | `~/.claude/settings.json` |
+
+Each tool gets its own virtual key with unlimited budget and access to all
+models. opencode also gets 4 presets and 7 agents via the
+oh-my-opencode-slim plugin.
+
+---
+
+## Install Modes
+
+Interactive menu appears when you run bootstrap. Or use `--tool=` flag:
+
+| Choice | Flag | What gets installed |
+|--------|------|-------------------|
+| 1 (default) | `--tool=all` | LiteLLM + opencode + Codex + Claude Code |
+| 2 | `--tool=litellm` | LiteLLM proxy only |
+| 3 | `--tool=opencode` | LiteLLM + opencode |
+| 4 | `--tool=codex` | LiteLLM + Codex CLI |
+| 5 | `--tool=claude` | LiteLLM + Claude Code CLI |
+| 6 | `--tool=opencode,codex` | Custom combo (comma-separated) |
+
+---
+
+## Prerequisites
+
+**OS:** Linux (Debian/Ubuntu with systemd recommended).
+
+**Auto-installed** by the scripts as needed (no manual setup required):
+git, python3, curl, jq, docker + compose, bun, npm/node, bubblewrap.
+
+In interactive mode, you'll be prompted before each installation. In agent
+mode (`--agent`), everything installs automatically.
+
+**Non-Debian systems** (RHEL, Alpine, Arch): Install the equivalent packages
+manually — see the package mapping table in [SKILL.md](./SKILL.md) Step 2.
+Docker daemon start requires systemd.
+
+---
+
+## After Install
+
+### Using opencode
+
+```bash
+opencode
+# Switch preset: /preset LiteLLM-Huawei-MaaS-Core
+# Available presets:
+#   LiteLLM-Huawei-MaaS-Full  (default, all 6 models via proxy)
+#   LiteLLM-Huawei-MaaS-Core  (4 models, no v4-pro/v4-flash)
+#   Huawei-MaaS-Full          (direct, bypass proxy)
+#   Huawei-MaaS-Core          (direct, bypass proxy)
+```
+
+If opencode was already running, exit it first (`/exit` or Ctrl+C).
+
+### Using Codex CLI
+
+```bash
+codex
+codex --model deepseek-v4-pro    # deep reasoning
+codex --model deepseek-v3.2      # fast
+```
+
+### Using Claude Code CLI
+
+```bash
+claude --bare
+claude --bare --model claude-deepseek-v4-pro    # deep reasoning
+```
+
+### Monitoring
+
+- **Grafana:** `http://127.0.0.1:3000` — 34-panel dashboard (anonymous, no
+  login). Sections: At-a-glance, Latency, Errors & Health, Throughput & Tokens,
+  Cost. Time window selectable (default 15m).
+- **LiteLLM Admin UI:** `http://127.0.0.1:4000/ui` — view deployments, virtual
+  keys, spend, budgets. Login: `admin` / your master key.
+
+---
+
+## Upgrade
+
+```bash
+cd ~/oh-my-coding-maas-gateway
+git pull
+./scripts/0_bootstrap.sh    # idempotent — preserves all secrets and data
+```
+
+After upgrade, restart opencode if it's running (exit and start fresh —
+plugin/preset changes are not hot-reloaded).
+
+If Grafana dashboard looks stale after upgrade: `docker compose restart grafana`
+
+---
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| LiteLLM won't start | `docker compose logs litellm --tail 50` |
+| 401 Unauthorized | Key must start with `sk-` |
+| 404 model not found | Model name is case-sensitive |
+| MaaS 403 | Verify key at https://console.huaweicloud.com/modelarts/ — region must be `ap-southeast-1` |
+| Port conflict | `ss -tlnp \| grep -E ':(4000\|5432\|9090\|3000) '` |
+| Grafana blank | `docker compose restart grafana` |
+| Validation fails | `./scripts/5_validate.sh` — see recovery table in [SKILL.md](./SKILL.md) Step 7 |
+
+Full repair guide in [REFERENCE.md](./REFERENCE.md).
+
+### Lifecycle Commands
+
+| Action | Command |
+|--------|---------|
+| Stop | `docker compose down` (preserves data) |
+| Start | `docker compose up -d` |
+| Restart one | `docker compose restart <service>` |
+| View logs | `docker compose logs <service> --tail 50 -f` |
+| Full reset | `docker compose down -v; rm -f .env` (destroys all data) |
+
+---
+
+## Agent Installation
 
 Paste this into any coding agent:
 
 ```
-Install oh-my-coding-maas-gateway on this machine by following the procedure in
-SKILL.md exactly, top to bottom.
+Install oh-my-coding-maas-gateway on this machine by following SKILL.md.
 
-1. Fetch and read SKILL.md from:
+1. Fetch SKILL.md from:
    https://raw.githubusercontent.com/wallacelw/oh-my-coding-maas-gateway/main/SKILL.md
-2. Follow the procedure in SKILL.md — execute every step in order.
-   For each step: check the precondition, run the action, verify the
-   postcondition. If a step fails, run the documented recovery. If recovery
-   also fails, stop and report the error to me.
-3. Step 4 handles cloning to the install directory (chosen in Step 1).
-4. The install is complete when scripts/5_validate.sh exits 0 (Step 9).
-5. Do NOT launch opencode. Report the summary from Step 10 and stop.
+2. Follow the procedure — execute every step in order. For each step:
+   check precondition, run action, verify postcondition. If a step fails,
+   run the documented recovery. If recovery also fails, stop and report.
+3. The install is complete when scripts/5_validate.sh exits 0 (Step 7).
+4. Do NOT launch opencode. Report the summary from Step 8 and stop.
 
 You will need to ask me for:
-- Install mode: full (LiteLLM + opencode + Codex CLI + Claude Code CLI), litellm-only, opencode-only, codex-only, or claude-code-only (default: full)
+- Install mode: all, litellm, opencode, codex, or claude (default: all)
 - Install directory (default: /home/oh-my-coding-maas-gateway)
 - My Huawei MaaS API key (region: ap-southeast-1)
 - How many extra MaaS keys for load balancing (default: 0)
-- Permission to install missing prerequisites (batch ask once)
 - My sudo password if the system prompts for it
 
 Rules:
@@ -117,32 +212,36 @@ Rules:
 - After install: I will rotate my MaaS keys (they were shared with you).
 ```
 
-### Upgrade
-
-Paste this to upgrade an existing installation:
+### Agent Upgrade
 
 ```
-Upgrade oh-my-coding-maas-gateway on this machine by following Section D
-(Upgrade Procedure) in SKILL.md.
+Upgrade oh-my-coding-maas-gateway by following the Upgrade Procedure in SKILL.md.
 
-1. Fetch and read SKILL.md from:
+1. Fetch SKILL.md from:
    https://raw.githubusercontent.com/wallacelw/oh-my-coding-maas-gateway/main/SKILL.md
 2. Find the existing install directory (default: /home/oh-my-coding-maas-gateway).
-   Look for a .git directory inside it.
-3. Read the MaaS API key from .env in the install directory — do NOT ask me
-   for it. If .env is missing or the key is not there, stop and report.
+3. Read the MaaS API key from .env — do NOT ask me for it.
+   If .env is missing, stop and report.
 4. Run: git -C "$PROJECT_DIR" pull --ff-only
    If pull fails, ask me: "Reset to origin/main? (y/n)"
-5. Run bootstrap with the key from .env:
-   ./scripts/0_bootstrap.sh --agent --maas-key="$MAAS_KEY"
-   (add --tool=litellm, --tool=opencode, --tool=codex, or --tool=claude
-   if the existing install used one of those modes)
-   Bootstrap is idempotent — it preserves all existing secrets and data.
+5. Run: ./scripts/0_bootstrap.sh --agent --maas-key="$MAAS_KEY"
+   (add --tool=... if the existing install used a specific mode)
 6. The upgrade is complete when scripts/5_validate.sh exits 0.
 7. Do NOT launch opencode. Report the summary and stop.
 
 Rules:
 - Do not skip steps. Do not improvise. Do not launch opencode.
-- If validation fails, follow the recovery table in Step 9 of SKILL.md.
+- If validation fails, follow the recovery table in SKILL.md Step 7.
 - After upgrade: I will rotate my MaaS keys if they were shared with you.
 ```
+
+---
+
+## Documentation
+
+| File | For | Description |
+|------|-----|-------------|
+| **[SKILL.md](./SKILL.md)** | Agents | Deterministic install procedure (8 steps, agent-first) |
+| **[REFERENCE.md](./REFERENCE.md)** | Everyone | Architecture, config, env vars, tool integration, repair guide |
+| **[CHANGELOG.md](./CHANGELOG.md)** | Everyone | Version history |
+| **[AGENTS.md](./AGENTS.md)** | Contributors | Development rules, validation, commit conventions |

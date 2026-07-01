@@ -10,21 +10,22 @@ see **[SKILL.md](./SKILL.md)**. For a human-friendly overview, see
 
 ### Key Contract
 
-| Env var | Set by | Read by | Format | Immutable? |
+| Env var | Set by | Read by | Format | Rotate risk |
 |---------|--------|---------|--------|------------|
-| `HUAWEI_MAAS_API_KEY` | User (env var or prompt) | `01_env.sh`, `03_opencode.sh` | Non-empty, no placeholders | No |
-| `HUAWEI_MAAS_API_KEY_COUNT` | `01_env.sh` (from env vars or prompt) | `01_env.sh`, `02_litellm.sh` | Integer ≥ 1 | No |
-| `HUAWEI_MAAS_API_KEY_0` | `01_env.sh` (auto, = main key) | `01_env.sh`, `02_litellm.sh` | Non-empty | No |
-| `HUAWEI_MAAS_API_KEY_1..N` | User (env var or prompt) | `01_env.sh`, `02_litellm.sh` | Non-empty | No |
-| `LITELLM_MASTER_KEY` | `01_env.sh` (auto-generated) | `03/04/05` via `helpers/keys.sh` | Must start with `sk-` | **Yes** — changing invalidates all virtual keys |
-| `LITELLM_SALT_KEY` | `01_env.sh` (auto-generated) | LiteLLM container | Random string | **Yes** — changing invalidates all virtual keys |
-| `DB_PASSWORD` | `01_env.sh` (auto-generated) | docker-compose, postgres | Random string | **Yes** — changing breaks DB auth |
-| `GRAFANA_ADMIN_PASSWORD` | `01_env.sh` (auto-generated) | docker-compose, `06_validate.sh` | Random string | No — rotating changes dashboard login only |
-| `PROMETHEUS_RETENTION` | `01_env.sh` (default `30d`) | docker-compose | Prometheus duration (`Nd`/`Nh`/`Nw`) | No |
-| `CODEX_VIRTUAL_KEY` | `04_codex.sh` (minted) | `~/.codex/.env` as `LITELLM_CODEX_API_KEY` | Virtual key starting with `sk-` | No — tied to `LITELLM_MASTER_KEY` |
-| `HUAWEI_MAAS_ANTHROPIC_API_BASE` | `01_env.sh` (default `https://api-ap-southeast-1.modelarts-maas.com/anthropic`) | `02_litellm.sh` | URL | No |
-| `HUAWEI_MAAS_API_BASE` | `01_env.sh` (default `https://api-ap-southeast-1.modelarts-maas.com/openai`) | `02_litellm.sh` | URL | No |
-| `CLAUDE_CODE_VIRTUAL_KEY` | `05_claude_code.sh` (minted) | `~/.claude/settings.json` env block as `ANTHROPIC_API_KEY` | Virtual key starting with `sk-` | No — tied to `LITELLM_MASTER_KEY` |
+| `HUAWEI_MAAS_API_KEY` | User (env var or prompt) | `01_env.sh`, `03_opencode.sh` | Non-empty, no placeholders | Low — update `.env` + restart LiteLLM |
+| `HUAWEI_MAAS_API_KEY_COUNT` | `01_env.sh` (from env vars or prompt) | `01_env.sh`, `02_litellm.sh` | Integer ≥ 1 | Low — update `.env` + regenerate config |
+| `HUAWEI_MAAS_API_KEY_0` | `01_env.sh` (auto, = main key) | `01_env.sh`, `02_litellm.sh` | Non-empty | Low — auto-set from main key |
+| `HUAWEI_MAAS_API_KEY_1..N` | User (env var or prompt) | `01_env.sh`, `02_litellm.sh` | Non-empty | Low — update `.env` + regenerate config |
+| `LITELLM_MASTER_KEY` | `01_env.sh` (auto or custom) | `03/04/05` via `helpers/keys.sh` | Must start with `sk-` | **High** — invalidates all virtual keys (`--force` to regenerate) |
+| `LITELLM_SALT_KEY` | `01_env.sh` (auto or custom) | LiteLLM container | Random string | **High** — invalidates all virtual keys (`--force` to regenerate) |
+| `DB_PASSWORD` | `01_env.sh` (auto or custom) | docker-compose, postgres | Random string | **High** — breaks DB auth (`--force` to regenerate) |
+| `GRAFANA_ADMIN_PASSWORD` | `01_env.sh` (auto or custom) | docker-compose, `06_validate.sh` | Random string | Low — changes dashboard login only |
+| `PROMETHEUS_RETENTION` | `01_env.sh` (default `30d`) | docker-compose | Prometheus duration (`Nd`/`Nh`/`Nw`) | None — config value |
+| `OPENCODE_VIRTUAL_KEY` | `03_opencode.sh` (minted) | `~/.config/opencode/opencode.json` (provider apiKey) | Virtual key starting with `sk-` | Low — tied to `LITELLM_MASTER_KEY` |
+| `CODEX_VIRTUAL_KEY` | `04_codex.sh` (minted) | `~/.codex/.env` as `LITELLM_CODEX_API_KEY` | Virtual key starting with `sk-` | Low — tied to `LITELLM_MASTER_KEY` |
+| `CLAUDE_CODE_VIRTUAL_KEY` | `05_claude_code.sh` (minted) | `~/.claude/settings.json` env block as `ANTHROPIC_API_KEY` | Virtual key starting with `sk-` | Low — tied to `LITELLM_MASTER_KEY` |
+| `HUAWEI_MAAS_ANTHROPIC_API_BASE` | `01_env.sh` (default `https://api-ap-southeast-1.modelarts-maas.com/anthropic`) | `02_litellm.sh` | URL | None — config value |
+| `HUAWEI_MAAS_API_BASE` | `01_env.sh` (default `https://api-ap-southeast-1.modelarts-maas.com/openai`) | `02_litellm.sh` | URL | None — config value |
 
 **Rules:**
 
@@ -106,7 +107,8 @@ see **[SKILL.md](./SKILL.md)**. For a human-friendly overview, see
 | 06 | `06_validate.sh` | Validate all components (--litellm-only, --opencode-only, --codex-only, --claude-code-only for scoped checks; --skip-opencode, --skip-codex, --skip-claude-code for partial runs) |
 | — | `helpers/prereqs.sh` | Shared prerequisite installation helpers (prereq_ensure_apt/bun/npm/docker) |
 | — | `helpers/keys.sh` | Key resolution + virtual key minting (resolve_master_key, mint_or_reuse_key) |
-| — | `helpers/common.sh` | Shared utilities (source_env, retry_curl, strip_jsonc, mask_key) |
+| — | `helpers/common.sh` | Shared utilities (logging, prompts, run_filtered, source_env, retry_curl, strip_jsonc, mask_key) |
+| — | `helpers/models.sh` | Model catalog — single source of truth (MODELS array, sourced by 02_litellm.sh + 06_validate.sh) |
 
 ### Models
 

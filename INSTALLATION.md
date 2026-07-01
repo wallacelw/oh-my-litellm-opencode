@@ -15,8 +15,8 @@ and config reference, see [REFERENCE.md](./REFERENCE.md).
 **From a clone:**
 
 ```bash
-git clone https://github.com/wallacelw/oh-my-coding-maas-gateway ~/oh-my-coding-maas-gateway
-cd ~/oh-my-coding-maas-gateway
+git clone https://github.com/wallacelw/oh-my-coding-maas-gateway /home/oh-my-coding-maas-gateway
+cd /home/oh-my-coding-maas-gateway
 ./scripts/bootstrap.sh
 ```
 
@@ -296,7 +296,7 @@ with full output.
 ## Upgrade
 
 ```bash
-cd ~/oh-my-coding-maas-gateway
+cd /home/oh-my-coding-maas-gateway
 git pull
 ./scripts/bootstrap.sh    # idempotent — preserves all secrets and data
 ```

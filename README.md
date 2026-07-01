@@ -36,8 +36,8 @@ Two ways to install:
 ### 👤 Human — run it yourself
 
 ```bash
-git clone https://github.com/wallacelw/oh-my-coding-maas-gateway ~/oh-my-coding-maas-gateway
-cd ~/oh-my-coding-maas-gateway
+git clone https://github.com/wallacelw/oh-my-coding-maas-gateway /home/oh-my-coding-maas-gateway
+cd /home/oh-my-coding-maas-gateway
 ./scripts/bootstrap.sh
 ```
 
@@ -203,7 +203,7 @@ claude --bare --model claude-deepseek-v4-pro    # deep reasoning
 ## Upgrade
 
 ```bash
-cd ~/oh-my-coding-maas-gateway
+cd /home/oh-my-coding-maas-gateway
 git pull
 ./scripts/bootstrap.sh    # idempotent — preserves all secrets and data
 ```

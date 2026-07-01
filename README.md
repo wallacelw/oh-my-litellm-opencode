@@ -199,10 +199,11 @@ claude --bare --model claude-deepseek-v4-pro    # deep reasoning
 ## Upgrade
 
 ```bash
-cd /home/oh-my-coding-maas-gateway
-git pull
-./scripts/bootstrap.sh    # idempotent — preserves all secrets and data
+curl -fsSL https://raw.githubusercontent.com/wallacelw/oh-my-coding-maas-gateway/main/scripts/bootstrap.sh | bash
 ```
+
+Same one-liner as install — bootstrap detects the existing repo and pulls
+updates. Idempotent — preserves all secrets and data.
 
 After upgrade, restart opencode if it's running (exit and start fresh —
 plugin/preset changes are not hot-reloaded).

@@ -44,13 +44,13 @@ custom), Docker stack, tool installs, virtual key minting, validation.
 ## Upgrade
 
 ```bash
-cd "$PROJECT_DIR"
-git pull --ff-only
-./scripts/bootstrap.sh    # idempotent — preserves all secrets and data
+curl -fsSL https://raw.githubusercontent.com/wallacelw/oh-my-coding-maas-gateway/main/scripts/bootstrap.sh | bash
 ```
 
-Read the MaaS key from `.env` — do NOT ask the user. If `git pull` fails, ask:
-"Reset to origin/main? (y/n)". Complete when `06_validate.sh` exits 0.
+Same one-liner as install — bootstrap detects the existing repo, pulls
+updates, and re-runs idempotently. Read the MaaS key from `.env` — do NOT
+ask the user. If `git pull` fails, ask: "Reset to origin/main? (y/n)".
+Complete when `06_validate.sh` exits 0.
 
 Post-upgrade: restart opencode if running (`/exit`, start fresh — plugin
 changes are not hot-reloaded).

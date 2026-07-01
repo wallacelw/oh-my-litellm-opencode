@@ -295,9 +295,16 @@ with full output.
 ## Upgrade
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/wallacelw/oh-my-coding-maas-gateway/main/scripts/bootstrap.sh | bash
+```
+
+Same one-liner as install — bootstrap detects the existing repo, pulls
+updates, and re-runs idempotently. Equivalent manual form:
+
+```bash
 cd /home/oh-my-coding-maas-gateway
 git pull
-./scripts/bootstrap.sh    # idempotent — preserves all secrets and data
+./scripts/bootstrap.sh
 ```
 
 - Bootstrap preserves `LITELLM_MASTER_KEY`, `LITELLM_SALT_KEY`, `DB_PASSWORD`,

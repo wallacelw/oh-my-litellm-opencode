@@ -62,9 +62,15 @@ if [ ! -f "$SCRIPT_DIR/helpers/common.sh" ]; then
     install_parent="$default_parent"
   fi
   target_dir="$install_parent/$REPO_NAME"
-  echo "  Cloning to $target_dir..."
-  git clone "$REPO_URL" "$target_dir"
-  cd "$target_dir"
+  if [ -d "$target_dir/.git" ]; then
+    echo "  Existing install found at $target_dir — pulling updates..."
+    cd "$target_dir"
+    git pull --ff-only
+  else
+    echo "  Cloning to $target_dir..."
+    git clone "$REPO_URL" "$target_dir"
+    cd "$target_dir"
+  fi
   exec ./scripts/bootstrap.sh "$@"
 fi
 

@@ -40,6 +40,7 @@ for arg in "$@"; do
   case "$arg" in
     --virtual-key=*) VIRTUAL_KEY="${arg#--virtual-key=}" ;;
     --dry-run)       DRY_RUN=true ;;
+    *) log_error "Unknown flag: $arg"; exit 1 ;;
   esac
 done
 
@@ -144,10 +145,18 @@ if [ -z "$HUAWEI_MAAS_API_KEY" ] && [ -t 0 ]; then
 fi
 
 TEMPLATE="$PROJECT_DIR/configs/opencode/opencode.json.template"
-NEW_CONFIG=$(jq --arg vk "$VIRTUAL_KEY" --arg mk "${HUAWEI_MAAS_API_KEY:-<HUAWEI_MAAS_API_KEY>}" \
-  '.provider.LiteLLM.options.apiKey = $vk |
-   .provider["Huawei-MaaS"].options.apiKey = $mk' \
-  "$TEMPLATE")
+
+if [ -z "$HUAWEI_MAAS_API_KEY" ] || [ "$HUAWEI_MAAS_API_KEY" = "<HUAWEI_MAAS_API_KEY>" ]; then
+  log_warn "No Huawei MaaS API key provided — omitting Huawei-MaaS direct provider"
+  NEW_CONFIG=$(jq --arg vk "$VIRTUAL_KEY" \
+    '.provider.LiteLLM.options.apiKey = $vk | del(.provider["Huawei-MaaS"])' \
+    "$TEMPLATE")
+else
+  NEW_CONFIG=$(jq --arg vk "$VIRTUAL_KEY" --arg mk "$HUAWEI_MAAS_API_KEY" \
+    '.provider.LiteLLM.options.apiKey = $vk |
+     .provider["Huawei-MaaS"].options.apiKey = $mk' \
+    "$TEMPLATE")
+fi
 
 if [ -z "$NEW_CONFIG" ] || ! echo "$NEW_CONFIG" | jq -e . >/dev/null 2>&1; then
   log_error "Failed to generate opencode config from template."

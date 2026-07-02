@@ -35,6 +35,7 @@ for arg in "$@"; do
   case "$arg" in
     --virtual-key=*) VIRTUAL_KEY="${arg#--virtual-key=}" ;;
     --dry-run)       DRY_RUN=true ;;
+    *) log_error "Unknown flag: $arg"; exit 1 ;;
   esac
 done
 
@@ -114,7 +115,7 @@ fi
 
 mkdir -p "$CLAUDE_CONFIG_DIR"
 
-NEW_SETTINGS=$(jq -n \
+NEW_ENV_BLOCK=$(jq -n \
   --arg base_url "http://127.0.0.1:4000" \
   --arg api_key "$VIRTUAL_KEY" \
   --arg model "claude-glm-5.2" \
@@ -122,16 +123,31 @@ NEW_SETTINGS=$(jq -n \
   '{env: {ANTHROPIC_BASE_URL: $base_url, ANTHROPIC_API_KEY: $api_key, ANTHROPIC_MODEL: $model, ANTHROPIC_SMALL_FAST_MODEL: $fast_model, CLAUDE_CODE_IDE_SKIP_AUTO_INSTALL: "1"}}')
 
 if [ -f "$CLAUDE_SETTINGS" ]; then
-  if [ "$NEW_SETTINGS" = "$(cat "$CLAUDE_SETTINGS")" ]; then
-    log_info "settings.json unchanged — skipping write"
+  EXISTING_SETTINGS=$(cat "$CLAUDE_SETTINGS")
+  if echo "$EXISTING_SETTINGS" | jq -e . >/dev/null 2>&1; then
+    MERGED_SETTINGS=$(echo "$EXISTING_SETTINGS" "$NEW_ENV_BLOCK" | jq -s '.[0] * .[1]')
+    if [ "$MERGED_SETTINGS" = "$EXISTING_SETTINGS" ]; then
+      log_info "settings.json unchanged — skipping write"
+    else
+      EXISTING_KEYS=$(echo "$EXISTING_SETTINGS" | jq -r 'keys | .[]' 2>/dev/null | sort | uniq)
+      NON_ENV_KEYS=$(echo "$EXISTING_KEYS" | grep -v '^env$' || true)
+      if [ -n "$NON_ENV_KEYS" ]; then
+        log_warn "Overwriting existing settings with keys: $(echo "$NON_ENV_KEYS" | tr '\n' ' ')"
+      fi
+      cp "$CLAUDE_SETTINGS" "$CLAUDE_SETTINGS.bak.$(date +%Y%m%d%H%M%S)"
+      echo "$MERGED_SETTINGS" > "$CLAUDE_SETTINGS"
+      chmod 600 "$CLAUDE_SETTINGS"
+      log_ok "Updated: $CLAUDE_SETTINGS (backup saved, merged env block)"
+    fi
   else
+    log_warn "Existing settings.json is invalid JSON — creating backup and overwriting"
     cp "$CLAUDE_SETTINGS" "$CLAUDE_SETTINGS.bak.$(date +%Y%m%d%H%M%S)"
-    echo "$NEW_SETTINGS" > "$CLAUDE_SETTINGS"
+    echo "$NEW_ENV_BLOCK" > "$CLAUDE_SETTINGS"
     chmod 600 "$CLAUDE_SETTINGS"
-    log_ok "Updated: $CLAUDE_SETTINGS (backup saved)"
+    log_ok "Written: $CLAUDE_SETTINGS (backup saved)"
   fi
 else
-  echo "$NEW_SETTINGS" > "$CLAUDE_SETTINGS"
+  echo "$NEW_ENV_BLOCK" > "$CLAUDE_SETTINGS"
   chmod 600 "$CLAUDE_SETTINGS"
   log_ok "Written: $CLAUDE_SETTINGS"
 fi

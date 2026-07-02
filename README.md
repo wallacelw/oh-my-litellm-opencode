@@ -73,7 +73,7 @@ prompt to me with context. After completion, give me next steps.
 |---------|-----|------|---------|
 | LiteLLM Proxy | `http://127.0.0.1:4000` | Virtual key | API gateway |
 | LiteLLM Admin UI | `http://127.0.0.1:4000/ui` | Master key | View keys, spend, deployments |
-| Grafana Dashboard | `http://127.0.0.1:3000` | Anonymous | 34-panel observability dashboard |
+| Grafana Dashboard | `http://127.0.0.1:3000` | Anonymous | 28-panel observability dashboard |
 | Prometheus | `http://127.0.0.1:9090` | None | Metrics storage |
 | PostgreSQL | `localhost:5432` (internal) | — | LiteLLM database |
 
@@ -157,9 +157,9 @@ claude --bare --model claude-deepseek-v4-pro    # deep reasoning
 
 ### Monitoring
 
-- **Grafana:** `http://127.0.0.1:3000` — 34-panel dashboard (anonymous, no
+- **Grafana:** `http://127.0.0.1:3000` — 28-panel dashboard (anonymous, no
   login). 6 sections: At-a-glance, Latency, Errors & Health, Throughput &
-  Capacity, Tokens, Cost. Time window selectable (default 15m).
+  Capacity, Tokens, Cost. Time window selectable (default 1h).
 - **LiteLLM Admin UI:** `http://127.0.0.1:4000/ui` — view deployments, virtual
   keys, spend, budgets. Login: `admin` / your master key.
 

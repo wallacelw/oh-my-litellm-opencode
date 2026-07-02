@@ -70,17 +70,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/lib/prereqs.sh` — shared prerequisite installation helper library.
   Provides `prereq_ensure_apt`, `prereq_ensure_bun`, `prereq_ensure_npm`,
   `prereq_ensure_docker`. Idempotent, with sudo wrapper and apt-update-once.
-
-### Removed
-
-- Prometheus alerting rules (`alerts.yml`) — removed, no Alertmanager configured.
-- Prometheus recording rules (`rules.yml`) — removed, no 7-day baselines needed.
-- 7-day baseline lines from Grafana dashboard panels (TTFT, TPOT, RPM, TPM).
-- `PROMETHEUS_RETENTION` minimum 7d requirement — any valid duration now accepted.
-- "Annotations & Alerts" annotation from Grafana dashboard.
-
-### Added
-
 - Tool selection menu in `0_bootstrap.sh` — interactive 6-option menu
   (default all, litellm-only, litellm+opencode, litellm+codex, litellm+claude,
   custom toggle). Use `--tool=all|litellm|opencode|codex|claude` for
@@ -114,6 +103,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `REFERENCE.md`: added Claude Code CLI section, Anthropic endpoint to
   architecture diagram and endpoints table, dual-format architecture
   documentation.
+
+### Removed
+
+- Prometheus alerting rules (`alerts.yml`) — removed, no Alertmanager configured.
+- Prometheus recording rules (`rules.yml`) — removed, no 7-day baselines needed.
+- 7-day baseline lines from Grafana dashboard panels (TTFT, TPOT, RPM, TPM).
+- `PROMETHEUS_RETENTION` minimum 7d requirement — any valid duration now accepted.
+- "Annotations & Alerts" annotation from Grafana dashboard.
 
 ### Changed
 

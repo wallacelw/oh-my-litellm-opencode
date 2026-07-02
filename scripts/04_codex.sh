@@ -36,6 +36,7 @@ for arg in "$@"; do
   case "$arg" in
     --virtual-key=*) VIRTUAL_KEY="${arg#--virtual-key=}" ;;
     --dry-run)       DRY_RUN=true ;;
+    *) log_error "Unknown flag: $arg"; exit 1 ;;
   esac
 done
 

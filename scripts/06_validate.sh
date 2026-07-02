@@ -54,6 +54,7 @@ for arg in "$@"; do
     --skip-opencode)    SKIP_OPENCODE=true ;;
     --skip-codex)       SKIP_CODEX=true ;;
     --skip-claude-code) SKIP_CLAUDE_CODE=true ;;
+    *)                  log_error "Unknown flag: $arg"; exit 1 ;;
   esac
 done
 
@@ -75,13 +76,13 @@ RUN_CODEX=true
 RUN_CLAUDE_CODE=true
 RUN_OBSERVABILITY=true
 if [ "$LITELLM_ONLY" = true ]; then
-  RUN_OPENCODE=false; RUN_CODEX=false; RUN_CLAUDE_CODE=false
+  RUN_OPENCODE=false; RUN_CODEX=false; RUN_CLAUDE_CODE=false; RUN_OBSERVABILITY=false
 elif [ "$OPENCODE_ONLY" = true ]; then
-  RUN_CODEX=false; RUN_CLAUDE_CODE=false
+  RUN_CODEX=false; RUN_CLAUDE_CODE=false; RUN_OBSERVABILITY=false
 elif [ "$CODEX_ONLY" = true ]; then
-  RUN_OPENCODE=false; RUN_CLAUDE_CODE=false
+  RUN_OPENCODE=false; RUN_CLAUDE_CODE=false; RUN_OBSERVABILITY=false
 elif [ "$CLAUDE_CODE_ONLY" = true ]; then
-  RUN_OPENCODE=false; RUN_CODEX=false
+  RUN_OPENCODE=false; RUN_CODEX=false; RUN_OBSERVABILITY=false
 fi
 [ "$SKIP_OPENCODE" = true ] && RUN_OPENCODE=false
 [ "$SKIP_CODEX" = true ] && RUN_CODEX=false
@@ -227,7 +228,7 @@ print(f'{moderation_errors} {other_errors} {len(unhealthy)}')
   log_info "A5. Inference smoke test"
   if [ "$DRY_RUN" = true ]; then
     skip "Inference smoke test"
-  elif [ "$LITELLM_ONLY" = true ] && [ -n "${LITELLM_MASTER_KEY:-}" ]; then
+  elif [ -n "${LITELLM_MASTER_KEY:-}" ]; then
     SMOKE_MODEL="deepseek-v3.2"
     if curl -sf -m 30 "$LITELLM_URL/v1/chat/completions" \
         -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
@@ -237,10 +238,8 @@ print(f'{moderation_errors} {other_errors} {len(unhealthy)}')
     else
       fail "Inference smoke test: $SMOKE_MODEL did not respond"
     fi
-  elif [ "$LITELLM_ONLY" = true ] && [ -z "${LITELLM_MASTER_KEY:-}" ]; then
-    skip "Inference smoke test (LITELLM_MASTER_KEY not set)"
   else
-    skip "Inference smoke test (runs in --litellm-only mode; full mode tests in B5)"
+    skip "Inference smoke test (LITELLM_MASTER_KEY not set)"
   fi
 
   echo ""
@@ -388,9 +387,9 @@ if [ "$RUN_OPENCODE" = true ]; then
         fail "Model catalog not reachable or empty"
       else
         pass "Model catalog reachable"
-        MODEL_COUNT=$(printf '%s' "$MODELS_JSON" | jq '.data | length' 2>/dev/null)
+        LITELLM_MODEL_COUNT=$(printf '%s' "$MODELS_JSON" | jq '.data | length' 2>/dev/null)
         MODEL_LIST=$(printf '%s' "$MODELS_JSON" | jq -r '.data[].id' 2>/dev/null)
-        log_dim "Discovered $MODEL_COUNT model(s): $(echo "$MODEL_LIST" | tr '\n' ' ' | sed 's/ $//')"
+        log_dim "Discovered $LITELLM_MODEL_COUNT model(s): $(echo "$MODEL_LIST" | tr '\n' ' ' | sed 's/ $//')"
 
         SMOKE_MODEL="deepseek-v3.2"
         if curl -sf -m 30 "$LITELLM_URL/v1/chat/completions" \

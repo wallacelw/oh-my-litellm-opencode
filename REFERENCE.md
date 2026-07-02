@@ -10,6 +10,8 @@ see **[SKILL.md](./SKILL.md)**. For a human-friendly overview, see
 
 ### Key Contract
 
+**Environment variables (`.env`):**
+
 | Env var | Set by | Read by | Format | Rotate risk |
 |---------|--------|---------|--------|------------|
 | `HUAWEI_MAAS_API_KEY` | User (env var or prompt) | `01_env.sh`, `03_opencode.sh` | Non-empty, no placeholders | Low — update `.env` + restart LiteLLM |
@@ -21,11 +23,16 @@ see **[SKILL.md](./SKILL.md)**. For a human-friendly overview, see
 | `DB_PASSWORD` | `01_env.sh` (auto or custom) | docker-compose, postgres | Random string | **High** — breaks DB auth (`--force` to regenerate) |
 | `GRAFANA_ADMIN_PASSWORD` | `01_env.sh` (auto or custom) | docker-compose, `06_validate.sh` | Random string | Low — changes dashboard login only |
 | `PROMETHEUS_RETENTION` | `01_env.sh` (default `30d`) | docker-compose | Prometheus duration (`Nd`/`Nh`/`Nw`) | None — config value |
-| `OPENCODE_VIRTUAL_KEY` | `03_opencode.sh` (minted) | `~/.config/opencode/opencode.json` (provider apiKey) | Virtual key starting with `sk-` | Low — tied to `LITELLM_MASTER_KEY` |
-| `CODEX_VIRTUAL_KEY` | `04_codex.sh` (minted) | `~/.codex/.env` as `LITELLM_CODEX_API_KEY` | Virtual key starting with `sk-` | Low — tied to `LITELLM_MASTER_KEY` |
-| `CLAUDE_CODE_VIRTUAL_KEY` | `05_claude_code.sh` (minted) | `~/.claude/settings.json` env block as `ANTHROPIC_API_KEY` | Virtual key starting with `sk-` | Low — tied to `LITELLM_MASTER_KEY` |
 | `HUAWEI_MAAS_ANTHROPIC_API_BASE` | `01_env.sh` (default `https://api-ap-southeast-1.modelarts-maas.com/anthropic`) | `02_litellm.sh` | URL | None — config value |
-| `HUAWEI_MAAS_API_BASE` | `01_env.sh` (default `https://api-ap-southeast-1.modelarts-maas.com/openai`) | `02_litellm.sh` | URL | None — config value |
+| `HUAWEI_MAAS_API_BASE` | `01_env.sh` (default `https://api-ap-southeast-1.modelarts-maas.com/openai/v1`) | `02_litellm.sh` | URL | None — config value |
+
+**Virtual keys (stored in tool config files, not `.env`):**
+
+| Key | Minted by | Stored in | Tied to |
+|-----|-----------|-----------|---------|
+| opencode virtual key | `03_opencode.sh` | `~/.config/opencode/opencode.json` (provider apiKey) | `LITELLM_MASTER_KEY` |
+| Codex virtual key | `04_codex.sh` | `~/.codex/.env` as `LITELLM_CODEX_API_KEY` | `LITELLM_MASTER_KEY` |
+| Claude Code virtual key | `05_claude_code.sh` | `~/.claude/settings.json` env block as `ANTHROPIC_API_KEY` | `LITELLM_MASTER_KEY` |
 
 **Rules:**
 
@@ -278,8 +285,8 @@ dashboard.
 Prometheus TSDB retention is configurable via `PROMETHEUS_RETENTION` in `.env`
 (default: `30d`).
 
-**Dashboard** (`configs/grafana/dashboards/main.json`) — 34 panels across 6
-sections, default 15m time window, 30s refresh:
+**Dashboard** (`configs/grafana/dashboards/main.json`) — 28 panels across 6
+sections, default 1h time window, 30s refresh:
 
 1. **At-a-glance** — Active Requests, RPS, RPM, Error %, TPS, TPM, Models Healthy, Spend (8 stat panels)
 2. **Latency** — TTFT by model, TPOT by model, End-to-end latency, LLM API latency, Proxy overhead, Queue wait (6 timeseries)

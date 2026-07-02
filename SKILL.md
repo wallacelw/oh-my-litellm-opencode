@@ -53,8 +53,8 @@ This applies to **all** prompts — including auto-generated secrets (inform
 the user what was generated and why) and the install directory. Maximum
 transparency, no silent auto-answering.
 
-For **upgrade**: read the MaaS key from `.env` yourself and feed it to
-bootstrap without asking the user. Relay all other prompts normally.
+For **upgrade**: bootstrap preserves the MaaS key from `.env` automatically
+— do not ask the user. Relay all other prompts normally.
 
 If sudo prompts for a password, ask the user.
 

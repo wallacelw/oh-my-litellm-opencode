@@ -101,7 +101,7 @@ uses `--tool=` flags.
 
 ```
 scripts/          — install pipeline (bootstrap + numbered steps 01-06)
-scripts/helpers/   — shared helper libraries (prereqs, keys, common)
+scripts/helpers/   — shared helper libraries (prereqs, keys, common, models)
 configs/          — component configs grouped by service
 configs/litellm/   — LiteLLM config, entrypoint, template
 configs/prometheus/ — Prometheus config

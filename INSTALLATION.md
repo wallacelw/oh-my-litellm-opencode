@@ -63,6 +63,7 @@ Shared libraries sourced by the pipeline steps. Not run directly.
 | `prereqs.sh` | all steps | `prereq_ensure_apt`, `prereq_ensure_bun`, `prereq_ensure_npm`, `prereq_ensure_docker`. Each install labeled with `[LOG_TAG]`. |
 | `keys.sh` | 03/04/05 | `resolve_master_key` (env → `.env` → prompt), `mint_or_reuse_key` (alias lookup + mint). |
 | `common.sh` | all scripts | `source_env`, `retry_curl`, `strip_jsonc`, `mask_key`, logging (`log_step`, `log_ok`, `log_info`, `log_warn`, `log_error`, `log_dim`, `log_action`), prompts (`prompt_yesno`, `prompt_input`, `prompt_password`), `run_filtered` (subprocess output filtering). |
+| `models.sh` | 02, 06 | `MODELS` array + `MODEL_COUNT` — single source of truth for the model catalog. To add/remove a model: edit this file only. |
 
 ---
 

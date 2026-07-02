@@ -65,13 +65,31 @@ if [ ! -f "$SCRIPT_DIR/helpers/common.sh" ]; then
   if [ -d "$target_dir/.git" ]; then
     echo "  Existing install found at $target_dir — pulling updates..."
     cd "$target_dir"
-    git pull --ff-only
+    if ! git pull --ff-only; then
+      echo ""
+      echo "  git pull failed. Reset to origin/main? [y/N]: "
+      if [ -t 0 ]; then
+        read -r reset_choice < /dev/tty || reset_choice="n"
+      else
+        reset_choice="n"
+      fi
+      case "$reset_choice" in
+        y|Y|yes|YES)
+          echo "  Resetting to origin/main..."
+          git reset --hard origin/main
+          ;;
+        *)
+          echo "  Aborting. Please resolve git conflicts manually."
+          exit 1
+          ;;
+      esac
+    fi
   else
     echo "  Cloning to $target_dir..."
     git clone "$REPO_URL" "$target_dir"
     cd "$target_dir"
   fi
-  exec ./scripts/bootstrap.sh "$@"
+  BOOTSTRAP_STANDALONE=1 exec ./scripts/bootstrap.sh "$@"
 fi
 
 # ── Now in the repo — source helpers ──
@@ -116,7 +134,10 @@ echo ""
 
 # ── Install directory prompt ──
 current_parent="$(dirname "$PROJECT_DIR")"
-if [ -t 0 ]; then
+if [ "${BOOTSTRAP_STANDALONE:-}" = "1" ]; then
+  # Skip prompt — already determined during standalone bootstrap
+  install_parent="$current_parent"
+elif [ -t 0 ]; then
   install_parent=$(prompt_input "Install directory (project will be in \$INSTALL_DIR/$REPO_NAME)" "$current_parent")
 else
   install_parent="$current_parent"

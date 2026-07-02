@@ -111,7 +111,10 @@ mint_or_reuse_key() {
     local key_lookup_count=0
     local key_id key_info found_alias
     for key_id in $(echo "$key_list" | jq -r '.keys[]' 2>/dev/null); do
-      [ "$key_lookup_count" -ge 50 ] && break
+      if [ "$key_lookup_count" -ge 50 ]; then
+        echo "  WARNING: Key lookup capped at 50 keys. If alias '$alias' exists beyond #50, a new key will be minted." >&2
+        break
+      fi
       key_lookup_count=$((key_lookup_count + 1))
       key_info=$(curl -sf -m 10 "$litellm_url/key/info?key=$key_id" \
         -H "Authorization: Bearer $LITELLM_MASTER_KEY" 2>/dev/null || true)
@@ -126,11 +129,9 @@ mint_or_reuse_key() {
   fi
 
   if [ -n "$existing_key" ] && [[ "$existing_key" == sk-* ]]; then
-    # Validate the existing key still works
-    if curl -sf -m 10 "$litellm_url/v1/chat/completions" \
-       -H "Authorization: Bearer $existing_key" \
-       -H "Content-Type: application/json" \
-       -d '{"model":"deepseek-v3.2","messages":[{"role":"user","content":"ok"}],"max_tokens":1}' &>/dev/null; then
+    # Validate the existing key still works (free /v1/models endpoint)
+    if curl -sf -m 10 "$litellm_url/v1/models" \
+       -H "Authorization: Bearer $existing_key" &>/dev/null; then
       echo "$existing_key"
       return 0
     fi

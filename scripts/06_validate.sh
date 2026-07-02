@@ -211,6 +211,9 @@ print(f'{moderation_errors} {other_errors} {len(unhealthy)}')
       warn "Deployment count: $DEPLOYMENT_COUNT (expected $EXPECTED_DEPLOYMENTS = $MODEL_COUNT models × $KEY_COUNT keys × 2 formats)"
     fi
     if [ -f "$TEMPLATE_FILE" ]; then
+      # Template-sync check: assumes template contains only OpenAI entries.
+      # The * 2 accounts for Anthropic entries added by 02_litellm.sh.
+      # If Anthropic entries are ever added to the template, this check breaks.
       TEMPLATE_MODELS=$(grep -c '^\s*- model_name:' "$TEMPLATE_FILE" 2>/dev/null || echo "0")
       GENERATED_MODELS=$(grep -c '^\s*- model_name:' "$CONFIG_FILE" 2>/dev/null || echo "0")
       EXPECTED_FROM_TEMPLATE=$((TEMPLATE_MODELS * KEY_COUNT * 2))

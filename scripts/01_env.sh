@@ -25,6 +25,9 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 ENV_EXAMPLE="$PROJECT_DIR/configs/.env.template"
 ENV_FILE="$PROJECT_DIR/.env"
 
+# ── Cleanup trap for temp file (R5) ──
+trap 'rm -f "$ENV_FILE.tmp" 2>/dev/null' EXIT INT TERM
+
 # ── Helpers ──
 source "$SCRIPT_DIR/helpers/prereqs.sh"
 source "$SCRIPT_DIR/helpers/common.sh"
@@ -73,13 +76,19 @@ if [ -f "$ENV_FILE" ]; then
   EXISTING_MAAS_ANTHROPIC_BASE="$(grep -oP '^HUAWEI_MAAS_ANTHROPIC_API_BASE="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
   EXISTING_MAAS_KEY="$(grep -oP '^HUAWEI_MAAS_API_KEY="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
   EXISTING_KEY_COUNT="$(grep -oP '^HUAWEI_MAAS_API_KEY_COUNT="?\K[^"]+' "$ENV_FILE" 2>/dev/null || true)"
-  # Read existing extra keys
-  if [ -n "$EXISTING_KEY_COUNT" ] && [ "$EXISTING_KEY_COUNT" -gt 1 ]; then
-    for i in $(seq 1 $((EXISTING_KEY_COUNT - 1))); do
-      VAR="HUAWEI_MAAS_API_KEY_$i"
-      VAL="$(grep -oP "^${VAR}=\"?\K[^\"]+" "$ENV_FILE" 2>/dev/null || true)"
-      [ -n "$VAL" ] && EXISTING_EXTRA_KEYS+=("$VAL")
-    done
+  # Read existing extra keys (R2: validate numeric before comparison)
+  if [ -n "$EXISTING_KEY_COUNT" ]; then
+    if [[ ! "$EXISTING_KEY_COUNT" =~ ^[0-9]+$ ]]; then
+      log_error "HUAWEI_MAAS_API_KEY_COUNT in existing .env is non-numeric: '$EXISTING_KEY_COUNT'"
+      exit 1
+    fi
+    if [ "$EXISTING_KEY_COUNT" -gt 1 ]; then
+      for i in $(seq 1 $((EXISTING_KEY_COUNT - 1))); do
+        VAR="HUAWEI_MAAS_API_KEY_$i"
+        VAL="$(grep -oP "^${VAR}=\"?\K[^\"]+" "$ENV_FILE" 2>/dev/null || true)"
+        [ -n "$VAL" ] && EXISTING_EXTRA_KEYS+=("$VAL")
+      done
+    fi
   fi
 fi
 
@@ -107,14 +116,16 @@ if [ "$IS_FRESH" = false ]; then
   [ -n "$EXISTING_DB_PASSWORD" ]      && DB_PASSWORD="$EXISTING_DB_PASSWORD"     || IS_FRESH=true
   [ -n "$EXISTING_GRAFANA_PASSWORD" ] && GRAFANA_PASSWORD="$EXISTING_GRAFANA_PASSWORD" || IS_FRESH=true
   [ -n "$EXISTING_PROM_RETENTION" ]   && PROM_RETENTION="$EXISTING_PROM_RETENTION" || IS_FRESH=true
-  [ -n "$EXISTING_MAAS_BASE" ]        && MAAS_API_BASE="$EXISTING_MAAS_BASE"
-  [ -n "$EXISTING_MAAS_ANTHROPIC_BASE" ] && MAAS_ANTHROPIC_BASE="$EXISTING_MAAS_ANTHROPIC_BASE"
   if [ "$IS_FRESH" = false ]; then
     log_ok "Preserving existing secrets (idempotent). Use --force to regenerate."
   else
     log_warn "Some existing secrets are empty or missing — regenerating."
   fi
 fi
+
+# Preserve MaaS base URLs from existing .env if present (R1: always, not just when IS_FRESH=false)
+[ -n "$EXISTING_MAAS_BASE" ] && MAAS_API_BASE="$EXISTING_MAAS_BASE"
+[ -n "$EXISTING_MAAS_ANTHROPIC_BASE" ] && MAAS_ANTHROPIC_BASE="$EXISTING_MAAS_ANTHROPIC_BASE"
 
 if [ "$IS_FRESH" = true ]; then
   # Fresh install or --force — prompt for each secret
@@ -154,13 +165,25 @@ fi
 
 # ── Collect extra MaaS keys for load balancing (env vars or prompt) ──
 EXTRA_KEYS=()
-if [ -n "${HUAWEI_MAAS_API_KEY_COUNT:-}" ] && [ "${HUAWEI_MAAS_API_KEY_COUNT:-1}" -gt 1 ]; then
-  for i in $(seq 1 $((HUAWEI_MAAS_API_KEY_COUNT - 1))); do
-    VAR="HUAWEI_MAAS_API_KEY_$i"
-    VAL="${!VAR:-}"
-    [ -n "$VAL" ] && EXTRA_KEYS+=("$VAL")
-  done
-  [ ${#EXTRA_KEYS[@]} -gt 0 ] && log_ok "${#EXTRA_KEYS[@]} extra MaaS key(s) from environment"
+if [ -n "${HUAWEI_MAAS_API_KEY_COUNT:-}" ]; then
+  # R2: validate numeric before comparison
+  if [[ ! "$HUAWEI_MAAS_API_KEY_COUNT" =~ ^[0-9]+$ ]]; then
+    log_error "HUAWEI_MAAS_API_KEY_COUNT is non-numeric: '$HUAWEI_MAAS_API_KEY_COUNT'"
+    exit 1
+  fi
+  if [ "$HUAWEI_MAAS_API_KEY_COUNT" -gt 1 ]; then
+    for i in $(seq 1 $((HUAWEI_MAAS_API_KEY_COUNT - 1))); do
+      VAR="HUAWEI_MAAS_API_KEY_$i"
+      VAL="${!VAR:-}"
+      [ -n "$VAL" ] && EXTRA_KEYS+=("$VAL")
+    done
+    # R3: warn if actual count doesn't match declared count
+    actual_count=$(( 1 + ${#EXTRA_KEYS[@]} ))
+    if [ "$actual_count" -ne "$HUAWEI_MAAS_API_KEY_COUNT" ]; then
+      log_warn "HUAWEI_MAAS_API_KEY_COUNT=$HUAWEI_MAAS_API_KEY_COUNT but only $actual_count key(s) provided. Using actual count."
+    fi
+    [ ${#EXTRA_KEYS[@]} -gt 0 ] && log_ok "${#EXTRA_KEYS[@]} extra MaaS key(s) from environment"
+  fi
 elif [ ${#EXISTING_EXTRA_KEYS[@]} -gt 0 ]; then
   EXTRA_KEYS=("${EXISTING_EXTRA_KEYS[@]}")
   log_ok "${#EXTRA_KEYS[@]} extra MaaS key(s) preserved from existing .env"
@@ -246,8 +269,9 @@ HUAWEI_MAAS_API_BASE="${MAAS_API_BASE}"
 # ── MaaS Anthropic Endpoint ───────────────────────
 HUAWEI_MAAS_ANTHROPIC_API_BASE="${MAAS_ANTHROPIC_BASE}"
 EOF
+chmod 600 "$ENV_FILE.tmp"
 mv "$ENV_FILE.tmp" "$ENV_FILE"
-chmod 600 "$ENV_FILE"
+trap - EXIT INT TERM
 
 # ── Configure git hooks (prevent committing secrets) ──
 if [ -d "$PROJECT_DIR/.githooks" ]; then

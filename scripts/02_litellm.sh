@@ -49,9 +49,9 @@ log_step "Step 02 — LiteLLM proxy + observability"
 # ── Port conflict check ──
 for port in 4000 5432 9090 3000; do
   port_in_use=false
-  if command -v ss &>/dev/null && ss -tlnp 2>/dev/null | grep -q ":${port} "; then
+  if command -v ss &>/dev/null && ss -tlnp 2>/dev/null | grep -qE ":${port}\b"; then
     port_in_use=true
-  elif command -v netstat &>/dev/null && netstat -tlnp 2>/dev/null | grep -q ":${port} "; then
+  elif command -v netstat &>/dev/null && netstat -tlnp 2>/dev/null | grep -qE ":${port}\b"; then
     port_in_use=true
   fi
   if [ "$port_in_use" = true ]; then
@@ -104,6 +104,7 @@ fi
   echo "model_list:"
   echo ""
   echo "  # ───────── Huawei MaaS OpenAI Models (${KEY_COUNT} deployment(s) per model, ${KEY_COUNT} * ${MODEL_COUNT} total) ───────────"
+  echo "  # (Anthropic section below adds an equal batch — total: 2 * ${KEY_COUNT} * ${MODEL_COUNT})"
   echo ""
 
   for model_entry in "${MODELS[@]}"; do

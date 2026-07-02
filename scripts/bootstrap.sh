@@ -298,9 +298,15 @@ set -e
 
 # ── Summary ──
 echo ""
-echo -e "${C_BOLD}${C_CYAN}══════════════════════════════════════════════════════${C_RESET}"
-echo -e "${C_BOLD}${C_CYAN}  Bootstrap complete${C_RESET}"
-echo -e "${C_BOLD}${C_CYAN}══════════════════════════════════════════════════════${C_RESET}"
+if [ "$VALIDATE_RC" -eq 0 ]; then
+  echo -e "${C_BOLD}${C_CYAN}══════════════════════════════════════════════════════${C_RESET}"
+  echo -e "${C_BOLD}${C_CYAN}  Bootstrap complete${C_RESET}"
+  echo -e "${C_BOLD}${C_CYAN}══════════════════════════════════════════════════════${C_RESET}"
+else
+  echo -e "${C_BOLD}${C_YELLOW}══════════════════════════════════════════════════════${C_RESET}"
+  echo -e "${C_BOLD}${C_YELLOW}  Bootstrap completed with validation failures${C_RESET}"
+  echo -e "${C_BOLD}${C_YELLOW}══════════════════════════════════════════════════════${C_RESET}"
+fi
 echo ""
 echo -e "  ${C_DIM}Project dir:${C_RESET}       $PROJECT_DIR"
 echo -e "  ${C_DIM}LiteLLM proxy:${C_RESET}     $LITELLM_URL"

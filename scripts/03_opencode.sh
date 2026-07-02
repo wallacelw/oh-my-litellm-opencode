@@ -22,6 +22,8 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 OPENCODE_DIR="$HOME/.config/opencode"
 OPENCODE_CONFIG="$OPENCODE_DIR/opencode.json"
 
+# Single source of truth for slim version — also substituted into the
+# $schema URL of oh-my-opencode-slim.json.template at install time.
 SLIM_VERSION="2.0.5"
 OPENCODE_INSTALL_URL="https://opencode.ai/install"
 CURL_TIMEOUT=15
@@ -182,7 +184,7 @@ fi
 log_info "Writing oh-my-opencode-slim config..."
 SLIM_CONFIG="$OPENCODE_DIR/oh-my-opencode-slim.json"
 SLIM_TEMPLATE="$PROJECT_DIR/configs/opencode/oh-my-opencode-slim.json.template"
-NEW_SLIM=$(cat "$SLIM_TEMPLATE")
+NEW_SLIM=$(sed "s|oh-my-opencode-slim@[0-9.]*|oh-my-opencode-slim@${SLIM_VERSION}|" "$SLIM_TEMPLATE")
 
 if [ -z "$NEW_SLIM" ] || ! echo "$NEW_SLIM" | jq -e . >/dev/null 2>&1; then
   log_error "Failed to read slim template."

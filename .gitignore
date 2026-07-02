@@ -5,3 +5,6 @@ configs/litellm/config.yaml
 # ── Backups created by scripts ──
 *.bak
 *.bak.*
+
+# ── Temp files from interrupted script runs ──
+*.tmp

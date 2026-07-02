@@ -52,7 +52,7 @@ see **[SKILL.md](./SKILL.md)**. For a human-friendly overview, see
   Codex CLI ──→ /v1/responses ────────→ openai/ provider ──→ /openai/v1/chat/completions
   Claude Code ─→ /v1/messages ────────→ anthropic/ provider ─→ /anthropic/v1/messages
 
-  opencode: 7 agents, 4 presets (LiteLLM-Huawei-MaaS-Full default)
+  opencode: 7 agents (1 disabled), 4 presets (LiteLLM-Huawei-MaaS-Full default)
   Codex CLI: Responses API bridged to Chat Completions by LiteLLM
   Claude Code: Anthropic Messages API forwarded to MaaS Anthropic endpoint
 
@@ -327,7 +327,7 @@ determines routing.
 `oh-my-opencode-slim` (v2.0.5) installed via `bunx`. Provides:
 
 - **4 presets** — control routing (proxy vs direct) and model selection
-- **7 agents** — orchestrator, oracle, council, librarian, explorer, designer, fixer
+- **7 agents** (1 disabled) — orchestrator, oracle, council, librarian, explorer, designer, fixer (observer disabled)
 - **Council** — 3 councillors running in parallel for consensus decisions
 - **Fallback chains** — each agent has a primary model and optional fallback
 

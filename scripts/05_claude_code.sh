@@ -160,7 +160,7 @@ if [ -f "$CLAUDE_JSON" ]; then
   if [ "$CURRENT" = "false" ]; then
     log_info "autoInstallIdeExtension already false"
   else
-    jq '.autoInstallIdeExtension = false' "$CLAUDE_JSON" > "$CLAUDE_JSON.tmp" && mv "$CLAUDE_JSON.tmp" "$CLAUDE_JSON"
+    jq '.autoInstallIdeExtension = false' "$CLAUDE_JSON" > "$CLAUDE_JSON.tmp" && mv "$CLAUDE_JSON.tmp" "$CLAUDE_JSON" || rm -f "$CLAUDE_JSON.tmp"
     log_ok "Set autoInstallIdeExtension=false in ~/.claude.json"
   fi
 else

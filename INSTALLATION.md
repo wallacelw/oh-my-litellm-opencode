@@ -113,14 +113,14 @@ filtered to suppress GitHub star prompts), mints a virtual key (alias
 Installs the OpenAI Codex CLI (via npm), mints a virtual key (alias "codex"),
 and writes `~/.codex/config.toml` (custom `litellm_proxy` provider,
 `wire_api=responses`), `model_catalog.json`, and `.env` with the API key.
-Supports `--virtual-key=` and `--dry-run`.
+Supports `--dry-run`.
 
 ### `05_claude_code.sh`
 
 Installs the Claude Code CLI (via npm), mints a virtual key (alias
 "claude-code"), writes `~/.claude/settings.json` (env block pointing to the
 LiteLLM proxy via the Anthropic Messages API), and disables the VSCode
-extension auto-install. Supports `--virtual-key=` and `--dry-run`.
+extension auto-install. Supports `--dry-run`.
 
 ### `06_validate.sh`
 

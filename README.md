@@ -57,21 +57,12 @@ stale: `docker compose restart grafana`.
 ```
 Install or upgrade oh-my-coding-maas-gateway on this machine.
 
-1. Fetch SKILL.md:
-   https://raw.githubusercontent.com/wallacelw/oh-my-coding-maas-gateway/main/SKILL.md
-2. Run the curl|bash one-liner from SKILL.md. It handles both fresh
-   install and upgrade (detects existing repo, pulls if present).
-3. Answer bootstrap's prompts on stdin. For an upgrade, read the MaaS
-   key from .env — don't ask me. For a fresh install, ask me:
-   - Install mode (default: all)
-   - My Huawei MaaS API key (region ap-southeast-1)
-   - Extra MaaS keys for load balancing (default: 0)
-4. If a step fails, run the recovery from SKILL.md. If recovery fails,
-   stop and report.
-5. Complete when 06_validate.sh exits 0. Do NOT launch opencode.
+Fetch and follow SKILL.md:
+  https://raw.githubusercontent.com/wallacelw/oh-my-coding-maas-gateway/main/SKILL.md
 
-Rules: don't skip steps, don't improvise, ask if unclear.
-After: I will rotate my MaaS keys if I shared them with you.
+You are the supervisor and wrapper. Read the project docs first, present
+a summary, ask me install or upgrade, then run bootstrap and relay every
+prompt to me with context. After completion, give me next steps.
 ```
 
 ---

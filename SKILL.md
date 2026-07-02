@@ -5,36 +5,81 @@ description: Deploy LiteLLM proxy (litellm + postgres + prometheus + grafana) ro
 
 # oh-my-coding-maas-gateway — Agent Procedure
 
-You are the intermediary between the user and bootstrap. Run bootstrap,
-answer its prompts on stdin, handle failures, stop when validation passes.
-Do NOT launch opencode.
+You are both a supervisor and a wrapper around the bootstrap script.
+You understand the project, guide the user, relay every bootstrap prompt
+with context, and deliver a final summary with next steps.
 
-Full details: **[INSTALLATION.md](./INSTALLATION.md)** ·
-**[REFERENCE.md](./REFERENCE.md)**
+Do NOT launch opencode or any coding tool. Your job ends at verification.
 
-## 1. Determine install or upgrade
+## 1. Read the project
 
-Check if `/home/oh-my-coding-maas-gateway/.env` exists:
+Fetch and read these docs from GitHub (works before cloning):
 
-- **Missing → fresh install.** Ask the user for:
-  - Huawei MaaS API key (region ap-southeast-1)
-  - Install mode — all (default), litellm, opencode, codex, claude
-  - Extra MaaS keys for load balancing (default: 0)
-- **Exists → upgrade.** Read the MaaS key from `.env`. Do not ask the user.
+- `https://raw.githubusercontent.com/wallacelw/oh-my-coding-maas-gateway/main/INSTALLATION.md`
+- `https://raw.githubusercontent.com/wallacelw/oh-my-coding-maas-gateway/main/REFERENCE.md`
 
-## 2. Run bootstrap
+## 2. Present summary, ask intent
+
+Output a structured summary to the user:
+
+- **What it does** — LiteLLM proxy routing to Huawei MaaS, multi-key load
+  balancing, observability stack (Prometheus + Grafana).
+- **What gets installed** — Docker stack (LiteLLM + Postgres + Prometheus +
+  Grafana), then selected coding tools (opencode, Codex CLI, Claude Code CLI).
+- **Prerequisites** — Docker, git, curl, jq, bun/npm (installed automatically).
+- **What you'll be asked for** — MaaS API key, install mode, extra keys.
+- **Estimated time** — ~5 min fresh, ~2 min upgrade.
+
+Then ask: **"Install or upgrade?"** If `/home/oh-my-coding-maas-gateway/.env`
+exists, suggest upgrade. Otherwise suggest install.
+
+## 3. Run bootstrap, relay prompts
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/wallacelw/oh-my-coding-maas-gateway/main/scripts/bootstrap.sh | bash
 ```
 
-Answer each prompt as bootstrap presents it. Pass `--tool=<mode>` to skip
-the menu. If sudo prompts, ask the user for their password.
+Bootstrap will emit prompts one at a time. For **each** prompt:
 
-## 3. Verify
+1. Read what bootstrap is asking.
+2. Elaborate — explain what's being asked and why, add context from the
+   docs you read (e.g., "Bootstrap is asking for your Huawei MaaS API key.
+   This is from the Huawei cloud console, region ap-southeast-1. It will
+   be stored in .env and never committed.").
+3. Relay to the user and get their answer.
+4. Feed the answer back to bootstrap on stdin.
 
-Done when `06_validate.sh` exits 0. If it fails, run the matching recovery
-below, then re-validate **once**. If it still fails, stop and report.
+This applies to **all** prompts — including auto-generated secrets (inform
+the user what was generated and why) and the install directory. Maximum
+transparency, no silent auto-answering.
+
+For **upgrade**: read the MaaS key from `.env` yourself and feed it to
+bootstrap without asking the user. Relay all other prompts normally.
+
+If sudo prompts for a password, ask the user.
+
+## 4. Verify
+
+Bootstrap runs `06_validate.sh` automatically. Check its exit code:
+
+- **Exit 0** — proceed to final summary.
+- **Exit non-zero** — match the FAIL pattern in the recovery table below,
+  run the recovery, re-validate **once**. If it still fails, stop and
+  report the full output to the user.
+
+## 5. Final summary
+
+Take bootstrap's output and complement it with:
+
+- **Service URLs** — LiteLLM `http://127.0.0.1:4000`, Admin UI
+  `http://127.0.0.1:4000/ui`, Grafana `http://127.0.0.1:3000`,
+  Prometheus `http://127.0.0.1:9090`.
+- **How to launch tools** — `opencode`, `codex`, `claude --bare`.
+- **Health check** — `./scripts/06_validate.sh` (re-run anytime).
+- **Key rotation** — remind the user to rotate their MaaS keys if shared
+  with you during the process.
+- **Upgrade note** — if this was an upgrade, remind them to restart
+  opencode if it's running (plugin changes are not hot-reloaded).
 
 ## Recovery
 
@@ -58,4 +103,3 @@ WARN messages are advisory — they do not cause non-zero exit.
 - Do not skip steps. Do not improvise. Do not launch opencode.
 - If `git pull` fails during upgrade, ask: "Reset to origin/main? (y/n)".
 - If anything is unclear, ask the user before proceeding.
-- After completion: remind the user to rotate MaaS keys if shared.

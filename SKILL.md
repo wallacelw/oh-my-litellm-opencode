@@ -5,37 +5,38 @@ description: Deploy LiteLLM proxy (litellm + postgres + prometheus + grafana) ro
 
 # oh-my-coding-maas-gateway — Agent Procedure
 
-You are the intermediary between the user and the bootstrap script.
-Run bootstrap, answer its prompts on stdin, handle failures, stop when
-validation passes. For full details: **[INSTALLATION.md](./INSTALLATION.md)**.
+You are the intermediary between the user and bootstrap. Run bootstrap,
+answer its prompts on stdin, handle failures, stop when validation passes.
+Do NOT launch opencode.
 
-## Procedure
+Full details: **[INSTALLATION.md](./INSTALLATION.md)** ·
+**[REFERENCE.md](./REFERENCE.md)**
 
-1. Run the one-liner. It handles both fresh install and upgrade —
-   detects an existing repo, pulls if present, clones if not:
+## 1. Determine install or upgrade
 
-   ```bash
-   curl -fsSL https://raw.githubusercontent.com/wallacelw/oh-my-coding-maas-gateway/main/scripts/bootstrap.sh | bash
-   ```
+Check if `/home/oh-my-coding-maas-gateway/.env` exists:
 
-   Optional flags: `--tool=all|litellm|opencode|codex|claude` (skip menu),
-   `--dry-run` (preview). Env var overrides: `HUAWEI_MAAS_API_KEY`,
-   `HUAWEI_MAAS_API_KEY_COUNT`, `HUAWEI_MAAS_API_KEY_1..N`.
+- **Missing → fresh install.** Ask the user for:
+  - Huawei MaaS API key (region ap-southeast-1)
+  - Install mode — all (default), litellm, opencode, codex, claude
+  - Extra MaaS keys for load balancing (default: 0)
+- **Exists → upgrade.** Read the MaaS key from `.env`. Do not ask the user.
 
-2. Answer bootstrap's prompts on stdin:
-   - **Fresh install** — ask the user for:
-     - Install mode (default: all)
-     - Huawei MaaS API key (region ap-southeast-1)
-     - Extra MaaS keys for load balancing (default: 0)
-   - **Upgrade** — read the MaaS key from `.env`. Do not ask the user.
-     If `.env` is missing, stop and report.
-   - Sudo password if the system prompts for it.
+## 2. Run bootstrap
 
-3. Complete when `06_validate.sh` exits 0. Do NOT launch opencode.
+```bash
+curl -fsSL https://raw.githubusercontent.com/wallacelw/oh-my-coding-maas-gateway/main/scripts/bootstrap.sh | bash
+```
+
+Answer each prompt as bootstrap presents it. Pass `--tool=<mode>` to skip
+the menu. If sudo prompts, ask the user for their password.
+
+## 3. Verify
+
+Done when `06_validate.sh` exits 0. If it fails, run the matching recovery
+below, then re-validate **once**. If it still fails, stop and report.
 
 ## Recovery
-
-If `06_validate.sh` fails, match the FAIL pattern and run the recovery:
 
 | FAIL pattern | Recovery |
 |--------------|----------|
@@ -50,12 +51,11 @@ If `06_validate.sh` fails, match the FAIL pattern and run the recovery:
 | `/metrics endpoint not responding` | `docker compose restart litellm`, wait 15s |
 | `Grafana not reachable` | `docker compose up -d grafana`, wait 20s |
 
-WARN messages are advisory — they do not cause non-zero exit. After recovery,
-re-run `06_validate.sh` **once**. If it still fails, stop and report full output.
+WARN messages are advisory — they do not cause non-zero exit.
 
 ## Rules
 
 - Do not skip steps. Do not improvise. Do not launch opencode.
 - If `git pull` fails during upgrade, ask: "Reset to origin/main? (y/n)".
 - If anything is unclear, ask the user before proceeding.
-- After completion: user will rotate MaaS keys if they were shared with you.
+- After completion: remind the user to rotate MaaS keys if shared.

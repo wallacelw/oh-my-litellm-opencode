@@ -192,9 +192,9 @@ if [ "$TOOL_SPECIFIED" = false ] && [ -t 0 ]; then
     5) INSTALL_OPENCODE=false; INSTALL_CODEX=false; INSTALL_CLAUDE_CODE=true ;;
     6)
       log_dim "Custom selection (LiteLLM is always installed):"
-      prompt_yesno "Install opencode?" n && INSTALL_OPENCODE=true || INSTALL_OPENCODE=false
-      prompt_yesno "Install Codex?" n    && INSTALL_CODEX=true    || INSTALL_CODEX=false
-      prompt_yesno "Install Claude Code?" n && INSTALL_CLAUDE_CODE=true || INSTALL_CLAUDE_CODE=false
+      if prompt_yesno "Install opencode?" n; then INSTALL_OPENCODE=true; else INSTALL_OPENCODE=false; fi
+      if prompt_yesno "Install Codex?" n; then INSTALL_CODEX=true; else INSTALL_CODEX=false; fi
+      if prompt_yesno "Install Claude Code?" n; then INSTALL_CLAUDE_CODE=true; else INSTALL_CLAUDE_CODE=false; fi
       ;;
     *)
       log_warn "Invalid choice. Defaulting to all."

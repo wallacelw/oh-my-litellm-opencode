@@ -232,7 +232,7 @@ run_filtered "docker" docker compose -f "$PROJECT_DIR/docker-compose.yml" up -d
 # Restart LiteLLM if config changed (bind mount — compose won't auto-restart)
 if [ -n "${BACKUP:-}" ] && [ -f "$BACKUP" ] && ! diff -q "$BACKUP" "$CONFIG_FILE" &>/dev/null; then
   log_info "Config changed — restarting LiteLLM to load new config..."
-  run_filtered "docker" docker compose -f "$PROJECT_DIR/docker-compose.yml" restart litellm
+  run_filtered "docker" docker compose -f "$PROJECT_DIR/docker-compose.yml" restart litellm || log_warn "LiteLLM restart failed — health check will verify"
 fi
 
 # Wait for LiteLLM to become healthy

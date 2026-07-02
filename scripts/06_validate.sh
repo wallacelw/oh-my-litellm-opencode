@@ -613,7 +613,11 @@ if [ "$RUN_CLAUDE_CODE" = true ]; then
     fi
     CLAUDE_MODEL=$(jq -r '.env.ANTHROPIC_MODEL // empty' "$CLAUDE_SETTINGS" 2>/dev/null || true)
     if [ -n "$CLAUDE_MODEL" ]; then
-      pass "default model set: $CLAUDE_MODEL"
+      if [[ "$CLAUDE_MODEL" == claude-* ]]; then
+        pass "default model set: $CLAUDE_MODEL"
+      else
+        warn "default model '$CLAUDE_MODEL' doesn't start with 'claude-' — may not route correctly"
+      fi
     else
       fail "default model not set"
     fi

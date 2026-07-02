@@ -59,7 +59,7 @@ retry_curl() {
   local max_attempts=3 delay=2 attempt=1 response="" err=""
   while [ $attempt -le $max_attempts ]; do
     if [ "$capture" = true ]; then
-      response=$(curl "$@" 2>/dev/null) && [ -n "$response" ] && echo "$response" && return 0
+      response=$(curl "$@" 2>/dev/null) && { echo "$response"; return 0; }
     else
       err=$(curl "$@" 2>&1) && return 0
     fi
